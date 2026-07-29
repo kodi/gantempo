@@ -1,72 +1,102 @@
+import type { EntityId, GanttDocument, TimeRange } from '@gantempo/gantt';
+
 export type ScenarioTheme = 'dark' | 'high-contrast' | 'light';
 export type ScenarioDensity = 'comfortable' | 'compact';
 export type ScenarioTaskTone = 'accent' | 'neutral' | 'success' | 'warning';
 
-export interface ScenarioTask {
-  id: string;
-  label: string;
-  start: number;
-  width: number;
-  tone: ScenarioTaskTone;
-}
-
-export interface ScenarioLane {
-  id: string;
-  label: string;
-  tasks: readonly ScenarioTask[];
-}
-
 export interface PlaygroundScenario {
-  id: string;
-  title: string;
-  description: string;
-  theme: ScenarioTheme;
-  density: ScenarioDensity;
-  lanes: readonly ScenarioLane[];
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly theme: ScenarioTheme;
+  readonly density: ScenarioDensity;
+  readonly document: GanttDocument;
+  readonly range: TimeRange;
+  readonly tickAnchor: number;
+  readonly tickInterval: number;
+  readonly timeZone: string;
+  readonly taskVariants: Readonly<Record<EntityId, ScenarioTaskTone>>;
 }
+
+const DAY = 24 * 60 * 60 * 1000;
+const RANGE_START = Date.UTC(2026, 6, 29);
+const RANGE_END = Date.UTC(2026, 7, 27);
+const RANGE: TimeRange = Object.freeze({ start: RANGE_START, end: RANGE_END });
+const TIME_AXIS = Object.freeze({
+  range: RANGE,
+  tickAnchor: RANGE_START,
+  tickInterval: 7 * DAY,
+  timeZone: 'Europe/Belgrade',
+});
+
+const mainDocument: GanttDocument = {
+  schemaVersion: 1,
+  lanes: [
+    { id: 'discovery', title: 'Discovery' },
+    { id: 'design', title: 'Design' },
+    { id: 'delivery', title: 'Delivery' },
+    { id: 'release', title: 'Release' },
+  ],
+  tasks: [
+    {
+      id: 'requirements',
+      title: 'Requirements',
+      schedule: { mode: 'instant', start: Date.UTC(2026, 6, 30), end: Date.UTC(2026, 7, 6) },
+    },
+    {
+      id: 'wireframes',
+      title: 'Wireframes',
+      schedule: { mode: 'instant', start: Date.UTC(2026, 7, 4), end: Date.UTC(2026, 7, 11) },
+    },
+    {
+      id: 'review',
+      title: 'Review',
+      schedule: { mode: 'instant', start: Date.UTC(2026, 7, 12), end: Date.UTC(2026, 7, 16) },
+    },
+    {
+      id: 'build',
+      title: 'Implementation',
+      schedule: { mode: 'instant', start: Date.UTC(2026, 7, 9), end: Date.UTC(2026, 7, 20) },
+    },
+    {
+      id: 'qa',
+      title: 'QA',
+      schedule: { mode: 'instant', start: Date.UTC(2026, 7, 19), end: Date.UTC(2026, 7, 24) },
+    },
+    {
+      id: 'launch',
+      title: 'Launch',
+      schedule: { mode: 'instant', start: Date.UTC(2026, 7, 25), end: Date.UTC(2026, 7, 28) },
+    },
+  ],
+  placements: [
+    { id: 'place-requirements', taskId: 'requirements', laneId: 'discovery' },
+    { id: 'place-wireframes', taskId: 'wireframes', laneId: 'design' },
+    { id: 'place-review', taskId: 'review', laneId: 'design' },
+    { id: 'place-build', taskId: 'build', laneId: 'delivery' },
+    { id: 'place-qa', taskId: 'qa', laneId: 'release' },
+    { id: 'place-launch', taskId: 'launch', laneId: 'release' },
+  ],
+};
+
+const mainTaskVariants: Readonly<Record<EntityId, ScenarioTaskTone>> = {
+  requirements: 'accent',
+  wireframes: 'success',
+  review: 'neutral',
+  build: 'accent',
+  qa: 'warning',
+  launch: 'success',
+};
 
 export const mainScenario: PlaygroundScenario = {
+  ...TIME_AXIS,
   id: 'main-project',
   title: 'Website launch plan',
   description: 'The primary project view used for everyday development.',
   theme: 'light',
   density: 'comfortable',
-  lanes: [
-    {
-      id: 'discovery',
-      label: 'Discovery',
-      tasks: [
-        {
-          id: 'requirements',
-          label: 'Requirements',
-          start: 4,
-          width: 23,
-          tone: 'accent',
-        },
-      ],
-    },
-    {
-      id: 'design',
-      label: 'Design',
-      tasks: [
-        { id: 'wireframes', label: 'Wireframes', start: 20, width: 24, tone: 'success' },
-        { id: 'review', label: 'Review', start: 47, width: 13, tone: 'neutral' },
-      ],
-    },
-    {
-      id: 'delivery',
-      label: 'Delivery',
-      tasks: [{ id: 'build', label: 'Implementation', start: 40, width: 36, tone: 'accent' }],
-    },
-    {
-      id: 'release',
-      label: 'Release',
-      tasks: [
-        { id: 'qa', label: 'QA', start: 72, width: 17, tone: 'warning' },
-        { id: 'launch', label: 'Launch', start: 91, width: 6, tone: 'success' },
-      ],
-    },
-  ],
+  document: mainDocument,
+  taskVariants: mainTaskVariants,
 };
 
 export const matrixScenarios: readonly PlaygroundScenario[] = [
@@ -85,38 +115,79 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     theme: 'dark',
   },
   {
+    ...TIME_AXIS,
     id: 'resource-overlap',
     title: 'Resource overlap',
-    description: 'Multiple assignments sharing the same lane.',
+    description: 'Multiple scheduled tasks sharing the same lane.',
     theme: 'light',
     density: 'comfortable',
-    lanes: [
-      {
-        id: 'alex',
-        label: 'Alex Morgan',
-        tasks: [
-          { id: 'alex-a', label: 'Research', start: 8, width: 34, tone: 'accent' },
-          { id: 'alex-b', label: 'Review', start: 49, width: 24, tone: 'warning' },
-        ],
-      },
-      {
-        id: 'sam',
-        label: 'Sam Rivera',
-        tasks: [{ id: 'sam-a', label: 'Prototype', start: 27, width: 44, tone: 'success' }],
-      },
-      {
-        id: 'taylor',
-        label: 'Taylor Kim',
-        tasks: [{ id: 'taylor-a', label: 'Handoff', start: 68, width: 25, tone: 'neutral' }],
-      },
-    ],
+    document: {
+      schemaVersion: 1,
+      lanes: [
+        { id: 'alex', title: 'Alex Morgan' },
+        { id: 'sam', title: 'Sam Rivera' },
+        { id: 'taylor', title: 'Taylor Kim' },
+      ],
+      tasks: [
+        {
+          id: 'alex-a',
+          title: 'Research',
+          schedule: {
+            mode: 'instant',
+            start: Date.UTC(2026, 6, 31),
+            end: Date.UTC(2026, 7, 10),
+          },
+        },
+        {
+          id: 'alex-b',
+          title: 'Review',
+          schedule: {
+            mode: 'instant',
+            start: Date.UTC(2026, 7, 13),
+            end: Date.UTC(2026, 7, 20),
+          },
+        },
+        {
+          id: 'sam-a',
+          title: 'Prototype',
+          schedule: {
+            mode: 'instant',
+            start: Date.UTC(2026, 7, 6),
+            end: Date.UTC(2026, 7, 19),
+          },
+        },
+        {
+          id: 'taylor-a',
+          title: 'Handoff',
+          schedule: {
+            mode: 'instant',
+            start: Date.UTC(2026, 7, 18),
+            end: Date.UTC(2026, 7, 26),
+          },
+        },
+      ],
+      placements: [
+        { id: 'place-alex-a', laneId: 'alex', taskId: 'alex-a' },
+        { id: 'place-alex-b', laneId: 'alex', taskId: 'alex-b' },
+        { id: 'place-sam-a', laneId: 'sam', taskId: 'sam-a' },
+        { id: 'place-taylor-a', laneId: 'taylor', taskId: 'taylor-a' },
+      ],
+    },
+    taskVariants: {
+      'alex-a': 'accent',
+      'alex-b': 'warning',
+      'sam-a': 'success',
+      'taylor-a': 'neutral',
+    },
   },
   {
+    ...TIME_AXIS,
     id: 'empty-state',
     title: 'Empty state',
     description: 'A high-contrast project before work is scheduled.',
     theme: 'high-contrast',
     density: 'comfortable',
-    lanes: [],
+    document: { schemaVersion: 1, lanes: [], tasks: [], placements: [] },
+    taskVariants: {},
   },
 ];

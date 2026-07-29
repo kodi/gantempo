@@ -334,7 +334,7 @@ still leave room for a later implementation swap.
 
 ### Slice 1: Minimum render document contracts
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -386,7 +386,7 @@ accept a directory filter, record the exact focused file command used instead.
 
 ### Slice 2: Linear time scale and explicit ticks
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -435,7 +435,7 @@ semantics.
 
 ### Slice 3: Semantic chart scene and layout
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -496,7 +496,7 @@ unless explicitly verifying deterministic overlay order.
 
 ### Slice 4: Read-only React DOM/SVG renderer
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -554,7 +554,7 @@ math, layout, and JSX in one module.
 
 ### Slice 5: Playground migration, parity, and placeholder cleanup
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -763,25 +763,100 @@ None of these questions blocks beginning Slice 1.
 - This decision changes planning only. No implementation or verification status was
   advanced.
 
+### 2026-07-30 — Slices 1–4 implementation
+
+- Slice 1 added only the implemented `tasks`, `lanes`, and `placements` document
+  collections. Duplicate IDs keep the first record and emit a typed diagnostic;
+  invalid placements or schedules omit only their own task primitive.
+- Slice 2 added an immutable affine scale with unclamped conversion and fixed
+  elapsed-time ticks. Tick labels default deterministically to `en-US` while the
+  renderer accepts an optional locale and always requires an explicit IANA time zone.
+- Slice 3 throws `RangeError` for an invalid visible range or layout metrics because
+  those are component configuration errors. Invalid document records remain
+  recoverable diagnostics alongside usable scene primitives.
+- Slice 4 uses named SVG task groups so titles and formatted start/end values remain
+  inspectable without introducing a treegrid contract. Chrome's accessibility tree
+  confirmed those groups are exposed correctly, so the initially implemented hidden
+  fallback list was removed to avoid announcing every task twice. SVG-owned
+  `foreignObject` labels provide real responsive CSS ellipsis while accessible text
+  retains the full task title and interval.
+- The public facade exports only the component, its input record types, and render
+  diagnostic types. Scale, indexes, scene primitives, and scene construction remain
+  internal.
+- Packaged CSS is emitted as `dist/style.css`, exported as
+  `@gantempo/gantt/styles.css`, and declared as a package side effect.
+- Verification passed:
+  - `vp test run packages/gantt/src/model packages/gantt/src/time packages/gantt/src/render packages/gantt/src/index.test.tsx`
+    — 5 files and 16 tests passed after the floating-point assertion used tolerance.
+  - `vp check` — formatting, lint, and type checking passed on 33 files.
+  - `vp pack` — emitted ESM, declarations, source map, and `style.css`.
+
+### 2026-07-30 — Slice 5 automated implementation
+
+- Both playground routes now render `Gantt` from canonical epoch-millisecond tasks,
+  lanes, and placements. Every scenario supplies a visible range, tick anchor,
+  elapsed-time interval, and `Europe/Belgrade` time zone.
+- A typed task-variant presentation map preserves the playground tones without adding
+  appearance fields to `TaskRecord`.
+- Compact, dark, and high-contrast variants are CSS-variable overrides. Toolbar
+  controls remain explicitly disabled playground chrome.
+- `PlaceholderGantt.tsx`, percentage scenario fields, and all placeholder selectors
+  were removed. `README.md` now describes the real read-only pipeline and stylesheet
+  import.
+- Verification passed:
+  - `vp test run` — 5 files and 17 tests passed in the final run.
+  - `vp check` — formatting, lint, and type checking passed.
+  - `vp pack` — the library and stylesheet packaged successfully.
+  - `vp build apps/playground` — the standalone playground built successfully.
+  - `mise run ci` — `check`, `test`, and `build` all passed.
+  - `mise run build-playground` — passed.
+  - HTTP probes returned `200 OK` for `/` and `/matrix` from the running local server.
+- Manual visual and accessibility verification remains outstanding. Browser discovery
+  returned no available browser surface in this implementation session, so responsive
+  widths, visual alignment, and the accessibility tree are not marked verified.
+
+### 2026-07-30 — Slice 5 Chrome visual and accessibility verification
+
+- Chrome DevTools MCP inspected `http://localhost:5173/` and `/matrix` at emulated
+  1440 × 900, 900 × 900, and 560 × 900 viewports.
+- The first pass found and fixed three issues:
+  - boundary tick labels were clipped, so near-edge labels now use edge-aware
+    alignment;
+  - non-accent dark-theme task labels lacked contrast, so they now use the dark
+    theme's light text color;
+  - named SVG task groups and the visually hidden task list duplicated every task in
+    the accessibility tree, so the proven-redundant fallback list was removed.
+- Final screenshots confirmed:
+  - the main chart remains aligned and readable at all three widths;
+  - the matrix switches from two columns to one at the planned responsive boundary;
+  - compact, light, dark, and high-contrast variants remain distinct and legible;
+  - narrow task labels ellipsize without escaping their bars;
+  - the high-contrast empty state is centered and readable.
+- Live geometry checks at 560 px reported zero table overflow, zero lane/time boundary
+  delta, and matching timeline/SVG heights for every non-empty scenario. All five
+  rendered chart instances reported zero diagnostics.
+- Chrome's accessibility tree exposed distinct named chart regions and task images
+  with full titles and formatted start/end dates. Decorative grid primitives were
+  absent, disabled playground controls were identified as disabled, and the empty
+  state text was exposed.
+- The final page navigation returned HTTP 200 and Chrome reported no console errors.
+- Post-verification gates passed against the final fixes: `vp check`, `vp test run`
+  (5 files, 17 tests), `vp pack`, `vp build apps/playground`, `mise run ci`, and
+  `mise run build-playground`.
+
 ## Progress
 
-- [ ] Slice 1: Minimum render document contracts
-- [ ] Slice 2: Linear time scale and explicit ticks
-- [ ] Slice 3: Semantic chart scene and layout
-- [ ] Slice 4: Read-only React DOM/SVG renderer
-- [ ] Slice 5: Playground migration, parity, and placeholder cleanup
-- [ ] Final automated gate
-- [ ] Final manual visual/accessibility gate
+- [x] Slice 1: Minimum render document contracts
+- [x] Slice 2: Linear time scale and explicit ticks
+- [x] Slice 3: Semantic chart scene and layout
+- [x] Slice 4: Read-only React DOM/SVG renderer
+- [x] Slice 5: Playground migration, parity, and placeholder cleanup
+- [x] Final automated gate
+- [x] Final manual visual/accessibility gate
 
 ## Next Slice
 
-Start Slice 1 in `packages/gantt/src/model/`.
-
-First inspect the record definitions in section 6 of `docs/ARCHITECTURE.md` and the
-current exports in `packages/gantt/src/index.tsx`. Add the minimum task, lane,
-placement, instant schedule, time range, and diagnostic contracts plus focused
-React-free tests. Use real epoch-millisecond fixture schedules, preserve explicit
-placements, do not add `d3-scale`, and do not change either playground route yet.
-
-Before checkpointing Slice 1, run the focused model tests and `vp check`, record the
-exact passing commands under Slice 1, and leave all later slices `[ ]`.
+This implementation plan is complete. Before starting the next architecture slice,
+inspect the resulting private scene contract and public `Gantt` facade against
+`docs/ARCHITECTURE.md`; only promote additional scene or interaction APIs when a
+second consumer proves the need.

@@ -2,6 +2,13 @@
 
 React and TypeScript primitives for Gantt charts, resource planning, and scheduling.
 
+Applications using the packaged chart should load its default structural and visual
+styles once:
+
+```ts
+import '@gantempo/gantt/styles.css';
+```
+
 ## Toolchain
 
 - [Vite+](https://viteplus.dev/) for formatting, linting, type checking, and tests
@@ -42,7 +49,9 @@ Start the React playground:
 pnpm dev
 ```
 
-The playground has two initial pages:
+The playground exercises the first real read-only rendering pipeline: canonical task,
+lane, and placement records pass through deterministic time-scale and scene primitives
+before the DOM/SVG renderer draws them. It has two pages:
 
 - `/` keeps the main development scenario at a large, useful size;
 - `/matrix` shows a small set of content, density, and theme variants together.

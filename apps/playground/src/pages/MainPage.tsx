@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-import { PlaceholderGantt } from '../placeholder/PlaceholderGantt';
+import { ScenarioGantt } from '../ScenarioGantt';
 import { mainScenario } from '../scenarios';
 
 export function MainPage(): ReactElement {
@@ -18,7 +18,7 @@ export function MainPage(): ReactElement {
         </div>
       </header>
 
-      <PlaceholderGantt scenario={mainScenario} size="main" />
+      <ScenarioGantt scenario={mainScenario} size="main" />
 
       <p className="page-note">
         This is the stable, full-size surface for developing the primary Gantt workflow.

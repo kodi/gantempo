@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-import { PlaceholderGantt } from '../placeholder/PlaceholderGantt';
+import { ScenarioGantt } from '../ScenarioGantt';
 import { matrixScenarios } from '../scenarios';
 
 export function MatrixPage(): ReactElement {
@@ -25,7 +25,7 @@ export function MatrixPage(): ReactElement {
               </div>
               <span>{scenario.theme}</span>
             </header>
-            <PlaceholderGantt scenario={scenario} size="matrix" />
+            <ScenarioGantt scenario={scenario} size="matrix" />
           </article>
         ))}
       </div>
