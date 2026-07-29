@@ -1,5 +1,5 @@
+import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
-import type { RenderDiagnostic } from './diagnostics';
 
 export interface ChartLayoutMetrics {
   readonly headerHeight: number;
@@ -70,7 +70,7 @@ export interface ChartScene {
   readonly lanes: readonly LaneRowPrimitive[];
   readonly taskBars: readonly TaskBarPrimitive[];
   readonly emptyState?: EmptyStatePrimitive;
-  readonly diagnostics: readonly RenderDiagnostic[];
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 export interface BuildChartSceneOptions {

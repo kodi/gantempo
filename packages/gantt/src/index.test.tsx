@@ -1,10 +1,27 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Gantt, type GanttDocument } from './index';
+import {
+  Gantt,
+  type AssignmentRecord,
+  type DependencyRecord,
+  type Diagnostic,
+  type GanttDocument,
+  type JsonValue,
+  type LaneRecord,
+  type PlacementRecord,
+  type ResourceRecord,
+  type TaskRecord,
+  type TaskSegment,
+} from './index';
 
 const DAY = 24 * 60 * 60 * 1000;
 const START = Date.UTC(2026, 6, 29);
+const EMPTY_COLLECTIONS = {
+  assignments: [],
+  dependencies: [],
+  resources: [],
+} as const;
 
 function render(document: GanttDocument): string {
   return renderToStaticMarkup(
@@ -23,7 +40,13 @@ describe('Gantt', () => {
   it('uses the default accessible region label', () => {
     const markup = renderToStaticMarkup(
       <Gantt
-        document={{ schemaVersion: 1, lanes: [], tasks: [], placements: [] }}
+        document={{
+          ...EMPTY_COLLECTIONS,
+          schemaVersion: 1,
+          lanes: [],
+          placements: [],
+          tasks: [],
+        }}
         range={{ start: START, end: START + 7 * DAY }}
         tickAnchor={START}
         tickInterval={DAY}
@@ -37,11 +60,14 @@ describe('Gantt', () => {
 
   it('renders an accessible hybrid DOM and SVG chart with stable entity identity', () => {
     const markup = render({
+      ...EMPTY_COLLECTIONS,
       schemaVersion: 1,
       lanes: [{ id: 'lane-design', title: 'Design lane with a long title' }],
       tasks: [
         {
           id: 'task-review',
+          kind: 'task',
+          segments: [],
           title: 'Review',
           schedule: { mode: 'instant', start: START - DAY, end: START + 2 * DAY },
         },
@@ -63,7 +89,13 @@ describe('Gantt', () => {
   });
 
   it('renders a useful empty state without an unlabeled SVG', () => {
-    const markup = render({ schemaVersion: 1, lanes: [], tasks: [], placements: [] });
+    const markup = render({
+      ...EMPTY_COLLECTIONS,
+      schemaVersion: 1,
+      lanes: [],
+      placements: [],
+      tasks: [],
+    });
 
     expect(markup).toContain('No scheduled work');
     expect(markup).toContain('Add a task to begin planning.');
@@ -72,6 +104,7 @@ describe('Gantt', () => {
 
   it('preserves valid output while exposing diagnostic count', () => {
     const markup = render({
+      ...EMPTY_COLLECTIONS,
       schemaVersion: 1,
       lanes: [{ id: 'lane-a', title: 'Lane A' }],
       tasks: [],
@@ -80,5 +113,59 @@ describe('Gantt', () => {
 
     expect(markup).toContain('data-diagnostic-count="1"');
     expect(markup).toContain('Lane A');
+  });
+
+  it('exports the complete normalized model and general diagnostic contracts', () => {
+    const fields = { nested: ['value', 1, true, null] } satisfies JsonValue;
+    const segment: TaskSegment = {
+      id: 'segment-a',
+      schedule: { mode: 'all-day', startDate: '2026-07-30', endDate: '2026-07-31' },
+    };
+    const task: TaskRecord = {
+      fields,
+      id: 'task-a',
+      kind: 'task',
+      segments: [segment],
+      title: 'Task A',
+    };
+    const resource: ResourceRecord = { id: 'resource-a', title: 'Resource A' };
+    const lane: LaneRecord = { id: 'lane-a', resourceId: resource.id, title: 'Lane A' };
+    const assignment: AssignmentRecord = {
+      id: 'assignment-a',
+      resourceId: resource.id,
+      taskId: task.id,
+    };
+    const placement: PlacementRecord = {
+      assignmentId: assignment.id,
+      id: 'placement-a',
+      laneId: lane.id,
+      segmentId: segment.id,
+      taskId: task.id,
+    };
+    const dependency: DependencyRecord = {
+      fromTaskId: task.id,
+      id: 'dependency-a',
+      toTaskId: task.id,
+      type: 'finish-to-start',
+    };
+    const document: GanttDocument = {
+      assignments: [assignment],
+      dependencies: [dependency],
+      lanes: [lane],
+      placements: [placement],
+      resources: [resource],
+      schemaVersion: 1,
+      tasks: [task],
+    };
+    const diagnostic: Diagnostic = {
+      code: 'value.invalid-id',
+      entityIds: [task.id],
+      message: 'Invalid ID.',
+      path: '/tasks/0/id',
+      severity: 'error',
+    };
+
+    expect(document.tasks[0]?.segments[0]?.id).toBe('segment-a');
+    expect(diagnostic).toMatchObject({ code: 'value.invalid-id', severity: 'error' });
   });
 });

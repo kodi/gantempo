@@ -1,8 +1,8 @@
 import { useEffect, useMemo, type CSSProperties, type ReactElement } from 'react';
 
+import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { buildChartScene } from '../render/build-chart-scene';
-import type { RenderDiagnostic } from '../render/diagnostics';
 import type { TaskBarPrimitive } from '../render/primitives';
 import '../styles.css';
 
@@ -16,7 +16,7 @@ export interface GanttProps {
   readonly label?: string;
   readonly locale?: string;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;
-  readonly onDiagnostics?: (diagnostics: readonly RenderDiagnostic[]) => void;
+  readonly onDiagnostics?: (diagnostics: readonly Diagnostic[]) => void;
 }
 
 interface GanttRootStyle extends CSSProperties {

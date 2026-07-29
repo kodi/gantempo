@@ -1,18 +1,10 @@
-import type { EntityId } from '../model/types';
+import type { Diagnostic, DiagnosticCode } from '../model/diagnostics';
 
-export type RenderDiagnosticCode =
-  | 'dangling-lane-reference'
-  | 'dangling-task-reference'
-  | 'duplicate-lane-id'
-  | 'duplicate-placement-id'
-  | 'duplicate-task-id'
-  | 'invalid-task-interval'
-  | 'missing-task-schedule'
-  | 'non-finite-task-time';
+/**
+ * @deprecated Import `Diagnostic` from the package facade instead.
+ * This compatibility alias is removed when the scene pipeline converges in M1 Slice 6.
+ */
+export type RenderDiagnostic = Diagnostic;
 
-export interface RenderDiagnostic {
-  readonly code: RenderDiagnosticCode;
-  readonly entityId: EntityId;
-  readonly message: string;
-  readonly relatedEntityIds?: readonly EntityId[];
-}
+/** @deprecated Use `DiagnosticCode` instead. */
+export type RenderDiagnosticCode = DiagnosticCode;

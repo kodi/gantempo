@@ -28,8 +28,14 @@ const TIME_AXIS = Object.freeze({
   tickInterval: 7 * DAY,
   timeZone: 'Europe/Belgrade',
 });
+const EMPTY_RELATIONSHIPS = Object.freeze({
+  assignments: Object.freeze([]),
+  dependencies: Object.freeze([]),
+  resources: Object.freeze([]),
+});
 
 const mainDocument: GanttDocument = {
+  ...EMPTY_RELATIONSHIPS,
   schemaVersion: 1,
   lanes: [
     { id: 'discovery', title: 'Discovery' },
@@ -40,31 +46,43 @@ const mainDocument: GanttDocument = {
   tasks: [
     {
       id: 'requirements',
+      kind: 'task',
+      segments: [],
       title: 'Requirements',
       schedule: { mode: 'instant', start: Date.UTC(2026, 6, 30), end: Date.UTC(2026, 7, 6) },
     },
     {
       id: 'wireframes',
+      kind: 'task',
+      segments: [],
       title: 'Wireframes',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 4), end: Date.UTC(2026, 7, 11) },
     },
     {
       id: 'review',
+      kind: 'task',
+      segments: [],
       title: 'Review',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 12), end: Date.UTC(2026, 7, 16) },
     },
     {
       id: 'build',
+      kind: 'task',
+      segments: [],
       title: 'Implementation',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 9), end: Date.UTC(2026, 7, 20) },
     },
     {
       id: 'qa',
+      kind: 'task',
+      segments: [],
       title: 'QA',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 19), end: Date.UTC(2026, 7, 24) },
     },
     {
       id: 'launch',
+      kind: 'task',
+      segments: [],
       title: 'Launch',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 25), end: Date.UTC(2026, 7, 28) },
     },
@@ -122,6 +140,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     theme: 'light',
     density: 'comfortable',
     document: {
+      ...EMPTY_RELATIONSHIPS,
       schemaVersion: 1,
       lanes: [
         { id: 'alex', title: 'Alex Morgan' },
@@ -131,6 +150,8 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
       tasks: [
         {
           id: 'alex-a',
+          kind: 'task',
+          segments: [],
           title: 'Research',
           schedule: {
             mode: 'instant',
@@ -140,6 +161,8 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
         },
         {
           id: 'alex-b',
+          kind: 'task',
+          segments: [],
           title: 'Review',
           schedule: {
             mode: 'instant',
@@ -149,6 +172,8 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
         },
         {
           id: 'sam-a',
+          kind: 'task',
+          segments: [],
           title: 'Prototype',
           schedule: {
             mode: 'instant',
@@ -158,6 +183,8 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
         },
         {
           id: 'taylor-a',
+          kind: 'task',
+          segments: [],
           title: 'Handoff',
           schedule: {
             mode: 'instant',
@@ -187,7 +214,13 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     description: 'A high-contrast project before work is scheduled.',
     theme: 'high-contrast',
     density: 'comfortable',
-    document: { schemaVersion: 1, lanes: [], tasks: [], placements: [] },
+    document: {
+      ...EMPTY_RELATIONSHIPS,
+      schemaVersion: 1,
+      lanes: [],
+      placements: [],
+      tasks: [],
+    },
     taskVariants: {},
   },
 ];

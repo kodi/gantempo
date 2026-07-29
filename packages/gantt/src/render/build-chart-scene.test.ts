@@ -12,7 +12,15 @@ function documentWith(
   placements: GanttDocument['placements'],
   lanes: GanttDocument['lanes'] = [{ id: 'lane-a', title: 'Lane A' }],
 ): GanttDocument {
-  return { schemaVersion: 1, tasks, lanes, placements };
+  return {
+    schemaVersion: 1,
+    assignments: [],
+    dependencies: [],
+    lanes,
+    placements,
+    resources: [],
+    tasks,
+  };
 }
 
 function build(document: GanttDocument) {
@@ -32,26 +40,36 @@ describe('buildChartScene', () => {
         [
           {
             id: 'full',
+            kind: 'task',
+            segments: [],
             title: 'Full',
             schedule: { mode: 'instant', start: START, end: RANGE.end },
           },
           {
             id: 'left',
+            kind: 'task',
+            segments: [],
             title: 'Left',
             schedule: { mode: 'instant', start: START - DAY, end: START + 2 * DAY },
           },
           {
             id: 'right',
+            kind: 'task',
+            segments: [],
             title: 'Right',
             schedule: { mode: 'instant', start: START + 8 * DAY, end: RANGE.end + DAY },
           },
           {
             id: 'before',
+            kind: 'task',
+            segments: [],
             title: 'Before',
             schedule: { mode: 'instant', start: START - 2 * DAY, end: START },
           },
           {
             id: 'after',
+            kind: 'task',
+            segments: [],
             title: 'After',
             schedule: { mode: 'instant', start: RANGE.end, end: RANGE.end + DAY },
           },
@@ -77,11 +95,15 @@ describe('buildChartScene', () => {
         [
           {
             id: 'task-b',
+            kind: 'task',
+            segments: [],
             title: 'B',
             schedule: { mode: 'instant', start: START + 4 * DAY, end: START + 5 * DAY },
           },
           {
             id: 'task-a',
+            kind: 'task',
+            segments: [],
             title: 'A',
             schedule: { mode: 'instant', start: START + DAY, end: START + 2 * DAY },
           },
@@ -107,19 +129,25 @@ describe('buildChartScene', () => {
     const scene = build(
       documentWith(
         [
-          { id: 'unscheduled', title: 'Unscheduled' },
+          { id: 'unscheduled', kind: 'task', segments: [], title: 'Unscheduled' },
           {
             id: 'invalid',
+            kind: 'task',
+            segments: [],
             title: 'Invalid',
             schedule: { mode: 'instant', start: START + DAY, end: START },
           },
           {
             id: 'non-finite',
+            kind: 'task',
+            segments: [],
             title: 'Non finite',
             schedule: { mode: 'instant', start: Number.NaN, end: START + DAY },
           },
           {
             id: 'valid',
+            kind: 'task',
+            segments: [],
             title: 'Valid',
             schedule: { mode: 'instant', start: START, end: START + DAY },
           },
@@ -137,11 +165,11 @@ describe('buildChartScene', () => {
 
     expect(scene.taskBars.map((bar) => bar.taskId)).toEqual(['valid']);
     expect(scene.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
-      'dangling-lane-reference',
-      'dangling-task-reference',
-      'missing-task-schedule',
-      'invalid-task-interval',
-      'non-finite-task-time',
+      'reference.placement-lane',
+      'reference.placement-task',
+      'render.missing-task-schedule',
+      'render.invalid-task-interval',
+      'render.non-finite-task-time',
     ]);
   });
 
@@ -159,13 +187,18 @@ describe('buildChartScene', () => {
   it('does not mutate frozen inputs and rejects an invalid visible range', () => {
     const document: GanttDocument = Object.freeze({
       schemaVersion: 1,
+      assignments: Object.freeze([]),
+      dependencies: Object.freeze([]),
       tasks: Object.freeze([
         Object.freeze({
           id: 'task-a',
+          kind: 'task' as const,
+          segments: Object.freeze([]),
           title: 'A',
           schedule: Object.freeze({ mode: 'instant' as const, start: START, end: START + DAY }),
         }),
       ]),
+      resources: Object.freeze([]),
       lanes: Object.freeze([Object.freeze({ id: 'lane-a', title: 'Lane A' })]),
       placements: Object.freeze([
         Object.freeze({ id: 'placement-a', laneId: 'lane-a', taskId: 'task-a' }),

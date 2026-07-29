@@ -353,7 +353,7 @@ avoidable compatibility work.
 
 ### Slice 2: General diagnostics and normalized record contracts
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -825,10 +825,31 @@ they remain here as the preserved decision-gate history.
   schema-version-1, public entry-point, decision-link, and Slice 2 language.
 - No runtime implementation changed in this slice.
 
+### 2026-07-30 — Slice 2 normalized model
+
+- Added model-owned `JsonValue` aliases and a general `Diagnostic` contract with
+  stable document, schema, value, record, reference, and render code families.
+- Expanded the normalized model to all six M1 collections, task segments, instant and
+  all-day schedules, duration/lag values, JSON extension fields, task kinds, parent
+  identities, and explicit readonly arrays.
+- Canonical task `kind` and `segments` are required (`task` and `[]` are the later
+  wire defaults); all six document collection arrays are required and missing wire
+  collections will normalize to empty arrays in Slice 3.
+- Updated model indexing, scene construction, React diagnostics callbacks, public
+  type exports, package tests, and playground fixtures without changing visible
+  scene behavior. `RenderDiagnostic` remains only as the temporary Slice 6
+  compatibility alias allowed by the cross-slice rules.
+- `vp test run packages/gantt/src/model packages/gantt/src/index.test.tsx` passed
+  (2 files, 7 tests).
+- The first `vp check` reported formatting only in
+  `packages/gantt/src/index.tsx`; `vp fmt packages/gantt/src/index.tsx` corrected it.
+- The rerun of `vp check` passed formatting for 36 files and lint/type checking for
+  25 files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the codec contract and decision record
-- [ ] Slice 2: General diagnostics and normalized record contracts
+- [x] Slice 2: General diagnostics and normalized record contracts
 - [ ] Slice 3: Versioned wire codec and scalar normalization
 - [ ] Slice 4: Referential integrity and stable document indexes
 - [ ] Slice 5: Deterministic serialization and full-domain round trip
@@ -839,7 +860,8 @@ they remain here as the preserved decision-gate history.
 
 ## Next Slice
 
-Begin Slice 2 in `packages/gantt/src/model/types.ts` and a new model-owned diagnostics
-module. Add the complete normalized six-collection type surface, keep the renderer
-compiling against the general diagnostic contract, and verify with the focused
-model/facade tests plus `vp check`.
+Begin Slice 3 with `packages/gantt/src/model/codec.ts` and
+`packages/gantt/src/model/migrations.ts`. Implement fatal root/version inspection,
+the empty ordered migration registry, scalar/JSON/date/ID normalization, collection
+defaults, duplicate recovery, and path-aware tests. Verify the focused codec and
+migration suites plus `vp check`.

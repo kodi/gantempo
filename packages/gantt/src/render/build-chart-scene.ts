@@ -1,8 +1,8 @@
 import { indexLanes, indexPlacements, indexTasks } from '../model/indexes';
+import type { Diagnostic } from '../model/diagnostics';
 import type { GanttDocument } from '../model/types';
 import { generateFixedIntervalTicks } from '../time/fixed-interval-ticks';
 import { createLinearTimeScale } from '../time/linear-time-scale';
-import type { RenderDiagnostic } from './diagnostics';
 import {
   DEFAULT_CHART_LAYOUT_METRICS,
   type BuildChartSceneOptions,
@@ -28,7 +28,7 @@ function duplicateDiagnostics(document: GanttDocument): {
   readonly tasks: ReturnType<typeof indexTasks>;
   readonly lanes: ReturnType<typeof indexLanes>;
   readonly placements: ReturnType<typeof indexPlacements>;
-  readonly diagnostics: RenderDiagnostic[];
+  readonly diagnostics: Diagnostic[];
 } {
   const tasks = indexTasks(document.tasks);
   const lanes = indexLanes(document.lanes);
@@ -64,10 +64,10 @@ export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
     const lane = laneRows.get(placement.laneId);
     if (!lane) {
       diagnostics.push({
-        code: 'dangling-lane-reference',
-        entityId: placement.id,
+        code: 'reference.placement-lane',
+        severity: 'error',
+        entityIds: [placement.id, placement.laneId],
         message: `Placement "${placement.id}" references missing lane "${placement.laneId}".`,
-        relatedEntityIds: [placement.laneId],
       });
       continue;
     }
@@ -75,10 +75,10 @@ export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
     const task = indexes.tasks.byId.get(placement.taskId);
     if (!task) {
       diagnostics.push({
-        code: 'dangling-task-reference',
-        entityId: placement.id,
+        code: 'reference.placement-task',
+        severity: 'error',
+        entityIds: [placement.id, placement.taskId],
         message: `Placement "${placement.id}" references missing task "${placement.taskId}".`,
-        relatedEntityIds: [placement.taskId],
       });
       continue;
     }
@@ -86,28 +86,37 @@ export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
     const schedule = task.schedule;
     if (!schedule) {
       diagnostics.push({
-        code: 'missing-task-schedule',
-        entityId: task.id,
+        code: 'render.missing-task-schedule',
+        severity: 'warning',
+        entityIds: [task.id, placement.id],
         message: `Task "${task.id}" has no renderable schedule.`,
-        relatedEntityIds: [placement.id],
+      });
+      continue;
+    }
+    if (schedule.mode !== 'instant') {
+      diagnostics.push({
+        code: 'render.missing-task-schedule',
+        severity: 'warning',
+        entityIds: [task.id, placement.id],
+        message: `Task "${task.id}" has no renderable instant schedule.`,
       });
       continue;
     }
     if (!Number.isFinite(schedule.start) || !Number.isFinite(schedule.end)) {
       diagnostics.push({
-        code: 'non-finite-task-time',
-        entityId: task.id,
+        code: 'render.non-finite-task-time',
+        severity: 'error',
+        entityIds: [task.id, placement.id],
         message: `Task "${task.id}" has a non-finite schedule boundary.`,
-        relatedEntityIds: [placement.id],
       });
       continue;
     }
     if (schedule.end <= schedule.start) {
       diagnostics.push({
-        code: 'invalid-task-interval',
-        entityId: task.id,
+        code: 'render.invalid-task-interval',
+        severity: 'error',
+        entityIds: [task.id, placement.id],
         message: `Task "${task.id}" must end after it starts.`,
-        relatedEntityIds: [placement.id],
       });
       continue;
     }

@@ -130,10 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Execute Slice 2 of
+Execute Slice 3 of
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-add the general diagnostic contract and complete normalized record types without
-changing the M0 renderer behavior.
+add the versioned wire codec, scalar normalization, and ordered migration boundary
+against the frozen Slice 1 contract.
 
 ## Later Milestone Outcomes
 
@@ -217,6 +217,20 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 2 normalized model
+
+- Added the model-owned structured diagnostic contract and JSON-compatible value
+  types.
+- Expanded the normalized document to tasks, resources, lanes, assignments,
+  placements, dependencies, and task segments with required readonly collection
+  arrays.
+- Adapted the existing renderer and public facade to the general diagnostics and
+  normalized types without changing scene output; the render diagnostic name remains
+  a temporary compatibility alias until Slice 6.
+- Focused model/facade tests passed with 7 tests, and `vp check` passed formatting,
+  lint, and type checking across the repository.
+- Selected the versioned wire codec and scalar normalization as the next slice.
 
 ### 2026-07-30 — M1 Slice 1 codec contract
 
