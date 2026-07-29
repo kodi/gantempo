@@ -130,10 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Execute Slice 5 of
+Execute Slice 6 of
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-add deterministic current-schema serialization and the full six-collection,
-React-free round-trip exit-condition test.
+converge the scene, React component, and public package facade on the validated
+document kernel without changing playground behavior.
 
 ## Later Milestone Outcomes
 
@@ -217,6 +217,20 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 5 stable serialization
+
+- Added deterministic current-schema serialization with fixed known-key order,
+  preserved domain arrays, recursively lexical extension keys, and defensive
+  non-JSON rejection.
+- Added the React-free full-domain
+  `parse -> validate -> index -> serialize -> parse -> validate -> index` proof,
+  including numeric IDs, negative epochs, instant/all-day schedules, task segments,
+  Unicode, nested metadata, and every M1 relationship family.
+- The serializer suite passed 8 tests, the round-trip suite passed its end-to-end
+  test, and `vp check` passed repository formatting, lint, and type checking with no
+  warnings after focused formatting and one literal-schema lint correction.
+- Selected scene and public-facade convergence as the next slice.
 
 ### 2026-07-30 — M1 Slice 4 integrity and indexes
 

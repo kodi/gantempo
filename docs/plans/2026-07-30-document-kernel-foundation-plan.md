@@ -486,7 +486,7 @@ serialization should only receive the validated canonical result.
 
 ### Slice 5: Deterministic serialization and full-domain round trip
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -893,13 +893,39 @@ they remain here as the preserved decision-gate history.
   corrected them. The rerun passed formatting for 42 files and lint/type checking for
   31 files with no warnings or errors.
 
+### 2026-07-30 — Slice 5 stable serialization and round trip
+
+- Added a purpose-built current-schema serializer with the exact known root/record key
+  order fixed in the codec decision. Optional known values are omitted, all six
+  collections are emitted, and domain arrays retain canonical order.
+- Extension objects are serialized recursively with code-unit lexical key sorting.
+  The custom JSON writer avoids native integer-like property enumeration changing
+  keys such as `"10"` and `"2"`.
+- Defensive serializer checks reject non-finite values, `undefined`, cycles, sparse
+  arrays, and non-plain object instances instead of allowing native JSON coercion or
+  omission.
+- Added deterministic empty, Unicode, negative-epoch, nested metadata, numeric-ID,
+  key-order, record-order, and unchecked-value coverage.
+- Added the full six-collection React-free exit proof:
+  `parse -> validate -> index -> serialize -> parse -> validate -> index`. It asserts
+  canonical document equality, stable entity/relationship order, string identity,
+  instant/all-day and segment preservation, Unicode/nested metadata preservation, and
+  byte-identical second serialization.
+- `vp test run packages/gantt/src/model/serialize.test.ts` passed (1 file, 8 tests).
+- `vp test run packages/gantt/src/model/document-round-trip.test.ts` passed (1 file,
+  1 test).
+- The first `vp check` reported formatting in the serializer and round-trip test.
+  After `vp fmt`, a single literal-schema template warning remained; simplifying the
+  defensive message removed it. The final `vp check` passed formatting for 45 files
+  and lint/type checking for 34 files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the codec contract and decision record
 - [x] Slice 2: General diagnostics and normalized record contracts
 - [x] Slice 3: Versioned wire codec and scalar normalization
 - [x] Slice 4: Referential integrity and stable document indexes
-- [ ] Slice 5: Deterministic serialization and full-domain round trip
+- [x] Slice 5: Deterministic serialization and full-domain round trip
 - [ ] Slice 6: Scene pipeline and public facade convergence
 - [ ] Slice 7: Documentation, regression gate, and milestone evidence
 - [ ] Final automated gate
@@ -907,8 +933,8 @@ they remain here as the preserved decision-gate history.
 
 ## Next Slice
 
-Begin Slice 5 with `packages/gantt/src/model/serialize.ts` and representative
-full-domain fixtures. Emit fixed known-key order and recursively sorted extension
-objects without reordering domain arrays. Prove byte stability and the complete
-`parse -> index -> serialize -> parse -> index` exit contract with focused serializer
-and round-trip suites plus `vp check`.
+Begin Slice 6 in the scene builder and public facade. Replace the temporary M0
+index/duplicate authority with validated `DocumentIndexes`, keep only render-specific
+schedule diagnostics, export the intentional parse/serialize contracts, remove the
+`RenderDiagnostic` alias, and verify render/facade/package/playground gates without
+changing visual fixtures.
