@@ -130,10 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Execute Slice 3 of
+Execute Slice 4 of
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-add the versioned wire codec, scalar normalization, and ordered migration boundary
-against the frozen Slice 1 contract.
+add referential-integrity recovery and deterministic primary/relationship document
+indexes on top of structurally normalized records.
 
 ## Later Milestone Outcomes
 
@@ -217,6 +217,19 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 3 wire codec
+
+- Added fatal root/schema inspection and the explicit empty ordered migration registry
+  for the first published schema.
+- Added the schema-version-1 decoder with numeric/string ID normalization,
+  explicit-offset instant parsing, strict all-day dates, JSON extension cloning,
+  canonical defaults, unknown-property warnings, first-seen duplicate recovery, and
+  path-aware diagnostics.
+- Codec tests passed 16 cases, migration tests passed 9 cases, and `vp check` passed
+  formatting, lint, and type checking across the repository after formatting the two
+  new codec files.
+- Selected referential integrity and stable full-document indexes as the next slice.
 
 ### 2026-07-30 — M1 Slice 2 normalized model
 

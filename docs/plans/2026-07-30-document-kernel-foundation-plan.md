@@ -395,7 +395,7 @@ must be generalized before model code can report parsing and integrity problems.
 
 ### Slice 3: Versioned wire codec and scalar normalization
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -846,11 +846,32 @@ they remain here as the preserved decision-gate history.
 - The rerun of `vp check` passed formatting for 36 files and lint/type checking for
   25 files with no warnings or errors.
 
+### 2026-07-30 — Slice 3 wire codec
+
+- Added fatal plain-root/schema-version inspection and an explicit ordered migration
+  registry. Because schema version 1 is the first published wire contract, the
+  registry remains empty and no synthetic predecessor format was added.
+- Added a pure version-1 decoder for every M1 record family and task segments. It
+  normalizes finite numeric/string IDs, explicit-offset instant strings, strict local
+  dates, duration values, enums, finite numeric fields, collection/task defaults, and
+  recursively cloned/sorted JSON extension data.
+- Missing collections default to new readonly empty arrays. Explicit non-array
+  collections are fatal. Malformed records and segments are omitted with stable paths,
+  while first-seen normalized identity and accepted input order are preserved.
+- Unknown structural properties warn and are ignored; extension keys survive only
+  inside `fields` and `metadata`. Cyclic, sparse, non-plain, non-finite, and otherwise
+  non-JSON values are rejected without retaining caller-owned references.
+- `vp test run packages/gantt/src/model/codec.test.ts` passed (1 file, 16 tests).
+- `vp test run packages/gantt/src/model/migrations.test.ts` passed (1 file, 9 tests).
+- The first `vp check` reported formatting only in `codec.ts` and `codec.test.ts`;
+  `vp fmt` corrected both files. The rerun passed formatting for 40 files and
+  lint/type checking for 29 files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the codec contract and decision record
 - [x] Slice 2: General diagnostics and normalized record contracts
-- [ ] Slice 3: Versioned wire codec and scalar normalization
+- [x] Slice 3: Versioned wire codec and scalar normalization
 - [ ] Slice 4: Referential integrity and stable document indexes
 - [ ] Slice 5: Deterministic serialization and full-domain round trip
 - [ ] Slice 6: Scene pipeline and public facade convergence
@@ -860,8 +881,8 @@ they remain here as the preserved decision-gate history.
 
 ## Next Slice
 
-Begin Slice 3 with `packages/gantt/src/model/codec.ts` and
-`packages/gantt/src/model/migrations.ts`. Implement fatal root/version inspection,
-the empty ordered migration registry, scalar/JSON/date/ID normalization, collection
-defaults, duplicate recovery, and path-aware tests. Verify the focused codec and
-migration suites plus `vp check`.
+Begin Slice 4 with `packages/gantt/src/model/validate.ts` and the existing
+`packages/gantt/src/model/indexes.ts`. Apply parent/reference recovery without cycle
+analysis, add every primary and relationship lookup named by the plan, and prove that
+unrelated valid records and stable document order survive integrity failures. Verify
+the focused validation/index suites plus `vp check`.
