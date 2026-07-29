@@ -34,4 +34,7 @@ The same commands are available as mise tasks:
 mise run ci
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the planned package boundaries.
+See:
+
+- [Architecture](docs/ARCHITECTURE.md) for system and package boundaries.
+- [UI and theming](docs/UI_THEMING.md) for the design-system and Tailwind strategy.

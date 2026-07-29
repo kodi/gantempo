@@ -43,6 +43,7 @@ The initial architecture must be capable of supporting:
 - controlled and uncontrolled React usage;
 - JSON-compatible persistence and schema migration;
 - custom columns, cells, bars, tooltips, editors, and menus;
+- design-system integration through scoped tokens, stable parts, and typed slots;
 - horizontal and vertical virtualization;
 - React 18 and 19;
 - SSR environments such as Next.js;
@@ -539,6 +540,9 @@ export interface GanttHandle {
 
 Customization is provided through typed slots and contribution registries:
 
+- semantic theme tokens;
+- stable part and state attributes;
+- typed `classNames` and portable appearance resolvers;
 - task and milestone content;
 - lane headers;
 - grid cells and columns;
@@ -551,6 +555,8 @@ Customization is provided through typed slots and contribution registries:
 - empty-lane content.
 
 Prefer component slots receiving data and behavior props over arbitrary HTML strings.
+Visual customization must not require consumers to target undocumented DOM structure.
+The detailed contract is defined in [UI and theming](UI_THEMING.md).
 
 ### 9.5 Subscriptions and React ownership
 
@@ -610,7 +616,31 @@ high-density scenarios. The canvas renderer should:
 The canvas renderer should be promoted to the default only if benchmarks demonstrate a
 material improvement without reducing accessibility or customization.
 
-### 10.4 Lane overlap strategies
+### 10.4 Theming and design systems
+
+The theming promise is **Tailwind-native without Tailwind lock-in**. Tailwind users get
+a first-class token bridge, stable selectors, and utility-friendly React slots, while
+the library itself has no Tailwind runtime or peer dependency.
+
+The architectural rules are:
+
+- required structural CSS and optional visual themes are separate;
+- semantic CSS custom properties are scoped to each Gantt root, never global;
+- documented `data-gt-part`, kind, variant, and state attributes are public contracts;
+- typed slots and `classNames` customize React surfaces without exposing internal DOM;
+- a portable appearance API, rather than DOM CSS alone, drives canvas and export;
+- one resolved semantic theme feeds DOM, SVG, canvas, portals, and visual export;
+- built-in themes include light, dark, and high-contrast modes plus density presets;
+- paint-token changes do not invalidate layout, while metric-token changes do so
+  explicitly;
+- strict Content Security Policy usage does not require runtime style injection.
+
+Themes belong to view configuration, not the persistent `GanttDocument`. Multiple
+instances with different themes must coexist, and portalled UI must retain the theme of
+its owning instance. See [UI and theming](UI_THEMING.md) for tokens, packages, Tailwind
+integration, renderer parity, and acceptance criteria.
+
+### 10.5 Lane overlap strategies
 
 Each lane can select an overlap policy:
 
@@ -623,7 +653,7 @@ Each lane can select an overlap policy:
 Layout returns the effective height of each lane, allowing virtual scrolling with
 variable-height rows.
 
-### 10.5 Virtualization
+### 10.6 Virtualization
 
 Virtualize both dimensions:
 
@@ -999,6 +1029,8 @@ Use property-based testing for interval math, dependency graphs, and patch inver
 ### 19.3 Visual and accessibility tests
 
 - visual regression for scales, bars, dependencies, themes, and RTL;
+- theme contract fixtures for default CSS, custom tokens, and Tailwind integration;
+- semantic-theme parity across DOM/SVG, canvas, portals, and visual export;
 - automated accessibility checks;
 - manual screen-reader scenarios for core workflows;
 - high-contrast and reduced-motion checks.
@@ -1082,6 +1114,7 @@ domain boundaries remain intact throughout the round trip.
 - Multiple-entry overlap stacking.
 - Two-dimensional viewport.
 - DOM/SVG renderer.
+- Structural styles, semantic theme tokens, and the default theme.
 - Read-only React component.
 
 Exit condition: a large, read-only task and resource document can be navigated smoothly.
@@ -1145,6 +1178,8 @@ Before the first stable release:
   structured codes.
 - Free and Pro capabilities can be installed without changing the React component API.
 - A renderer can be replaced without changing scheduling or persistence code.
+- A semantic theme can be shared by DOM/SVG, canvas, portals, and visual export.
+- Tailwind integration works without making Tailwind a library dependency.
 - Keyboard users can perform the primary task-editing workflows.
 - SSR import and hydration succeed without browser globals at module scope.
 - Performance benchmarks and thresholds are published and reproducible.
