@@ -23,6 +23,7 @@ export type DiagnosticCode =
   | 'reference.assignment-resource'
   | 'reference.assignment-task'
   | 'reference.dependency-source'
+  | 'reference.dependency-self'
   | 'reference.dependency-target'
   | 'reference.lane-parent'
   | 'reference.lane-resource'

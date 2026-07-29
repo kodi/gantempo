@@ -440,7 +440,7 @@ relationships can be validated reliably.
 
 ### Slice 4: Referential integrity and stable document indexes
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -867,12 +867,38 @@ they remain here as the preserved decision-gate history.
   `vp fmt` corrected both files. The rerun passed formatting for 40 files and
   lint/type checking for 29 files with no warnings or errors.
 
+### 2026-07-30 — Slice 4 integrity and indexes
+
+- Added a pure referential validation stage after structural decoding. Missing
+  task/resource/lane parents and missing lane resources are diagnosed and cleared so
+  the primary record survives; invalid assignments, placements, and dependencies are
+  omitted.
+- Placement validation enforces task/lane existence, compatible assignment ownership,
+  and task-segment ownership. Dependency validation enforces existing, distinct
+  endpoints without adding cycle analysis.
+- Structural decoding now carries private entity source paths into validation, so
+  cascaded failures retain original paths even when earlier malformed records were
+  omitted.
+- Replaced the narrow lookup direction with `DocumentIndexes`: primary maps for all
+  six entity families, task-local segment maps, hierarchy children, assignment,
+  placement, and dependency relationship maps. Relationship arrays retain document
+  order and are frozen; construction does not filter, diagnose, schedule, or mutate.
+- The three M0 record-index helpers remain internal temporarily for the scene pipeline
+  and are removed during the planned Slice 6 convergence.
+- `vp test run packages/gantt/src/model/validate.test.ts` passed (1 file, 4 tests).
+- `vp test run packages/gantt/src/model/indexes.test.ts` passed (1 file, 4 tests).
+- The upstream `vp test run packages/gantt/src/model/codec.test.ts` passed (1 file,
+  16 tests) after validation was integrated.
+- The first `vp check` reported formatting only in four changed model files; `vp fmt`
+  corrected them. The rerun passed formatting for 42 files and lint/type checking for
+  31 files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the codec contract and decision record
 - [x] Slice 2: General diagnostics and normalized record contracts
 - [x] Slice 3: Versioned wire codec and scalar normalization
-- [ ] Slice 4: Referential integrity and stable document indexes
+- [x] Slice 4: Referential integrity and stable document indexes
 - [ ] Slice 5: Deterministic serialization and full-domain round trip
 - [ ] Slice 6: Scene pipeline and public facade convergence
 - [ ] Slice 7: Documentation, regression gate, and milestone evidence
@@ -881,8 +907,8 @@ they remain here as the preserved decision-gate history.
 
 ## Next Slice
 
-Begin Slice 4 with `packages/gantt/src/model/validate.ts` and the existing
-`packages/gantt/src/model/indexes.ts`. Apply parent/reference recovery without cycle
-analysis, add every primary and relationship lookup named by the plan, and prove that
-unrelated valid records and stable document order survive integrity failures. Verify
-the focused validation/index suites plus `vp check`.
+Begin Slice 5 with `packages/gantt/src/model/serialize.ts` and representative
+full-domain fixtures. Emit fixed known-key order and recursively sorted extension
+objects without reordering domain arrays. Prove byte stability and the complete
+`parse -> index -> serialize -> parse -> index` exit contract with focused serializer
+and round-trip suites plus `vp check`.

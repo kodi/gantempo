@@ -1,6 +1,7 @@
 import type { Diagnostic } from './diagnostics';
 import type { JsonObject, JsonValue } from './json';
 import { CURRENT_SCHEMA_VERSION, migrateWireDocument } from './migrations';
+import { validateDocumentReferences, type DocumentSourcePaths } from './validate';
 import type {
   AssignmentRecord,
   DependencyRecord,
@@ -29,6 +30,11 @@ export interface ParseDocumentResult {
 
 interface DecodeContext {
   readonly diagnostics: Diagnostic[];
+}
+
+interface DecodedCollection<T> {
+  readonly records: readonly T[];
+  readonly sourcePaths: ReadonlyMap<EntityId, string>;
 }
 
 const COLLECTION_NAMES = [
@@ -931,9 +937,10 @@ function decodeCollection<T>(
   context: DecodeContext,
   duplicateCode: Diagnostic['code'],
   decode: (item: unknown, itemPath: string, context: DecodeContext) => T | undefined,
-): readonly T[] {
+): DecodedCollection<T> {
   const result: T[] = [];
   const seen = new Map<EntityId, string>();
+  const sourcePaths = new Map<EntityId, string>();
   for (let index = 0; index < input.length; index += 1) {
     const itemPath = pointer(path, index);
     const record = decode(input[index], itemPath, context);
@@ -953,9 +960,13 @@ function decodeCollection<T>(
       continue;
     }
     seen.set(id, pointer(itemPath, 'id'));
+    sourcePaths.set(id, itemPath);
     result.push(record);
   }
-  return Object.freeze(result);
+  return Object.freeze({
+    records: Object.freeze(result),
+    sourcePaths,
+  });
 }
 
 export function parseGanttDocument(input: unknown): ParseDocumentResult {
@@ -1057,21 +1068,31 @@ export function parseGanttDocument(input: unknown): ParseDocumentResult {
     decodeDependency,
   );
 
-  const document: GanttDocument = Object.freeze({
-    assignments,
-    dependencies,
-    lanes,
+  const structurallyValidDocument: GanttDocument = Object.freeze({
+    assignments: assignments.records,
+    dependencies: dependencies.records,
+    lanes: lanes.records,
     ...(metadata === undefined ? {} : { metadata }),
-    placements,
-    resources,
+    placements: placements.records,
+    resources: resources.records,
     ...(revision === undefined ? {} : { revision }),
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    tasks,
+    tasks: tasks.records,
   });
+  const sourcePaths: DocumentSourcePaths = {
+    assignments: assignments.sourcePaths,
+    dependencies: dependencies.sourcePaths,
+    lanes: lanes.sourcePaths,
+    placements: placements.sourcePaths,
+    resources: resources.sourcePaths,
+    tasks: tasks.sourcePaths,
+  };
+  const validation = validateDocumentReferences(structurallyValidDocument, sourcePaths);
+  context.diagnostics.push(...validation.diagnostics);
 
   return {
     diagnostics: Object.freeze(context.diagnostics),
-    document,
+    document: validation.document,
     ...(migration.sourceSchemaVersion === undefined
       ? {}
       : { sourceSchemaVersion: migration.sourceSchemaVersion }),

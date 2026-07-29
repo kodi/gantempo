@@ -130,10 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Execute Slice 4 of
+Execute Slice 5 of
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-add referential-integrity recovery and deterministic primary/relationship document
-indexes on top of structurally normalized records.
+add deterministic current-schema serialization and the full six-collection,
+React-free round-trip exit-condition test.
 
 ## Later Milestone Outcomes
 
@@ -217,6 +217,18 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 4 integrity and indexes
+
+- Added source-path-preserving referential validation. Invalid primary parent/resource
+  links are cleared while invalid assignments, placements, and dependencies are
+  omitted without removing unrelated valid records.
+- Added deterministic primary, hierarchy, segment, assignment, placement, and
+  dependency indexes that derive lookup state without filtering or diagnostics.
+- Validation and index suites each passed 4 tests, the upstream 16-test codec suite
+  remained green, and `vp check` passed repository formatting, lint, and type
+  checking after formatting the changed model files.
+- Selected stable serialization and the full-domain round trip as the next slice.
 
 ### 2026-07-30 — M1 Slice 3 wire codec
 
