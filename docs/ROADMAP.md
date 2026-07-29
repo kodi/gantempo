@@ -1,6 +1,6 @@
 # Gantempo Roadmap
 
-Status: Active execution roadmap  
+Status: Active execution roadmap
 Last updated: 2026-07-30
 
 ## Purpose
@@ -54,7 +54,7 @@ required by later interaction and scheduling work.
 | Milestone | Architecture mapping | Outcome | Status | Detailed plan |
 | --- | --- | --- | --- | --- |
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
-| M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[ ]` Next | To be created before implementation |
+| M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[ ]` Next | [Active plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[ ]` | Not yet created |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | Not yet created |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
@@ -130,9 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Create `docs/plans/2026-07-30-document-kernel-foundation-plan.md`. Resolve current
-state, decisions, scope exclusions, ordered slices, migration behavior, per-slice
-tests, and the exact final gate before editing implementation files.
+Execute Slice 1 of
+[`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
+record the codec, wire-date, schema-version, recovery, and deterministic-serialization
+contract in a focused decision record before editing implementation modules.
 
 ## Later Milestone Outcomes
 
@@ -215,6 +216,25 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — Commit-message convention
+
+- Started a focused governance follow-up to name Conventional Commits as the
+  repository commit-message convention and require it for every commit.
+- This policy change is owned by Slice 3 of
+  [`2026-07-30-roadmap-documentation-governance-plan.md`](plans/2026-07-30-roadmap-documentation-governance-plan.md).
+- No milestone order, product scope, or architecture contract changes.
+
+### 2026-07-30 — M1 document-kernel plan
+
+- Created the detailed M1 implementation plan and linked it as the active plan.
+- Split the milestone into decision, model/diagnostic, codec/migration,
+  integrity/index, serialization/round-trip, renderer-convergence, and final-evidence
+  slices.
+- Kept M1 at `[ ]` because planning did not implement or verify runtime behavior.
+- Selected the codec contract and decision record as the actionable first slice.
+- Planning validation passed with `git diff --check`, explicit linked-file existence
+  checks, and focused roadmap/plan status and final-gate consistency checks.
 
 ### 2026-07-30 — Initial roadmap
 

@@ -58,6 +58,16 @@ Status: `[x]` Done
   intended target boundary or contract.
 - Require exact verification evidence before marking work done.
 
+### Slice 3: Name and require the commit-message convention
+
+Status: `[-]` In progress
+
+- Record Conventional Commits as the repository's commit-message convention in
+  `AGENTS.md`.
+- Require all repository commits to follow the convention.
+- Verify the policy wording and documentation synchronization without changing
+  application behavior.
+
 ## Verification
 
 - `git diff --check`
@@ -85,14 +95,21 @@ Verification passed on 2026-07-30:
 - The roadmap intentionally does not create speculative detailed plans for milestones
   after M1.
 
+### 2026-07-30 — Commit-message convention follow-up
+
+- Recent repository history uses Conventional Commits subjects such as `feat:`,
+  `docs:`, and scoped `chore(repo):`.
+- Slice 3 records the convention by name and makes it mandatory for future commits.
+
 ## Progress
 
 - [x] Slice 1: Create the living roadmap
 - [x] Slice 2: Add repository documentation governance
 - [x] Verification
+- [-] Slice 3: Name and require the commit-message convention
 
 ## Next Slice
 
-Create `docs/plans/2026-07-30-document-kernel-foundation-plan.md` before changing
-implementation files for M1. Use the roadmap's M1 target, minimum capabilities, exit
-condition, cross-milestone rules, and decision queue as the planning boundary.
+Finish Slice 3 by updating `AGENTS.md`, run its focused documentation verification,
+and record the exact evidence here and in `docs/ROADMAP.md`. After that, proceed with
+Slice 1 of `docs/plans/2026-07-30-document-kernel-foundation-plan.md`.

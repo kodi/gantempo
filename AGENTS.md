@@ -1,5 +1,11 @@
 # Repository Instructions
 
+## Commit messages
+
+- This repository uses **Conventional Commits**.
+- Always format every commit subject as a Conventional Commit:
+  `<type>[optional scope][optional !]: <description>`.
+
 ## Documentation governance
 
 ### Architecture
