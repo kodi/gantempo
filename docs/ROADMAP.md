@@ -130,10 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Execute Slice 6 of
+Execute Slice 7 of
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-converge the scene, React component, and public package facade on the validated
-document kernel without changing playground behavior.
+document the public boundary, run the final automated and browser regression gates,
+and record complete M1 milestone evidence.
 
 ## Later Milestone Outcomes
 
@@ -217,6 +217,21 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 6 scene convergence
+
+- Converged scene construction on the model validator and one `DocumentIndexes`
+  instance, leaving only genuinely render-specific schedule diagnostics in the
+  renderer.
+- Removed the temporary M0 record index/diagnostic helpers and
+  `RenderDiagnostic` compatibility alias.
+- Exported the intentional parser, serializer, result, normalized model, JSON, and
+  diagnostic contracts while keeping migrations, validation, indexing, and scene
+  internals private in the packed declaration.
+- Render/facade tests passed 11 tests, `vp check` passed cleanly, `vp pack` produced
+  the package artifacts, and `vp build apps/playground` built 32 modules successfully.
+- Selected documentation and the final automated/browser evidence gate as the next
+  slice.
 
 ### 2026-07-30 — M1 Slice 5 stable serialization
 

@@ -532,7 +532,7 @@ is the milestone's persistence proof before renderer integration changes.
 
 ### Slice 6: Scene pipeline and public facade convergence
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -919,6 +919,32 @@ they remain here as the preserved decision-gate history.
   defensive message removed it. The final `vp check` passed formatting for 45 files
   and lint/type checking for 34 files with no warnings or errors.
 
+### 2026-07-30 — Slice 6 scene and public facade convergence
+
+- Scene construction now runs the model-owned referential validator once, builds one
+  `DocumentIndexes`, and consumes its task lookup. Missing reference recovery and
+  diagnostics no longer have a renderer-owned implementation.
+- Removed the three temporary M0 record-index helpers and their duplicate diagnostic
+  behavior. Index creation itself remains a pure derivation with no filtering or
+  diagnostics.
+- Kept only missing/non-instant schedules, non-finite schedule values, and
+  non-renderable intervals as render-owned diagnostic cases.
+- Exported `parseGanttDocument`, `serializeGanttDocument`, `ParseDocumentResult`, the
+  normalized document/record/date/duration types, JSON types, and general diagnostics
+  from the package facade.
+- Removed the temporary `RenderDiagnostic`/`RenderDiagnosticCode` aliases and their
+  renderer-owned module. No existing test or documented consumer required them.
+- `vp test run packages/gantt/src/render packages/gantt/src/index.test.tsx` passed
+  (2 files, 11 tests).
+- `vp check` passed formatting for 44 files and lint/type checking for 33 files with
+  no warnings or errors.
+- `vp pack` passed, producing ESM, source map, CSS, and declaration artifacts; the ESM
+  output was 56.92 kB (11.31 kB gzip).
+- A focused packed-declaration search found the intentional parse/serialize exports
+  and confirmed that migration, validation, index, scene, and render-diagnostic
+  internals were absent.
+- `vp build apps/playground` passed after transforming 32 modules.
+
 ## Progress
 
 - [x] Slice 1: Freeze the codec contract and decision record
@@ -926,15 +952,16 @@ they remain here as the preserved decision-gate history.
 - [x] Slice 3: Versioned wire codec and scalar normalization
 - [x] Slice 4: Referential integrity and stable document indexes
 - [x] Slice 5: Deterministic serialization and full-domain round trip
-- [ ] Slice 6: Scene pipeline and public facade convergence
+- [x] Slice 6: Scene pipeline and public facade convergence
 - [ ] Slice 7: Documentation, regression gate, and milestone evidence
 - [ ] Final automated gate
 - [ ] Final browser gate
 
 ## Next Slice
 
-Begin Slice 6 in the scene builder and public facade. Replace the temporary M0
-index/duplicate authority with validated `DocumentIndexes`, keep only render-specific
-schedule diagnostics, export the intentional parse/serialize contracts, remove the
-`RenderDiagnostic` alias, and verify render/facade/package/playground gates without
-changing visual fixtures.
+Begin Slice 7 by documenting the normalized-versus-wire boundary and public
+parse/serialize flow in `README.md`. Then run `mise run ci`,
+`mise run build-playground`, start the local playground, and use Chrome DevTools MCP
+to inspect `/` and `/matrix` at all three required viewports with visual, DOM/style,
+accessibility, console, network, identity, and zero-diagnostic evidence before
+marking M1 complete.

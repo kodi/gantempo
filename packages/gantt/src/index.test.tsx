@@ -10,9 +10,12 @@ import {
   type JsonValue,
   type LaneRecord,
   type PlacementRecord,
+  type ParseDocumentResult,
   type ResourceRecord,
   type TaskRecord,
   type TaskSegment,
+  parseGanttDocument,
+  serializeGanttDocument,
 } from './index';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -167,5 +170,23 @@ describe('Gantt', () => {
 
     expect(document.tasks[0]?.segments[0]?.id).toBe('segment-a');
     expect(diagnostic).toMatchObject({ code: 'value.invalid-id', severity: 'error' });
+  });
+
+  it('exports the intentional document codec without model internals', () => {
+    const parsed: ParseDocumentResult = parseGanttDocument({
+      schemaVersion: 1,
+      tasks: [{ id: 1, title: 'Public boundary' }],
+    });
+
+    expect(parsed.diagnostics).toEqual([]);
+    expect(parsed.document?.tasks[0]).toMatchObject({
+      id: '1',
+      kind: 'task',
+      segments: [],
+      title: 'Public boundary',
+    });
+    expect(serializeGanttDocument(parsed.document!)).toBe(
+      '{"schemaVersion":1,"tasks":[{"id":"1","title":"Public boundary","kind":"task","segments":[]}],"resources":[],"lanes":[],"assignments":[],"placements":[],"dependencies":[]}',
+    );
   });
 });

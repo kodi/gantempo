@@ -1,6 +1,6 @@
-import { indexLanes, indexPlacements, indexTasks } from '../model/indexes';
 import type { Diagnostic } from '../model/diagnostics';
-import type { GanttDocument } from '../model/types';
+import { buildDocumentIndexes } from '../model/indexes';
+import { validateDocumentReferences } from '../model/validate';
 import { generateFixedIntervalTicks } from '../time/fixed-interval-ticks';
 import { createLinearTimeScale } from '../time/linear-time-scale';
 import {
@@ -24,32 +24,16 @@ function resolveMetrics(overrides?: Partial<ChartLayoutMetrics>): ChartLayoutMet
   return Object.freeze(metrics);
 }
 
-function duplicateDiagnostics(document: GanttDocument): {
-  readonly tasks: ReturnType<typeof indexTasks>;
-  readonly lanes: ReturnType<typeof indexLanes>;
-  readonly placements: ReturnType<typeof indexPlacements>;
-  readonly diagnostics: Diagnostic[];
-} {
-  const tasks = indexTasks(document.tasks);
-  const lanes = indexLanes(document.lanes);
-  const placements = indexPlacements(document.placements);
-
-  return {
-    tasks,
-    lanes,
-    placements,
-    diagnostics: [...tasks.diagnostics, ...lanes.diagnostics, ...placements.diagnostics],
-  };
-}
-
 export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
   const { document, range } = options;
   const metrics = resolveMetrics(options.metrics);
   const scale = createLinearTimeScale(range, { start: 0, end: 1 });
-  const indexes = duplicateDiagnostics(document);
-  const diagnostics = indexes.diagnostics;
+  const validation = validateDocumentReferences(document);
+  const validatedDocument = validation.document;
+  const indexes = buildDocumentIndexes(validatedDocument);
+  const diagnostics: Diagnostic[] = [...validation.diagnostics];
 
-  const lanes = indexes.lanes.ordered.map((lane, index) =>
+  const lanes = validatedDocument.lanes.map((lane, index) =>
     Object.freeze({
       laneId: lane.id,
       title: lane.title,
@@ -60,26 +44,11 @@ export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
   const laneRows = new Map(lanes.map((lane) => [lane.laneId, lane]));
   const taskBars: TaskBarPrimitive[] = [];
 
-  for (const placement of indexes.placements.ordered) {
+  for (const placement of validatedDocument.placements) {
     const lane = laneRows.get(placement.laneId);
-    if (!lane) {
-      diagnostics.push({
-        code: 'reference.placement-lane',
-        severity: 'error',
-        entityIds: [placement.id, placement.laneId],
-        message: `Placement "${placement.id}" references missing lane "${placement.laneId}".`,
-      });
-      continue;
-    }
-
-    const task = indexes.tasks.byId.get(placement.taskId);
-    if (!task) {
-      diagnostics.push({
-        code: 'reference.placement-task',
-        severity: 'error',
-        entityIds: [placement.id, placement.taskId],
-        message: `Placement "${placement.id}" references missing task "${placement.taskId}".`,
-      });
+    const task = indexes.tasksById.get(placement.taskId);
+    if (!lane || !task) {
+      // Referential validation is the sole authority and removes these relationships.
       continue;
     }
 
