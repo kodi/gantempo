@@ -60,7 +60,7 @@ Status: `[x]` Done
 
 ### Slice 3: Name and require the commit-message convention
 
-Status: `[-]` In progress
+Status: `[x]` Done
 
 - Record Conventional Commits as the repository's commit-message convention in
   `AGENTS.md`.
@@ -85,6 +85,15 @@ Verification passed on 2026-07-30:
   this plan agree on architecture, roadmap, plan, decision-record, and mandatory
   synchronization ownership
 
+Slice 3 verification passed on 2026-07-30:
+
+- `git diff --check`
+- `rg -n 'Conventional Commits|every commit|Slice 3|commit-message convention'
+  AGENTS.md docs/ROADMAP.md
+  docs/plans/2026-07-30-roadmap-documentation-governance-plan.md`
+- `git log -n 30 --format=%s` confirmed that recent history uses Conventional Commits
+  subjects, including scoped subjects.
+
 ## Working Notes
 
 ### 2026-07-30 — Governance bootstrap
@@ -106,10 +115,10 @@ Verification passed on 2026-07-30:
 - [x] Slice 1: Create the living roadmap
 - [x] Slice 2: Add repository documentation governance
 - [x] Verification
-- [-] Slice 3: Name and require the commit-message convention
+- [x] Slice 3: Name and require the commit-message convention
 
 ## Next Slice
 
-Finish Slice 3 by updating `AGENTS.md`, run its focused documentation verification,
-and record the exact evidence here and in `docs/ROADMAP.md`. After that, proceed with
-Slice 1 of `docs/plans/2026-07-30-document-kernel-foundation-plan.md`.
+Proceed with Slice 1 of
+`docs/plans/2026-07-30-document-kernel-foundation-plan.md`: create and link the
+focused document-codec decision record before editing implementation modules.

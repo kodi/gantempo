@@ -219,10 +219,12 @@ more than one implementation plan.
 
 ### 2026-07-30 — Commit-message convention
 
-- Started a focused governance follow-up to name Conventional Commits as the
-  repository commit-message convention and require it for every commit.
+- Named Conventional Commits as the repository commit-message convention and
+  required it for every commit in `AGENTS.md`.
 - This policy change is owned by Slice 3 of
   [`2026-07-30-roadmap-documentation-governance-plan.md`](plans/2026-07-30-roadmap-documentation-governance-plan.md).
+- Verification passed with `git diff --check`, a focused cross-document policy
+  search, and inspection of recent commit subjects.
 - No milestone order, product scope, or architecture contract changes.
 
 ### 2026-07-30 — M1 document-kernel plan
