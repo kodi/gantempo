@@ -359,6 +359,12 @@ the canonical runtime document. It is responsible for:
 
 Do not mix parsing logic into React components.
 
+The accepted schema-version, wire-date, recovery, duplicate, unknown-field, and
+deterministic-serialization rules are fixed by the
+[document codec contract](decisions/2026-07-30-document-codec-contract.md). M1 uses a
+small internal codec for schema version 1; the decision must be revisited before
+adding a runtime schema dependency or changing those public persistence rules.
+
 ## 7. State architecture
 
 State is divided into three categories.
@@ -1192,7 +1198,9 @@ records:
 1. Final package and product names.
 2. Whether the canvas renderer ships in the first stable release.
 3. The minimum supported TypeScript and browser versions.
-4. Whether runtime schema validation uses a dependency or a small internal codec.
+4. The threshold at which the
+   [M1 internal codec decision](decisions/2026-07-30-document-codec-contract.md)
+   should be revisited in favor of a runtime schema dependency.
 5. The exact patch representation: domain patches, JSON Patch, or both.
 6. Whether the public Pro package is one bundle or several separately purchasable
    capabilities.

@@ -97,7 +97,7 @@ or broadening the public React API.
 
 ### M1: Document kernel
 
-**Status:** `[ ]` Next
+**Status:** `[-]` In progress
 
 **Target outcome**
 
@@ -130,10 +130,10 @@ and all repository gates pass.
 
 **Next action**
 
-Execute Slice 1 of
+Execute Slice 2 of
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-record the codec, wire-date, schema-version, recovery, and deterministic-serialization
-contract in a focused decision record before editing implementation modules.
+add the general diagnostic contract and complete normalized record types without
+changing the M0 renderer behavior.
 
 ## Later Milestone Outcomes
 
@@ -204,18 +204,33 @@ contract in a focused decision record before editing implementation modules.
 
 ## Decision Queue
 
-Decisions remain open until a focused prototype or decision record resolves them:
+Decisions remain open until a focused prototype or decision record resolves them.
+The document wire-format decisions resolved for M1 are recorded in the
+[document codec contract](decisions/2026-07-30-document-codec-contract.md).
 
-1. Runtime schema validation dependency versus a small internal codec.
-2. ID-keyed domain patches, JSON Patch, or an adapter supporting both.
-3. Wire-format date ergonomics and canonical serialization rules.
-4. Unknown schema-version and forward-compatibility behavior.
-5. The threshold for splitting internal modules into workspace packages.
+1. ID-keyed domain patches, JSON Patch, or an adapter supporting both.
+2. The threshold for splitting internal modules into workspace packages.
+3. The measured threshold for revisiting the M1 internal codec in favor of a runtime
+   schema dependency.
 
 Decision records should live under `docs/decisions/` when their consequences cross
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 1 codec contract
+
+- Accepted the
+  [document codec contract](decisions/2026-07-30-document-codec-contract.md), choosing
+  a small internal schema-version-1 codec without a runtime dependency.
+- Fixed wire ID/date rules, fatal and recoverable boundaries, unknown and duplicate
+  handling, the empty initial migration registry, public parse/serialize shape, and
+  stable JSON ordering.
+- Moved M1 to in progress and selected normalized diagnostics and record contracts as
+  the next slice.
+- Verification passed with `git diff --check`, explicit existence checks for the four
+  linked documents, and a focused cross-document codec/next-slice consistency read.
+- No runtime behavior changed in this slice.
 
 ### 2026-07-30 — Commit-message convention
 

@@ -298,7 +298,7 @@ by normalization rather than coerced during serialization.
 
 ### Slice 1: Freeze the codec contract and decision record
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -773,6 +773,9 @@ decision record:
 
 None of these questions requires changing the M1 scope or slice order. Any answer that
 changes an architecture-level contract must update the linked documents in Slice 1.
+All six questions were resolved for M1 by
+[`2026-07-30-document-codec-contract.md`](../decisions/2026-07-30-document-codec-contract.md);
+they remain here as the preserved decision-gate history.
 
 ## Working Notes
 
@@ -802,9 +805,29 @@ changes an architecture-level contract must update the linked documents in Slice
 - No implementation test, build, or browser gate was run because this change only
   creates the implementation handoff.
 
+### 2026-07-30 — Slice 1 contract decisions
+
+- Compared the current no-runtime-dependency package with Zod 4.4.3. Zod provides
+  mature typed schemas and path-bearing issues, but its 4,558,122-byte unpacked
+  package would not replace the M1-specific migration, normalization, recovery,
+  duplicate, reference, or stable-serialization stages.
+- Accepted a focused internal schema-version-1 codec with no invented predecessor
+  migration, explicit-offset instant strings, strict local dates, first-seen
+  duplicate identity, warning-and-ignore unknown properties, record-level recovery,
+  and deterministic current-schema JSON.
+- Recorded the public `parseGanttDocument`/`serializeGanttDocument` direction and the
+  representative fixture checklist in
+  [`2026-07-30-document-codec-contract.md`](../decisions/2026-07-30-document-codec-contract.md).
+- `git diff --check` passed.
+- Explicit existence checks passed for the architecture, roadmap, active plan, and
+  decision record.
+- A focused `rg` cross-document read confirmed compatible internal-codec,
+  schema-version-1, public entry-point, decision-link, and Slice 2 language.
+- No runtime implementation changed in this slice.
+
 ## Progress
 
-- [ ] Slice 1: Freeze the codec contract and decision record
+- [x] Slice 1: Freeze the codec contract and decision record
 - [ ] Slice 2: General diagnostics and normalized record contracts
 - [ ] Slice 3: Versioned wire codec and scalar normalization
 - [ ] Slice 4: Referential integrity and stable document indexes
@@ -816,9 +839,7 @@ changes an architecture-level contract must update the linked documents in Slice
 
 ## Next Slice
 
-Begin Slice 1 by comparing a small internal codec with one credible runtime-schema
-dependency against a representative six-collection fixture. Create
-`docs/decisions/2026-07-30-document-codec-contract.md`, resolve the six Open Questions,
-and synchronize its links and contract language across `docs/ARCHITECTURE.md`,
-`docs/ROADMAP.md`, and this plan. Run `git diff --check` and the explicit link
-existence/consistency checks before adding implementation modules.
+Begin Slice 2 in `packages/gantt/src/model/types.ts` and a new model-owned diagnostics
+module. Add the complete normalized six-collection type surface, keep the renderer
+compiling against the general diagnostic contract, and verify with the focused
+model/facade tests plus `vp check`.
