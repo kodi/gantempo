@@ -1,6 +1,6 @@
 # Architecture: React Gantt and Scheduling Library
 
-Status: Initial architecture proposal
+Status: Architecture baseline
 Last updated: 2026-07-29
 
 ## 1. Executive summary
@@ -46,13 +46,15 @@ The initial architecture must be capable of supporting:
 - horizontal and vertical virtualization;
 - React 18 and 19;
 - SSR environments such as Next.js;
+- responsive and compact layouts;
+- equivalent pointer, touch, and keyboard workflows;
 - keyboard and assistive-technology access;
 - local undo/redo;
 - extensible scheduling, calendars, resources, analytics, and export.
 
-### 2.2 Differentiators
+### 2.2 Product commitments
 
-The library should improve on common limitations in existing Gantt components:
+The architecture commits to the following product properties:
 
 - Resource lanes and project task trees are both first-class views of the same model.
 - Multiple entries per lane are supported from the first release.
@@ -70,7 +72,7 @@ The library should improve on common limitations in existing Gantt components:
 - Building a complete project-management SaaS.
 - Owning authentication, billing, or multi-tenant storage.
 - Providing real-time collaboration in the first stable release.
-- Supporting every project-scheduling constraint in Microsoft Project immediately.
+- Supporting every scheduling constraint and interchange format immediately.
 - Making application-specific business rules part of the core.
 
 ## 3. Architectural principles
@@ -184,20 +186,32 @@ publishable later without requiring a rewrite.
 
 ## 6. Domain model
 
-### 6.1 Task and lane separation
+### 6.1 Work, capacity, and presentation are separate
 
-A `Task` describes work. A `Lane` describes where work is displayed. An `Assignment`
-connects work to a resource or lane. A `Segment` describes a time interval within a
-task.
+A `Task` describes work. A `Resource` describes a person, asset, room, or capacity
+pool. An `Assignment` connects work to a resource and records allocation. A `Lane`
+describes where work is displayed. A `Placement` maps a task, assignment, or task
+segment into a lane. A `Segment` describes an execution interval within a task.
+
+These entities must not be collapsed into one row record. In particular, an assignment
+does not imply a lane and a lane does not imply a resource. A resource-oriented view
+may associate a lane with a resource, while status, team, portfolio, and other views
+may use lanes that have no resource.
 
 This supports all of the following without changing the source task records:
 
 - one task per row;
 - multiple tasks in a resource lane;
 - one task assigned to multiple resources;
+- one task or assignment displayed in multiple views;
 - task grouping by status, team, priority, or arbitrary fields;
 - switching between task-tree and resource-planning views;
 - split tasks.
+
+Views may derive placements from tasks or assignments. Persisted placements are used
+only when the application needs an explicit, stable display mapping. Layout always
+consumes normalized `ResolvedPlacement` values, regardless of whether they were
+persisted or derived.
 
 ### 6.2 Persistent document
 
@@ -206,8 +220,10 @@ export interface GanttDocument {
   schemaVersion: number;
   revision?: string | number;
   tasks: TaskRecord[];
+  resources?: ResourceRecord[];
   lanes?: LaneRecord[];
   assignments?: AssignmentRecord[];
+  placements?: PlacementRecord[];
   dependencies?: DependencyRecord[];
   calendars?: CalendarRecord[];
   baselines?: BaselineRecord[];
@@ -219,9 +235,7 @@ export interface TaskRecord {
   title: string;
   kind?: "task" | "summary" | "milestone";
   parentId?: EntityId;
-  start?: EpochMilliseconds;
-  end?: EpochMilliseconds;
-  duration?: DurationValue;
+  schedule?: TaskSchedule;
   progress?: number;
   segments?: TaskSegment[];
   calendarId?: EntityId;
@@ -229,12 +243,43 @@ export interface TaskRecord {
   fields?: Record<string, JsonValue>;
 }
 
+export type TaskSchedule =
+  | {
+      mode: "instant";
+      start?: EpochMilliseconds;
+      end?: EpochMilliseconds;
+      duration?: DurationValue;
+      durationMode?: "elapsed" | "working";
+    }
+  | {
+      mode: "all-day";
+      startDate?: LocalDateString;
+      endDate?: LocalDateString;
+      durationDays?: number;
+      durationMode?: "elapsed" | "working";
+    };
+
+export interface TaskSegment {
+  id: EntityId;
+  schedule: TaskSchedule;
+}
+
 export interface LaneRecord {
   id: EntityId;
   title: string;
   parentId?: EntityId;
+  resourceId?: EntityId;
   order?: number;
   height?: number;
+  calendarId?: EntityId;
+  fields?: Record<string, JsonValue>;
+}
+
+export interface ResourceRecord {
+  id: EntityId;
+  title: string;
+  parentId?: EntityId;
+  capacity?: number;
   calendarId?: EntityId;
   fields?: Record<string, JsonValue>;
 }
@@ -242,9 +287,20 @@ export interface LaneRecord {
 export interface AssignmentRecord {
   id: EntityId;
   taskId: EntityId;
-  laneId: EntityId;
+  resourceId: EntityId;
   allocation?: number;
+  effort?: DurationValue;
   role?: string;
+  fields?: Record<string, JsonValue>;
+}
+
+export interface PlacementRecord {
+  id: EntityId;
+  taskId: EntityId;
+  laneId: EntityId;
+  assignmentId?: EntityId;
+  segmentId?: EntityId;
+  order?: number;
   fields?: Record<string, JsonValue>;
 }
 
@@ -261,13 +317,29 @@ export interface DependencyRecord {
 
 - IDs are opaque strings at runtime. Numeric input IDs are normalized to strings.
 - Intervals are half-open: `[start, end)`.
-- Persisted times are epoch milliseconds.
+- Instant schedules persist time as epoch milliseconds.
+- All-day schedules persist ISO local dates and are not coerced to midnight instants in
+  the document.
 - An IANA time-zone ID is supplied separately for display and calendar calculations.
 - Persisted state never contains JavaScript `Date` objects.
-- A task may provide `start + end` or `start + duration`. Normalization resolves this
-  to a canonical interval and reports conflicting inputs.
+- A schedule may provide its start and end or its start and duration. Normalization
+  resolves this to a canonical interval and reports conflicting inputs.
+- Elapsed and working durations are distinct. Calendar rules affect only working
+  durations.
 - Milestones have zero duration.
 - Summary dates are either manual or derived; the selected policy is explicit.
+- Assignments always reference a task and a resource; they never reference a lane.
+- Allocation and capacity use the same non-negative unit scale; `1` represents one
+  full-capacity unit unless an application documents a different scale.
+- A lane may reference a resource, but non-resource lanes are equally valid.
+- A lane calendar controls presentation, snapping, or collision behavior. Scheduling
+  uses task, resource, and project calendars according to explicit precedence.
+- A placement always references a task and lane. Its optional assignment must belong to
+  that task, and its optional segment must belong to that task.
+- Task and segment intervals are scheduling truth. Placements do not carry independent
+  dates; layout resolves their intervals from the referenced task or segment.
+- Derived placements are session/derived data and are not serialized. Persisted
+  placements have stable IDs and participate in commands and patches.
 - All extension fields must be JSON-compatible.
 - Referential integrity is checked during normalization and command validation.
 
@@ -295,8 +367,10 @@ State is divided into three categories.
 Serializable business data:
 
 - tasks;
+- resources;
 - lanes;
 - assignments;
+- explicit placements;
 - dependencies;
 - calendars;
 - baselines;
@@ -326,6 +400,7 @@ Recomputable data:
 - scheduled dates;
 - resource load;
 - critical path and slack;
+- resolved placements;
 - lane stacks;
 - dependency geometry;
 - render primitives.
@@ -340,15 +415,24 @@ be serialized as authoritative data.
 Every mutation is represented by a discriminated union:
 
 ```ts
+export type SchedulePoint = EpochMilliseconds | LocalDateString;
+
 export type GanttCommand =
   | { type: "task.add"; task: TaskInput; parentId?: EntityId }
   | { type: "task.update"; id: EntityId; changes: Partial<TaskRecord> }
-  | { type: "task.move"; id: EntityId; start: number; laneId?: EntityId }
-  | { type: "task.resize"; id: EntityId; edge: "start" | "end"; time: number }
+  | { type: "task.move"; id: EntityId; start: SchedulePoint }
+  | { type: "task.resize"; id: EntityId; edge: "start" | "end"; time: SchedulePoint }
+  | { type: "task.split"; id: EntityId; at: SchedulePoint }
   | { type: "task.delete"; id: EntityId; cascade?: boolean }
+  | { type: "resource.add"; resource: ResourceInput }
+  | { type: "resource.update"; id: EntityId; changes: Partial<ResourceRecord> }
   | { type: "lane.add"; lane: LaneInput }
   | { type: "lane.update"; id: EntityId; changes: Partial<LaneRecord> }
   | { type: "assignment.set"; assignment: AssignmentInput }
+  | { type: "assignment.delete"; id: EntityId }
+  | { type: "placement.add"; placement: PlacementInput }
+  | { type: "placement.move"; id: EntityId; laneId: EntityId }
+  | { type: "placement.delete"; id: EntityId }
   | { type: "dependency.add"; dependency: DependencyInput }
   | { type: "dependency.delete"; id: EntityId }
   | { type: "transaction"; commands: GanttCommand[] };
@@ -402,6 +486,11 @@ Expose two event levels:
 
 Do not create separate mutation pathways for toolbar, context-menu, keyboard, and API
 operations. They must dispatch the same commands.
+
+Gestures that change more than one domain concept dispatch transactions. For example,
+moving work to a different resource may update an assignment and a placement, while a
+pure visual regrouping changes only the placement. The interaction layer must not hide
+those differences inside a generic row move.
 
 ## 9. Public React API
 
@@ -463,6 +552,23 @@ Customization is provided through typed slots and contribution registries:
 
 Prefer component slots receiving data and behavior props over arbitrary HTML strings.
 
+### 9.5 Subscriptions and React ownership
+
+The public API remains declarative in controlled and uncontrolled modes. Internally,
+React surfaces subscribe to the smallest useful state slice:
+
+```ts
+export function useGanttSelector<T>(
+  selector: (state: GanttRuntimeState) => T,
+  isEqual?: (previous: T, next: T) => boolean
+): T;
+```
+
+Selectors are stable public contracts for document, session, and derived state. A
+command affecting one task or lane must not force every visible cell and bar to
+re-render. The imperative handle remains limited to commands, viewport orchestration,
+focus, and reading snapshots; it is never the primary data-binding API.
+
 ## 10. Rendering and layout
 
 ### 10.1 Rendering pipeline
@@ -471,7 +577,7 @@ Prefer component slots receiving data and behavior props over arbitrary HTML str
 normalized document
   -> filtered/sorted view
   -> flattened visible lanes
-  -> scheduled task intervals
+  -> resolved placements and scheduled intervals
   -> overlap/stack layout
   -> viewport intersection
   -> render primitives
@@ -601,7 +707,7 @@ The Pro engine runs ordered stages:
 1. Normalize tasks, constraints, dependencies, and calendars.
 2. Validate graph and constraint consistency.
 3. Calculate task working durations.
-4. Propagate dependency constraints.
+4. Propagate all dependency types, including positive and negative lag.
 5. Apply project and task constraints.
 6. Recalculate summary intervals and progress.
 7. Calculate early and late dates.
@@ -612,7 +718,40 @@ The Pro engine runs ordered stages:
 Stages implement a common interface and publish diagnostics. This allows additional
 constraint types without turning the scheduler into one large function.
 
-### 12.3 Worker execution
+The scheduler accepts an explicit `direction: "forward" | "backward"` policy. The
+direction, project anchor, summary policy, calendar precedence, and conflict policy are
+inputs to the calculation and never inferred from UI state.
+
+### 12.3 Explainable schedule results
+
+A successful calculation returns more than final dates:
+
+```ts
+export interface ScheduleResult {
+  document: GanttDocument;
+  changes: ScheduleChange[];
+  explanations: ScheduleExplanation[];
+  diagnostics: Diagnostic[];
+}
+
+export interface ScheduleExplanation {
+  code: string;
+  entityId: EntityId;
+  message: string;
+  causeEntityIds?: EntityId[];
+  previous?: JsonValue;
+  next?: JsonValue;
+  details?: Record<string, JsonValue>;
+}
+```
+
+Explanations cover dependency or constraint propagation, calendar intervals skipped,
+capacity violations, rejected requested dates, and changes between schedule revisions.
+Their codes and structured details are stable enough for application UI and tests;
+human-readable messages may be localized. Fatal graph or constraint problems remain
+diagnostics and prevent an authoritative commit.
+
+### 12.4 Worker execution
 
 The engine must be able to run synchronously or through a Web Worker. Worker messages
 contain serializable documents, configuration, commands, and patches only.
@@ -659,7 +798,7 @@ Pro capabilities may include:
 - advanced grouping and WBS;
 - cross-project planning;
 - persistent audit history;
-- PDF, PNG, XLSX, and Microsoft Project import/export;
+- PDF, PNG, spreadsheet, and project-planning interchange capabilities;
 - supported persistence integrations;
 - priority support.
 
@@ -693,7 +832,9 @@ Rules:
 - Free packages never import Pro packages.
 - License enforcement occurs at the Pro package boundary, not inside model or renderer
   hot paths.
-- Pro packages support offline activation.
+- Pro packages support offline activation and do not require runtime network calls.
+- License scope is independent of deployment domain, server, tenant, or end-user count.
+- Activation data must not contain customer project data or deployment identifiers.
 - Free and Pro packages with incompatible versions fail early with an actionable error.
 
 ## 14. Persistence and backend integration
@@ -724,6 +865,31 @@ The first release should provide examples for REST, GraphQL, Redux, Zustand, and
 React state. State-manager-specific packages are unnecessary unless examples prove
 insufficient.
 
+### 14.1 Partial-data loading
+
+Virtualization limits rendering work; it does not by itself limit data transfer or
+memory. Large and hierarchical documents may use a separate query adapter:
+
+```ts
+export interface GanttQueryAdapter {
+  loadChildren(
+    request: { entity: "task" | "lane"; parentId?: EntityId; cursor?: string },
+    signal?: AbortSignal
+  ): Promise<QueryPage>;
+  loadWindow(
+    request: { laneIds: EntityId[]; start: number; end: number; cursor?: string },
+    signal?: AbortSignal
+  ): Promise<QueryPage>;
+}
+```
+
+The runtime distinguishes `unloaded`, `loading`, `loaded-empty`, and `failed` ranges or
+children. Query results pass through the same codec and ID normalization as the initial
+document. Overlapping requests are deduplicated, stale responses cannot overwrite
+newer revisions, and retries are safe. Commands that depend on unloaded context either
+load that context first or require authoritative server validation; they never assume
+that missing data means empty data.
+
 ## 15. Collaboration readiness
 
 Real-time collaboration is not required initially, but the architecture must not block
@@ -752,11 +918,14 @@ The React layer must provide:
 - treegrid semantics for task and lane grids;
 - keyboard navigation between rows, cells, and bars;
 - keyboard movement and resizing with configurable increments;
+- keyboard creation and removal of dependency links;
 - announced selection, movement, resize, and validation results;
 - visible focus indicators;
 - reduced-motion behavior;
 - high-contrast theme tokens;
-- accessible editor labels and error messages.
+- accessible editor labels and error messages;
+- a non-visual summary/table for inspecting task dates, relationships, and validation
+  state without using the timeline;
 
 If canvas is used, visible or focused items receive synchronized DOM proxies. The
 screen-reader experience must not depend on canvas pixel inspection.
@@ -795,6 +964,10 @@ Benchmark scenarios must cover:
 - zooming across large date ranges.
 
 Performance regression thresholds run in CI on a stable benchmark environment.
+Each result records the data-generator version and seed, full and visible entity
+counts, build mode, browser, hardware profile, interaction latency percentiles, and
+frame-rate distribution. A single maximum-item count is not a sufficient performance
+claim.
 
 ## 19. Testing strategy
 
@@ -805,7 +978,10 @@ Performance regression thresholds run in CI on a stable benchmark environment.
 - interval and overlap layout;
 - scale conversion round trips;
 - working-time arithmetic;
-- DST transitions and time zones;
+- DST gaps and repeated hours;
+- elapsed-time versus working-time duration semantics;
+- all-day versus instant-based task semantics;
+- cross-zone display, editing, and resource calendars;
 - scheduler invariants;
 - schema migrations.
 
@@ -895,8 +1071,9 @@ but the library must not silently discard invalid data.
 - Document, session, and derived-state separation.
 - Command bus, patch format, transactions, and history.
 
-Exit condition: tasks, lanes, assignments, and dependencies can be loaded, validated,
-mutated, serialized, undone, and redone without React.
+Exit condition: tasks, resources, lanes, assignments, placements, and dependencies can
+be loaded, validated, mutated, serialized, undone, and redone without React. Their
+domain boundaries remain intact throughout the round trip.
 
 ### Slice 2: Time, layout, and basic React rendering
 
@@ -959,10 +1136,13 @@ Before the first stable release:
 
 - A task can appear in a project tree and one or more resource lanes without duplicating
   the task record.
+- Resource assignment and visual placement can change independently.
 - Multiple overlapping entries can render and be edited in one lane.
 - The same command produces identical results in the browser, worker, and Node tests.
 - Every built-in mutation is interceptable and emits patches.
 - Persisted state round-trips through JSON without losing meaning.
+- Scheduling results explain date changes and rejected constraints with stable,
+  structured codes.
 - Free and Pro capabilities can be installed without changing the React component API.
 - A renderer can be replaced without changing scheduling or persistence code.
 - Keyboard users can perform the primary task-editing workflows.
@@ -981,5 +1161,5 @@ records:
 5. The exact patch representation: domain patches, JSON Patch, or both.
 6. Whether the public Pro package is one bundle or several separately purchasable
    capabilities.
-7. The first supported Microsoft Project interchange format.
+7. The first supported project-planning interchange format.
 8. Whether resource leveling is included in the initial Pro scheduler.
