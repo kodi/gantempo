@@ -11,6 +11,7 @@
     "dev": "vp dev apps/playground",
     "format": "vp fmt",
     "lint": "vp lint",
+    "prepare": "vp config --no-agent",
     "test": "vp test run",
     "test:watch": "vp test",
     "typecheck": "vp check --no-fmt --no-lint"
