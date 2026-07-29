@@ -34,6 +34,22 @@ The same commands are available as mise tasks:
 mise run ci
 ```
 
+## Local development
+
+Start the React playground:
+
+```sh
+pnpm dev
+```
+
+The playground has two initial pages:
+
+- `/` keeps the main development scenario at a large, useful size;
+- `/matrix` shows a small set of content, density, and theme variants together.
+
+The equivalent mise command is `mise run dev`. To verify the standalone playground
+build, run `pnpm build:playground`.
+
 See:
 
 - [Architecture](docs/ARCHITECTURE.md) for system and package boundaries.

@@ -8,6 +8,10 @@ _.path = ["./node_modules/.bin"]
 description = "Install workspace dependencies through Vite+"
 run = "vp install"
 
+[tasks.dev]
+description = "Start the local Gantempo playground"
+run = "vp dev apps/playground"
+
 [tasks.check]
 description = "Run formatting, linting, and type checking"
 run = "vp check"
@@ -19,6 +23,10 @@ run = "vp test run"
 [tasks.build]
 description = "Bundle the library with tsdown"
 run = "vp pack"
+
+[tasks.build-playground]
+description = "Build the local playground"
+run = "vp build apps/playground"
 
 [tasks.ci]
 description = "Run all local CI checks"
