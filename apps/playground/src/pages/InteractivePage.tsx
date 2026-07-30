@@ -10,6 +10,8 @@ import {
   type GanttDocumentChange,
   type GanttHistoryState,
   type GanttInteractionCommandMappers,
+  type GanttLaneHeaderProps,
+  type GanttTaskContentProps,
 } from '@gantempo/gantt';
 import { useMemo, useReducer, type ReactElement } from 'react';
 
@@ -38,6 +40,25 @@ interface InteractiveState {
   readonly history: GanttHistoryState;
   readonly nextSerial: number;
   readonly status: string;
+}
+
+function InteractiveTaskContent({ pending, selected, task }: GanttTaskContentProps): ReactElement {
+  return (
+    <span className="interactive-task-content">
+      <i aria-hidden="true" />
+      <span>{task.title}</span>
+      {pending ? <small>saving</small> : selected ? <small>selected</small> : null}
+    </span>
+  );
+}
+
+function InteractiveLaneHeader({ lane }: GanttLaneHeaderProps): ReactElement {
+  return (
+    <span className="interactive-lane-header">
+      <i aria-hidden="true" />
+      <span>{lane.title}</span>
+    </span>
+  );
 }
 
 type InteractiveAction =
@@ -329,7 +350,38 @@ export function InteractivePage(): ReactElement {
 
         <Gantt
           className="chart-frame__chart"
+          classNames={{
+            contextMenu: 'interactive-surface-menu',
+            editor: 'interactive-surface-editor',
+            laneHeader: 'interactive-column-cell',
+            task: ({ selected }) => (selected ? 'interactive-task--selected' : undefined),
+            taskContent: 'interactive-task-slot',
+            tooltip: 'interactive-surface-tooltip',
+          }}
+          columns={[
+            { header: 'Phase', id: 'phase', width: 132 },
+            {
+              header: 'Code',
+              id: 'code',
+              renderCell: ({ lane }) => (
+                <code>{lane.target.laneId?.slice(0, 3).toUpperCase() ?? '—'}</code>
+              ),
+              width: 66,
+            },
+          ]}
+          contextMenuItems={(task) => [
+            {
+              command: {
+                changes: { title: `Focus: ${task.title.replace(/^Focus: /, '')}` },
+                id: task.target.taskId,
+                type: 'task.update',
+              },
+              id: 'focus-title',
+              label: 'Mark as focus',
+            },
+          ]}
           document={document}
+          features={{ contextMenu: true, editor: true, tooltip: true }}
           interactionMappers={interactionMappers}
           interactionSnap={{ anchor: RANGE_START, step: DAY }}
           label="Interactive delivery plan chart"
@@ -350,6 +402,7 @@ export function InteractivePage(): ReactElement {
           }
           onDocumentChange={adoptRuntimeChange}
           range={{ start: RANGE_START, end: RANGE_END }}
+          slots={{ LaneHeader: InteractiveLaneHeader, TaskContent: InteractiveTaskContent }}
           taskVariants={taskVariants}
           tickAnchor={RANGE_START}
           tickInterval={7 * DAY}
@@ -360,7 +413,8 @@ export function InteractivePage(): ReactElement {
       <p className="page-note">
         Drag task bodies or edges, or use arrows to navigate and Space to select. Press M to move,
         S/E to resize, N to create, Delete to remove, Enter to commit or activate, Escape to cancel,
-        and the platform undo/redo shortcuts for history.
+        and the platform undo/redo shortcuts for history. Focus or hover for task details, press
+        Shift+F10 or right-click for the task menu, and use Edit task for title/start/end changes.
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { EntityReference } from '../commands/types';
+import type { EntityReference, GanttCommand } from '../commands/types';
 import { mapInteractionIntent } from '../interaction/command-mapping';
 import {
   createInteractionPreview,
@@ -36,6 +36,8 @@ import { sessionEqual } from '../runtime/session';
 import { createGanttRuntimeStore } from '../runtime/store';
 import type {
   GanttCommandBus,
+  GanttCommandSource,
+  GanttDispatchResult,
   GanttInteractionTarget,
   GanttRuntimeErrorEvent,
   GanttRuntimeOccurrence,
@@ -68,6 +70,14 @@ export interface GanttReactRuntime {
   clearMeasurement(): void;
   deactivate(): void;
   dispose(): void;
+  dispatchAction(
+    command: GanttCommand,
+    options: {
+      readonly action: GanttInteractionAction;
+      readonly source: Extract<GanttCommandSource, { readonly kind: 'context-menu' | 'editor' }>;
+      readonly target: GanttInteractionTarget;
+    },
+  ): Promise<GanttDispatchResult>;
   getHandle(): GanttHandle;
   getSnapshot(): GanttReactRuntimeSnapshot;
   keyboardAction(input: GanttKeyboardActionInput): boolean;
@@ -323,7 +333,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (
         event.source.kind === 'pointer' ||
         event.source.kind === 'keyboard' ||
-        event.source.kind === 'history'
+        event.source.kind === 'history' ||
+        event.source.kind === 'context-menu' ||
+        event.source.kind === 'editor'
       ) {
         const action =
           event.source.kind === 'history'
@@ -347,7 +359,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (
         event.source.kind === 'pointer' ||
         event.source.kind === 'keyboard' ||
-        event.source.kind === 'history'
+        event.source.kind === 'history' ||
+        event.source.kind === 'context-menu' ||
+        event.source.kind === 'editor'
       ) {
         const target = 'target' in interaction ? interaction.target : undefined;
         setInteraction(
@@ -691,6 +705,32 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     }
   }
 
+  async function dispatchAction(
+    command: GanttCommand,
+    options: {
+      readonly action: GanttInteractionAction;
+      readonly source: Extract<GanttCommandSource, { readonly kind: 'context-menu' | 'editor' }>;
+      readonly target: GanttInteractionTarget;
+    },
+  ): Promise<GanttDispatchResult> {
+    keyboardGesture = undefined;
+    setInteraction(pendingKeyboardInteraction(options.action, options.target, undefined));
+    const result = await bus.dispatch(command, {
+      source: options.source,
+      target: options.target,
+    });
+    if (disposed) {
+      return result;
+    }
+    const pendingDocument = store.getSnapshot().ownership.pendingDocument;
+    if (result.status === 'proposed' && pendingDocument?.proposalId === result.proposalId) {
+      setInteraction(
+        pendingKeyboardInteraction(options.action, options.target, undefined, result.proposalId),
+      );
+    }
+    return result;
+  }
+
   async function dispatchKeyboardHistory(
     action: 'redo' | 'undo',
     target: GanttTaskTarget | undefined,
@@ -982,6 +1022,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       subscribers.clear();
       bus.dispose();
     },
+
+    dispatchAction,
 
     getHandle() {
       return handle;

@@ -105,6 +105,50 @@ describe('Gantt', () => {
     expect(markup).toContain('class="gt-gantt__task-label"');
   });
 
+  it('renders customized columns and content deterministically with overlays closed during SSR', () => {
+    const markup = renderToStaticMarkup(
+      <Gantt
+        columns={[
+          { header: 'Phase', id: 'phase', width: 140 },
+          {
+            header: 'Code',
+            id: 'code',
+            renderCell: ({ lane }) => lane.target.laneId,
+            width: 80,
+          },
+        ]}
+        document={{
+          ...EMPTY_COLLECTIONS,
+          lanes: [{ id: 'lane-a', title: 'Lane A' }],
+          placements: [{ id: 'placement-a', laneId: 'lane-a', taskId: 'task-a' }],
+          schemaVersion: 1,
+          tasks: [
+            {
+              id: 'task-a',
+              kind: 'task',
+              schedule: { end: START + 2 * DAY, mode: 'instant', start: START + DAY },
+              segments: [],
+              title: 'Task A',
+            },
+          ],
+        }}
+        features={{ contextMenu: true, editor: true, tooltip: true }}
+        range={{ end: START + 7 * DAY, start: START }}
+        slots={{ TaskContent: ({ task }) => <span>Custom {task.title}</span> }}
+        tickAnchor={START}
+        tickInterval={DAY}
+        timeZone="UTC"
+      />,
+    );
+
+    expect(markup).toContain('aria-colcount="3"');
+    expect(markup).toContain('grid-template-columns:140px 80px');
+    expect(markup).toContain('Custom Task A');
+    expect(markup).not.toContain('role="tooltip"');
+    expect(markup).not.toContain('role="menu"');
+    expect(markup).not.toContain('role="dialog"');
+  });
+
   it('renders derived resource and explicit segment provenance through the public view prop', () => {
     const document: GanttDocument = {
       schemaVersion: 1,

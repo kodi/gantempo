@@ -141,13 +141,14 @@ semantic task-command foundation, React-free ownership store, async command/hist
 lifecycle, staged derivation, measured viewport model, renderer-independent
 interaction intent, runtime-backed React facade, and pointer/pen/touch direct
 manipulation plus keyboard/focus/accessibility parity are complete; bounded typed
-customization, menus, tooltip, columns, and instant-task editing are next.
+customization, menus, tooltip, columns, and instant-task editing are complete;
+consumer proof, facade hardening, and M4 closure are next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–9 complete, Slice 10 next
+**Status:** `[-]` In progress; Slices 1–10 complete, Slice 11 next
 
 **Target outcome**
 
@@ -167,7 +168,7 @@ persistence.
 
 **Next action**
 
-Execute Slice 10 of the
+Execute Slice 11 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
@@ -176,10 +177,11 @@ async command/history lifecycle, private derived pipeline, affected-reference
 invalidation/work observations, measured vertical viewport/overscan publication,
 renderer-independent hit testing, navigation, gesture intent, command mapping,
 previews, the per-instance React facade, pointer/pen/touch workflows, and
-keyboard/focus/assistive-technology parity are verified. Add the bounded typed
-task-content/lane-header/class-name/column customization surface plus accessible
-tooltip, context menu, and instant-task editor over those same runtime and command
-paths.
+keyboard/focus/assistive-technology parity plus typed content/class/column
+customization and accessible tooltip/menu/editor CRUD are verified. Consolidate the
+playground and direct React/external-store consumer proofs, add the API-shaped
+persistence debug seam, harden the facade/documentation, and record M4 completion
+evidence before the separate final gates.
 
 **Queued M4 appendix**
 
@@ -276,6 +278,41 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 typed customization and instant-task CRUD complete
+
+- Added the bounded public content/surface slots, task/lane summaries, class-state
+  callbacks, aligned read-only lane columns, feature toggles, task-derived menu items,
+  and overlay/editor props required by the accepted M4 contract without exposing
+  mutable documents or private runtime, scene, geometry, and command-bus objects.
+- Added one themed portal host per instance plus built-in tooltip, context menu, and
+  instant-task editor behavior with roles, labels, focus trap/return, Escape,
+  click-away, pending/rejection state, local validation, and polite outcomes.
+- Routed Create/Edit/Delete and custom menu commands through the existing mapper and
+  command bus. Multi-field title/start/end edits become one ordered
+  update/move/resize transaction and one history entry, with stable disabled reasons
+  for unsupported read-only/derived/custom/all-day/segment cases.
+- Updated `/interactive` with custom task/lane content, two columns, class hooks, a
+  task-derived command, tooltip, menu, and editor. `docs/UI_THEMING.md` required no
+  change because the implementation matches its existing durable contract.
+- Five new Testing Library/axe cases cover slots/class state, columns, tooltip/editor
+  validation and commit, menu/custom commands and focus return, two-instance portal
+  isolation, and async pending/rejection. The full gate passed 49 files/236 tests;
+  `vp check` passed 120 formatted and 109 lint/type-checked files, `vp pack` built four
+  artifacts with only intentional public types, and the playground transformed 58
+  modules.
+- `mise run ci` passed the complete check, 49-test-file/236-test, and four-artifact
+  package build gates.
+- Chrome DevTools passed `/`, `/matrix`, and `/interactive` at 1440 × 900 and
+  560 × 900 with exact column alignment, intact light/dark/high-contrast/empty
+  surfaces, no horizontal overflow, typed menu and editor commits with focus return,
+  no failed local request, and no application-owned console error or warning.
+- Axe found and corrected nested editor header/footer landmarks. Source inspection
+  removed an obsolete narrow playground width override that would have separated the
+  custom header/body column widths. Both deviations and their evidence are recorded
+  in the active plan; neither changes the architecture contract.
+- Selected consumer proof, facade hardening, documentation, and M4 closure as
+  Slice 11.
 
 ### 2026-07-30 — M4 keyboard, focus, and accessibility parity complete
 

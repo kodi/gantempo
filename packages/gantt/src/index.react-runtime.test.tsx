@@ -3,14 +3,18 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   Gantt,
+  type GanttClassNames,
+  type GanttContextMenuItem,
   type GanttDocument,
   type GanttHandle,
   type GanttInteractionAction,
   type GanttInteractionCommandMappers,
   type GanttInteractionState,
+  type GanttLaneColumn,
   type GanttProps,
   type GanttSelectorSnapshot,
   type GanttSessionState,
+  type GanttSlots,
 } from './index';
 
 const document: GanttDocument = {
@@ -61,6 +65,26 @@ describe('public React runtime facade', () => {
     const selector = (snapshot: GanttSelectorSnapshot) => snapshot.occurrences;
     const interaction: GanttInteractionState = { status: 'idle' };
     const action: GanttInteractionAction = 'move';
+    const classNames = {
+      task: ({ selected }) => (selected ? 'selected' : 'task'),
+    } satisfies GanttClassNames;
+    const columns = [
+      {
+        header: 'Lane',
+        id: 'lane',
+        renderCell: ({ lane }) => lane.title,
+      },
+    ] satisfies readonly GanttLaneColumn[];
+    const items = [
+      {
+        command: { changes: { title: 'Renamed' }, id: 'task-a', type: 'task.update' },
+        id: 'rename',
+        label: 'Rename',
+      },
+    ] satisfies readonly GanttContextMenuItem[];
+    const slots = {
+      TaskContent: ({ task }) => <span>{task.title}</span>,
+    } satisfies GanttSlots;
     const keyboardInteraction: GanttInteractionState = {
       action,
       announcement: 'Move mode.',
@@ -97,6 +121,10 @@ describe('public React runtime facade', () => {
     expect(selector).toBeTypeOf('function');
     expect(interaction.status).toBe('idle');
     expect(keyboardInteraction.status).toBe('keyboard');
+    expect(classNames.task).toBeTypeOf('function');
+    expect(columns[0]?.id).toBe('lane');
+    expect(items[0]?.id).toBe('rename');
+    expect(slots.TaskContent).toBeTypeOf('function');
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
   });

@@ -1,6 +1,7 @@
 import type { GanttCommand } from '../commands/types';
 import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
+import type { ComponentType, HTMLAttributes, ReactNode, RefCallback } from 'react';
 import type {
   InteractionCommandMappingResult,
   InteractionCreateTaskMapperIntent,
@@ -66,7 +67,15 @@ export interface GanttInteractionPreview {
   readonly y: number;
 }
 
-export type GanttInteractionAction = 'create' | 'delete' | 'move' | 'redo' | 'resize' | 'undo';
+export type GanttInteractionAction =
+  | 'command'
+  | 'create'
+  | 'delete'
+  | 'edit'
+  | 'move'
+  | 'redo'
+  | 'resize'
+  | 'undo';
 
 export type GanttInteractionState =
   | {
@@ -132,8 +141,144 @@ export interface GanttHandle {
   undo(): Promise<GanttDispatchResult>;
 }
 
+export interface GanttTaskSummary {
+  readonly end: EpochMilliseconds;
+  readonly start: EpochMilliseconds;
+  readonly target: GanttTaskTarget;
+  readonly title: string;
+  readonly variant?: string;
+}
+
+export interface GanttLaneSummary {
+  readonly target: Extract<GanttInteractionTarget, { readonly kind: 'lane' }>;
+  readonly title: string;
+}
+
+export interface GanttClassNameState {
+  readonly disabled: boolean;
+  readonly dragging: boolean;
+  readonly focused: boolean;
+  readonly invalid: boolean;
+  readonly pending: boolean;
+  readonly resizing: boolean;
+  readonly selected: boolean;
+  readonly target?: GanttInteractionTarget;
+}
+
+export type GanttClassNameValue = string | ((state: GanttClassNameState) => string | undefined);
+
+export interface GanttClassNames {
+  readonly chart?: GanttClassNameValue;
+  readonly contextMenu?: GanttClassNameValue;
+  readonly editor?: GanttClassNameValue;
+  readonly lane?: GanttClassNameValue;
+  readonly laneHeader?: GanttClassNameValue;
+  readonly liveRegion?: GanttClassNameValue;
+  readonly resizeHandle?: GanttClassNameValue;
+  readonly root?: GanttClassNameValue;
+  readonly task?: GanttClassNameValue;
+  readonly taskContent?: GanttClassNameValue;
+  readonly timelineCell?: GanttClassNameValue;
+  readonly tooltip?: GanttClassNameValue;
+}
+
+export interface GanttTaskContentProps extends GanttClassNameState {
+  readonly task: GanttTaskSummary;
+}
+
+export interface GanttLaneHeaderProps extends GanttClassNameState {
+  readonly lane: GanttLaneSummary;
+}
+
+export interface GanttLaneColumnCellProps {
+  readonly disabled: boolean;
+  readonly lane: GanttLaneSummary;
+}
+
+export interface GanttLaneColumn {
+  readonly header: ReactNode;
+  readonly id: string;
+  readonly renderCell?: (props: GanttLaneColumnCellProps) => ReactNode;
+  readonly width?: number;
+}
+
+export type GanttOverlayBindings = Readonly<
+  HTMLAttributes<HTMLDivElement> & {
+    readonly ref: RefCallback<HTMLDivElement>;
+  }
+>;
+
+export interface GanttTooltipProps {
+  readonly bindings: GanttOverlayBindings;
+  readonly task: GanttTaskSummary;
+}
+
+export type GanttBuiltInMenuAction = 'create' | 'delete' | 'edit';
+
+export type GanttContextMenuItem =
+  | {
+      readonly action: GanttBuiltInMenuAction;
+      readonly command?: never;
+      readonly disabledReason?: string;
+      readonly id: string;
+      readonly label: string;
+    }
+  | {
+      readonly action?: never;
+      readonly command: GanttCommand;
+      readonly disabledReason?: string;
+      readonly id: string;
+      readonly label: string;
+    };
+
+export type GanttContextMenuItems =
+  | readonly GanttContextMenuItem[]
+  | ((task: GanttTaskSummary) => readonly GanttContextMenuItem[]);
+
+export interface GanttContextMenuProps {
+  readonly bindings: GanttOverlayBindings;
+  readonly items: readonly GanttContextMenuItem[];
+  readonly onSelect: (item: GanttContextMenuItem) => void;
+  readonly task: GanttTaskSummary;
+}
+
+export interface GanttTaskEditorValue {
+  readonly end: EpochMilliseconds;
+  readonly start: EpochMilliseconds;
+  readonly title: string;
+}
+
+export interface GanttTaskEditorProps {
+  readonly bindings: GanttOverlayBindings;
+  readonly error?: string;
+  readonly errorId: string;
+  readonly initialValue: GanttTaskEditorValue;
+  readonly onCancel: () => void;
+  readonly onSubmit: (value: GanttTaskEditorValue) => void;
+  readonly pending: boolean;
+  readonly task: GanttTaskSummary;
+}
+
+export interface GanttSlots {
+  readonly ContextMenu?: ComponentType<GanttContextMenuProps>;
+  readonly LaneHeader?: ComponentType<GanttLaneHeaderProps>;
+  readonly TaskContent?: ComponentType<GanttTaskContentProps>;
+  readonly TaskEditor?: ComponentType<GanttTaskEditorProps>;
+  readonly Tooltip?: ComponentType<GanttTooltipProps>;
+}
+
+export interface GanttFeatures {
+  readonly contextMenu?: boolean;
+  readonly editor?: boolean;
+  readonly tooltip?: boolean;
+}
+
 interface GanttBaseProps {
   readonly className?: string;
+  readonly classNames?: GanttClassNames;
+  readonly columns?: readonly GanttLaneColumn[];
+  readonly contextMenuItems?: GanttContextMenuItems;
+  readonly features?: GanttFeatures;
   readonly historyCapacity?: number;
   readonly interceptors?: readonly GanttCommandInterceptor[];
   readonly interactionCreationDuration?: number;
@@ -158,6 +303,7 @@ interface GanttBaseProps {
   readonly onTaskActivate?: (target: GanttTaskTarget, event: GanttSemanticEvent) => void;
   readonly onViewportChange?: (viewport: GanttViewportChange, event: GanttSemanticEvent) => void;
   readonly range: TimeRange;
+  readonly slots?: GanttSlots;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;
   readonly tickAnchor: EpochMilliseconds;
   readonly tickInterval: number;

@@ -12,6 +12,7 @@
     --gt-color-empty: #778078;
     --gt-row-height: 58px;
     --gt-header-height: 40px;
+    position: relative;
     min-width: 0;
     color: var(--gt-color-text);
     background: var(--gt-color-surface);
@@ -34,11 +35,20 @@
   }
 
   :where(.gt-gantt__corner) {
+    display: grid;
+    min-width: 0;
+    border-right: 1px solid var(--gt-color-border);
+  }
+
+  :where(.gt-gantt__corner > span) {
     display: flex;
     align-items: center;
     min-width: 0;
-    padding-inline: 17px;
-    border-right: 1px solid var(--gt-color-border);
+    padding-inline: 14px;
+    overflow: hidden;
+    border-right: 1px solid var(--gt-color-grid);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   :where(.gt-gantt__time-header) {
@@ -70,18 +80,27 @@
   }
 
   :where(.gt-gantt__lane) {
-    display: flex;
-    align-items: center;
+    display: grid;
     min-width: 0;
     height: calc(var(--gt-row-height) * var(--gt-lane-height-ratio));
-    gap: 7px;
-    padding-inline: 14px;
     border-bottom: 1px solid var(--gt-color-grid);
     font-size: 11px;
     font-weight: 650;
   }
 
-  :where(.gt-gantt__lane > span:last-child) {
+  :where(.gt-gantt__lane-header) {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    min-width: 0;
+    gap: 7px;
+    padding-inline: 14px;
+    overflow: hidden;
+    border-right: 1px solid var(--gt-color-grid);
+  }
+
+  :where(.gt-gantt__lane-header > span:last-child) {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -118,10 +137,24 @@
   }
 
   :where(.gt-gantt__timeline svg) {
+    position: relative;
+    z-index: 1;
     display: block;
     width: 100%;
     height: 100%;
     overflow: hidden;
+  }
+
+  :where(.gt-gantt__timeline-cells) {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  :where(.gt-gantt__timeline-cells [data-gt-part='timeline-cell']) {
+    right: 0;
+    left: 0;
   }
 
   :where(.gt-gantt__timeline [data-gt-part='grid'] line) {
@@ -142,6 +175,11 @@
 
   :where(.gt-gantt [data-gt-part='task']) {
     outline: none;
+  }
+
+  :where(.gt-gantt [data-gt-part='resize-handle']) {
+    fill: transparent;
+    pointer-events: none;
   }
 
   :where(.gt-gantt [data-gt-part='task']:focus-visible .gt-gantt__task-bar) {
@@ -179,7 +217,7 @@
 
   :where(.gt-gantt__interaction-preview) {
     position: absolute;
-    z-index: 2;
+    z-index: 3;
     box-sizing: border-box;
     border: 2px solid var(--gt-color-focus);
     border-radius: 6px;
@@ -259,6 +297,160 @@
     white-space: nowrap;
   }
 
+  :where(.gt-gantt__overlays) {
+    position: absolute;
+    z-index: 20;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  :where(.gt-gantt__tooltip, .gt-gantt__context-menu) {
+    position: absolute;
+    max-width: min(290px, calc(100% - 16px));
+    border: 1px solid var(--gt-color-border);
+    border-radius: 8px;
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
+    pointer-events: auto;
+  }
+
+  :where(.gt-gantt__tooltip) {
+    display: grid;
+    gap: 3px;
+    padding: 8px 10px;
+    font-size: 10px;
+    transform: translateX(-50%);
+  }
+
+  :where(.gt-gantt__tooltip span) {
+    color: var(--gt-color-text-muted);
+    font-size: 9px;
+  }
+
+  :where(.gt-gantt__context-menu) {
+    display: grid;
+    min-width: 190px;
+    padding: 5px;
+  }
+
+  :where(.gt-gantt__context-menu button) {
+    display: grid;
+    gap: 2px;
+    padding: 8px 9px;
+    border: 0;
+    border-radius: 5px;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+  }
+
+  :where(
+    .gt-gantt__context-menu button:not(:disabled):hover,
+    .gt-gantt__context-menu button:focus-visible
+  ) {
+    outline: 2px solid var(--gt-color-focus);
+    outline-offset: -2px;
+    background: var(--gt-color-surface-muted);
+  }
+
+  :where(.gt-gantt__context-menu button:disabled) {
+    color: var(--gt-color-text-muted);
+  }
+
+  :where(.gt-gantt__context-menu small) {
+    max-width: 220px;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+
+  :where(.gt-gantt__editor-backdrop) {
+    position: absolute;
+    display: grid;
+    z-index: 1;
+    inset: 0;
+    padding: 16px;
+    place-items: center;
+    background: rgb(0 0 0 / 28%);
+    pointer-events: auto;
+  }
+
+  :where(.gt-gantt__editor) {
+    width: min(430px, 100%);
+    max-height: 100%;
+    overflow: auto;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 12px;
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 24%);
+  }
+
+  :where(.gt-gantt__editor form) {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  :where(.gt-gantt__editor-header, .gt-gantt__editor-actions) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  :where(.gt-gantt__editor-header > div) {
+    display: grid;
+    gap: 2px;
+  }
+
+  :where(.gt-gantt__editor-header span) {
+    color: var(--gt-color-text-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  :where(.gt-gantt__editor label) {
+    display: grid;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 750;
+  }
+
+  :where(.gt-gantt__editor input) {
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 6px;
+    color: inherit;
+    background: var(--gt-color-surface-muted);
+    font: inherit;
+  }
+
+  :where(.gt-gantt__editor input:focus-visible, .gt-gantt__editor button:focus-visible) {
+    outline: 2px solid var(--gt-color-focus);
+    outline-offset: 2px;
+  }
+
+  :where(.gt-gantt__editor button) {
+    padding: 7px 10px;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 6px;
+    color: inherit;
+    background: var(--gt-color-surface-muted);
+    font: inherit;
+  }
+
+  :where(.gt-gantt__editor [role='alert']) {
+    margin: 0;
+    color: #b42318;
+    font-size: 10px;
+  }
+
   :where(.gt-gantt__sr-only) {
     position: absolute;
     width: 1px;
@@ -294,6 +486,12 @@
 
     :where(.gt-gantt__interaction-preview) {
       border-color: Highlight;
+      background: Canvas;
+      box-shadow: none;
+    }
+
+    :where(.gt-gantt__tooltip, .gt-gantt__context-menu, .gt-gantt__editor) {
+      border-color: CanvasText;
       background: Canvas;
       box-shadow: none;
     }

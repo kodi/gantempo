@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–9 complete, Slice 10 next
+Status: Active; Slices 1–10 complete, Slice 11 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -1260,7 +1260,7 @@ and bus rather than encode a parallel interaction model.
 
 ### Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
 
-Status: `[-]` In progress
+Status: `[x]` Complete
 
 **Goal**
 
@@ -1315,7 +1315,7 @@ stable behavior rather than making third-party content reconstruct it.
 
 ### Slice 11: Prove consumers, harden the facade, and close M4
 
-Status: `[ ]` Not started
+Status: `[-]` In progress
 
 **Goal**
 
@@ -2051,7 +2051,108 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
   recorded below. The media-preference tooling limitation and exact non-persistent
   CSS-rule verification are also recorded below.
 
+### 2026-07-30 — Slice 10 typed customization and instant-task CRUD
+
+- Added the bounded public `GanttSlots`, task/lane summaries and content props,
+  `GanttClassNames` state callbacks, lane-column definitions, feature toggles,
+  context-menu items, overlay bindings, and tooltip/menu/editor props required by the
+  accepted M4 contract. No slot, hook, renderer, or menu callback receives the mutable
+  document, runtime store, scene cache, geometry index, or direct record setter.
+- Kept task focus, ARIA, pointer hit testing, keyboard behavior, and resize geometry
+  on the library-owned occurrence wrapper while allowing `TaskContent` and
+  `LaneHeader` to replace visual content. Stable task/lane/root/column/overlay state
+  and `data-gt-part` hooks remain available to class callbacks and consumer CSS.
+- Added one or more read-only lane columns with stable IDs, headers, optional widths,
+  renderers, semantic treegrid cells, and a shared computed width for header/body
+  alignment across variable-height and virtualized lanes.
+- Added opt-in built-in tooltip, context menu, and instant-task editor surfaces plus
+  typed replacements. Each instance owns an internal React portal host under its
+  themed root; required refs, roles, labels, focus trapping/return, Escape,
+  click-away, pending, and labelled validation bindings are passed to surface slots.
+  Development builds warn when a custom surface omits its required root binding.
+- Added default Create/Edit/Delete task menu actions plus task-derived typed command
+  contributions. Creation reuses the existing mapper; delete and contributed
+  commands dispatch with `context-menu` source; editor changes dispatch with `editor`
+  source and use the same interceptor, controlled acknowledgement, history, commit,
+  rejection, and polite-announcement path.
+- Added stable disabled reasons for read-only charts, missing create mappers,
+  non-persisted lanes, disabled editors, segment occurrences, custom occurrences,
+  derived occurrences, all-day tasks, and unscheduled tasks.
+- Added a basic instant editor for title plus explicit-offset ISO start/end. Local
+  validation rejects blank titles, invalid datetimes, and non-positive intervals;
+  valid multi-field changes become one ordered transaction of `task.update`,
+  `task.move`, and `task.resize`, so one history entry preserves the submitted end
+  after a simultaneous start move.
+- Updated `/interactive` with custom task/lane content, two aligned columns,
+  state-based class hooks, opt-in tooltip/menu/editor, one task-derived typed menu
+  command, and user instructions. `docs/UI_THEMING.md` required no change because the
+  implementation realizes rather than revises its existing durable slot/class/portal
+  contract.
+- Focused coverage includes five new Testing Library/axe cases for content and class
+  state, column alignment, tooltip/editor validation and transaction commit,
+  default/custom menu commands and focus return, custom portal isolation across two
+  instances, and async pending/rejection details. Existing pointer, keyboard,
+  controlled runtime, hydration, SSR, and root-facade type suites remain green.
+- Verification passed:
+  - focused customization plus affected React/SSR/runtime suites passed 6 files and
+    44 tests;
+  - the final full test gate passed 49 files and 236 tests;
+  - `vp check` reported all 120 files formatted and no warning, lint, or type error
+    across 109 checked files;
+  - `vp pack` built the four public artifacts; declaration inspection found only the
+    intentional slot/class/column/menu/editor types in the export list and no public
+    React runtime, runtime store, scene pipeline, command bus, or hit-test index;
+  - `vp build apps/playground` transformed 58 modules and produced the production
+    HTML, CSS, and JavaScript artifacts;
+  - `git diff --check` passed;
+  - `mise run ci` passed the complete check, 49-test-file/236-test, and four-artifact
+    package build gates.
+- Chrome DevTools verification passed on `/`, `/matrix`, and `/interactive` at
+  1440 × 900 and 560 × 900:
+  - default and custom lane headers remained exactly aligned with their body columns
+    across the main chart and all five light/dark/high-contrast/empty matrix cases,
+    with no page-level horizontal overflow;
+  - live focus exposed one tooltip relationship, Shift+F10 opened the owning task
+    menu with first-item focus, a task-derived typed command committed and returned
+    focus, and Escape returned focus from the editor;
+  - the editor exposed one modal dialog with labelled title/start/end fields, accepted
+    a controlled title/start/end transaction, closed after synchronous
+    acknowledgement, returned focus, updated the accessible task name, and announced
+    `Edit committed.`;
+  - narrow light and temporarily themed high-contrast menu/editor screenshots showed
+    intact boundaries, readable controls, and visible focus. A reload restored the
+    unmodified interactive theme before final console/network inspection;
+  - every local request returned 200. No application-owned console error or warning
+    appeared; Vite and extension/DevTools CSP, deprecation, MaxListeners,
+    ObjectMultiplex, and content-script messages were recorded as environment noise.
+- Automated accessibility and source inspection found and fixed the editor-landmark
+  and narrow column-override deviations recorded below.
+
 ## Deviations
+
+### 2026-07-30 — Editor chrome does not create nested page landmarks
+
+- The first axe pass treated the default editor's visual `<header>` and `<footer>` as
+  nested banner/contentinfo landmarks and reported that those landmarks were not
+  top-level.
+- The editor now uses classed generic containers for its visual heading and actions;
+  the owning element retains `role="dialog"`, `aria-modal`, label, description,
+  focus trap, and field/error relationships.
+- The repeated open, valid, pending, and rejected editor axe cases pass. This changes
+  no public type, system boundary, milestone order, or release acceptance criterion.
+
+### 2026-07-30 — Playground narrow width must honor the shared column variable
+
+- Source inspection after adding multiple lane columns found an old playground-only
+  narrow rule that fixed `.gt-gantt__table` to a 105-pixel lane width while the
+  virtual body continued using the library-owned `--gt-lane-column-width`. That rule
+  would misalign custom headers and rows below 560 pixels.
+- The obsolete override was removed. Both the table and body now consume the same
+  computed total column width, while the timeline keeps the remaining responsive
+  space.
+- Chrome geometry checks prove exact header/body alignment for `/`, all five
+  `/matrix` scenarios, and the custom two-column `/interactive` chart at 1440 × 900
+  and 560 × 900. This changes no library contract or architecture boundary.
 
 ### 2026-07-30 — Visual empty-state copy is presentational
 
@@ -2167,13 +2268,13 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
       handle
 - [x] Slice 8: Implement pointer, pen, and touch workflows
 - [x] Slice 9: Add keyboard, focus, and accessibility parity
-- [-] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
-- [ ] Slice 11: Prove consumers, harden the facade, and close M4
+- [x] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
+- [-] Slice 11: Prove consumers, harden the facade, and close M4
 - [ ] Final automated/package/SSR gate
 - [ ] Final browser/accessibility gate
 
 ## Next Slice
 
-Start Slice 10. Add the bounded typed task-content/lane-header/class-name/column
-customization surface plus accessible tooltip, context menu, and instant-task editor
-over the same runtime, focus, announcement, and command-dispatch contracts.
+Start Slice 11. Consolidate the playground and direct React/external-store consumer
+proofs, add the API-shaped persistence debug seam, harden the public facade and docs,
+and record the final M4 completion evidence before the separate final gates.
