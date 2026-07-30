@@ -160,11 +160,13 @@ playground remain unchanged and all repository gates pass.
   assignment clearing, and exact restoration across relationship-heavy removals.
 - Slice 5 composes the full command set into ordered nested all-or-nothing
   transactions with stable child diagnostics and one flattened outcome.
+- Slice 6 adds explicit-capacity immutable local history over committed patch pairs,
+  with fail-closed stale undo/redo and generated undo-all/redo-all evidence.
 
 **Next action**
 
-Implement Slice 6's bounded immutable local history over committed command and
-transaction outcomes.
+Complete Slice 7's intentional package facade, README contract, packed artifact
+inspection, and final M2 automated evidence.
 
 ## Later Milestone Outcomes
 
@@ -254,6 +256,22 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 Slice 6 bounded local history
+
+- Added explicit-capacity immutable history state with commit, undo, redo, and clear
+  operations over committed patch and inverse pairs.
+- Only non-empty committed outcomes enter history; transactions are one step, oldest
+  entries trim deterministically, and a new branch clears redo state.
+- Undo and redo reuse atomic patch application. Stale application rejects without
+  changing the present document or either history stack.
+- Capacity, branching, grouped transactions, extension data, cross-family identity,
+  assignment cleanup, cascade restoration, and input immutability are covered.
+- The history property ran 100 examples with seed `20260733`. Focused verification
+  passed 2 files and 10 tests; `vp check` passed 60 formatted and 49 lint/type-checked
+  files with no warnings or errors.
+- Selected the intentional facade, README contract, packed inspection, and final M2
+  gate as Slice 7.
 
 ### 2026-07-30 — M2 Slice 5 atomic transactions
 

@@ -13,6 +13,7 @@ export type DiagnosticCode =
   | 'command.unknown-type'
   | 'document.invalid-collection'
   | 'document.invalid-root'
+  | 'history.stale-outcome'
   | 'patch.duplicate-target'
   | 'patch.invalid-index'
   | 'patch.invalid-operation'

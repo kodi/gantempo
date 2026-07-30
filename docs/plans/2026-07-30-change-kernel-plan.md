@@ -662,7 +662,7 @@ Verification passed on 2026-07-30:
 
 ### Slice 6: Bounded immutable local history
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -702,6 +702,16 @@ influence their reducer design or create another patch path.
 
 - `vp test run packages/gantt/src/commands/history.test.ts packages/gantt/src/commands/history.property.test.ts`
 - `vp check`
+
+Verification passed on 2026-07-30:
+
+- `vp test run packages/gantt/src/commands/history.test.ts packages/gantt/src/commands/history.property.test.ts`
+  passed 2 test files and 10 tests.
+- `vp check` passed formatting for 60 files and lint/type checking for 49 files with
+  no warnings or errors.
+- The history property ran 100 generated command/transaction histories with fixed
+  seed `20260733` and `endOnFailure: true`; fast-check reports replay seed and path on
+  failure.
 
 **Dependencies**
 
@@ -983,6 +993,27 @@ These questions do not block Slice 2:
 - Focused verification passed 2 files and 8 tests. `vp check` passed 57 formatted
   files and 46 lint/type-checked files with no warnings or errors.
 
+### 2026-07-30 — Slice 6 bounded local history
+
+- Added immutable history state, entries, explicit positive finite integer capacity,
+  commit, undo, redo, and clear helpers.
+- Only committed non-empty outcomes enter history. A committed transaction is one
+  entry, rejected and no-op outcomes retain state by identity, a new branch clears
+  future entries, and past entries trim from the oldest end.
+- History verifies that a committed outcome descends from its present document before
+  recording it. Undo and redo call `applyGanttPatches`; stale application returns a
+  rejected result with the exact document, history object, and stacks unchanged.
+- Capacity 1/larger bounds, multiple undo/redo, branching, transaction grouping,
+  cross-family IDs, extension data, assignment cleanup, cascade restoration, clear,
+  invalid capacities, and input immutability are covered.
+- History remains session data outside `GanttDocument`; revision is preserved by the
+  shared patch path and history is never serialized.
+- The fixed-seed history property uses seed `20260733`, 100 runs, and
+  `endOnFailure: true`; undo-all restores initial stable bytes and redo-all restores
+  final stable bytes for generated command/transaction histories.
+- Focused verification passed 2 files and 10 tests. `vp check` passed 60 formatted
+  files and 49 lint/type-checked files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the change-kernel contract and decision record
@@ -990,14 +1021,14 @@ These questions do not block Slice 2:
 - [x] Slice 3: Typed command normalization, validation, and core reducers
 - [x] Slice 4: Referential deletion and deterministic cascade
 - [x] Slice 5: Atomic ordered transactions
-- [ ] Slice 6: Bounded immutable local history
+- [x] Slice 6: Bounded immutable local history
 - [ ] Slice 7: Intentional facade, documentation, and M2 completion evidence
 - [ ] Final automated gate
 - [ ] Conditional browser gate, only if visual surfaces change
 
 ## Next Slice
 
-Begin Slice 6 in `packages/gantt/src/commands/history.ts`. Define explicit-capacity
-immutable history state and make commit, undo, redo, and clear reuse
-`applyGanttPatches`. Add focused and fixed-seed undo-all/redo-all coverage, then run
-the exact Slice 6 test command and `vp check` before exposing the package facade.
+Begin Slice 7 by selecting one intentional root package facade, adding facade tests,
+and documenting the pure change flow in `README.md`. Inspect packed declarations and
+bundle output, run `mise run ci` and `mise run build-playground`, and record the final
+M2 evidence before changing the plan and roadmap to complete.
