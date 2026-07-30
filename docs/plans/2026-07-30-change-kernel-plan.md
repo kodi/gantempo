@@ -606,7 +606,7 @@ Verification passed on 2026-07-30:
 
 ### Slice 5: Atomic ordered transactions
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -645,6 +645,16 @@ after deletion ensures rollback covers the largest cross-collection patch sets.
 
 - `vp test run packages/gantt/src/commands/transaction.test.ts packages/gantt/src/commands/transaction.property.test.ts`
 - `vp check`
+
+Verification passed on 2026-07-30:
+
+- `vp test run packages/gantt/src/commands/transaction.test.ts packages/gantt/src/commands/transaction.property.test.ts`
+  passed 2 test files and 8 tests.
+- `vp check` passed formatting for 57 files and lint/type checking for 46 files with
+  no warnings or errors.
+- The transaction property ran 150 generated ordered command sequences with fixed
+  seed `20260732` and `endOnFailure: true`; fast-check reports replay seed and path on
+  failure.
 
 **Dependencies**
 
@@ -951,13 +961,35 @@ These questions do not block Slice 2:
 - Focused verification passed 3 files and 9 tests. `vp check` passed 55 formatted
   files and 44 lint/type-checked files with no warnings or errors.
 
+### 2026-07-30 — Slice 5 atomic transactions
+
+- Added the recursive typed transaction command and composed every child through
+  `applyGanttCommand`; no second reducer or patch interpreter was introduced.
+- Children observe prior committed child output. Nested transactions flatten their
+  forward patches in encounter order, inverse groups prepend in reverse child order,
+  and affected references de-duplicate in first-touch order.
+- Any child rejection discards accumulated document, patch, inverse, and affected
+  state. Diagnostics retain stable nested paths such as
+  `/command/commands/0/commands/1/value/id`.
+- Empty transactions, all-no-op transactions, and add-then-delete transactions whose
+  final document is structurally unchanged return the original document by identity
+  with empty change arrays.
+- Examples cover first/middle/last failures, cross-command references, nested
+  transactions, duplicate targets, add/update, add/delete collapse, and cascade
+  followed by recreation.
+- The fixed-seed transaction property uses seed `20260732`, 150 runs, and
+  `endOnFailure: true`; generated ordered command sequences are deterministic, replay
+  through forward patches, and restore stable bytes through transaction inverses.
+- Focused verification passed 2 files and 8 tests. `vp check` passed 57 formatted
+  files and 46 lint/type-checked files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the change-kernel contract and decision record
 - [x] Slice 2: Domain patch application and inversion properties
 - [x] Slice 3: Typed command normalization, validation, and core reducers
 - [x] Slice 4: Referential deletion and deterministic cascade
-- [ ] Slice 5: Atomic ordered transactions
+- [x] Slice 5: Atomic ordered transactions
 - [ ] Slice 6: Bounded immutable local history
 - [ ] Slice 7: Intentional facade, documentation, and M2 completion evidence
 - [ ] Final automated gate
@@ -965,8 +997,7 @@ These questions do not block Slice 2:
 
 ## Next Slice
 
-Begin Slice 5 by adding the ordered transaction command to
-`packages/gantt/src/commands/types.ts` and composing children through
-`applyGanttCommand`. Flatten nested transactions in encounter order, aggregate inverse
-groups in reverse child order, and reject atomically with stable child paths. Run the
-exact Slice 5 test command and `vp check` before beginning history.
+Begin Slice 6 in `packages/gantt/src/commands/history.ts`. Define explicit-capacity
+immutable history state and make commit, undo, redo, and clear reuse
+`applyGanttPatches`. Add focused and fixed-seed undo-all/redo-all coverage, then run
+the exact Slice 6 test command and `vp check` before exposing the package facade.

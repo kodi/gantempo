@@ -158,11 +158,13 @@ playground remain unchanged and all repository gates pass.
   sharing M1 record normalization without changing codec recovery behavior.
 - Slice 4 adds fail-closed referential deletion, deterministic task cascade, placement
   assignment clearing, and exact restoration across relationship-heavy removals.
+- Slice 5 composes the full command set into ordered nested all-or-nothing
+  transactions with stable child diagnostics and one flattened outcome.
 
 **Next action**
 
-Implement Slice 5's ordered nested transaction boundary over the complete verified
-command set.
+Implement Slice 6's bounded immutable local history over committed command and
+transaction outcomes.
 
 ## Later Milestone Outcomes
 
@@ -252,6 +254,22 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 Slice 5 atomic transactions
+
+- Added ordered recursive transactions by composing children through the single
+  command reducer and atomic patch interpreter.
+- Forward patches flatten in encounter order, inverse child groups reverse, and
+  affected references retain deterministic first-touch ordering.
+- First, middle, last, and nested child failures retain the original document and
+  expose stable transaction-indexed diagnostic paths with empty change arrays.
+- Empty and semantically unchanged transactions collapse to identity-preserving
+  committed no-ops; cross-command references and cascade/recreate flows commit as one
+  outcome.
+- The transaction property ran 150 examples with seed `20260732`. Focused verification
+  passed 2 files and 8 tests; `vp check` passed 57 formatted and 46 lint/type-checked
+  files with no warnings or errors.
+- Selected bounded immutable local history as Slice 6.
 
 ### 2026-07-30 — M2 Slice 4 referential deletion
 

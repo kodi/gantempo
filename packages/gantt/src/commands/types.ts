@@ -255,6 +255,11 @@ export interface DependencyDeleteCommand {
   readonly type: 'dependency.delete';
 }
 
+export interface TransactionCommand {
+  readonly commands: readonly GanttCommand[];
+  readonly type: 'transaction';
+}
+
 export type GanttCommand =
   | AssignmentDeleteCommand
   | AssignmentSetCommand
@@ -269,7 +274,8 @@ export type GanttCommand =
   | ResourceUpdateCommand
   | TaskAddCommand
   | TaskDeleteCommand
-  | TaskUpdateCommand;
+  | TaskUpdateCommand
+  | TransactionCommand;
 
 export type CommandOutcome =
   | {

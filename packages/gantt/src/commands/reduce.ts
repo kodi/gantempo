@@ -438,6 +438,71 @@ function deleteDirect<C extends 'dependencies' | 'placements'>(
   return commitPatches(document, [removePatch(collection, target.id)], affected);
 }
 
+function prefixTransactionDiagnostics(
+  diagnostics: readonly Diagnostic[],
+  childPath: string,
+): readonly Diagnostic[] {
+  return Object.freeze(
+    diagnostics.map((item) =>
+      Object.freeze({
+        ...item,
+        ...(item.path === undefined
+          ? { path: childPath }
+          : {
+              path: item.path.startsWith('/command')
+                ? `${childPath}${item.path.slice('/command'.length)}`
+                : `${childPath}${item.path}`,
+            }),
+      }),
+    ),
+  );
+}
+
+function applyTransaction(document: GanttDocument, commands: unknown): CommandOutcome {
+  if (!Array.isArray(commands)) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'Transaction commands must be supplied as an array.',
+        '/command/commands',
+      ),
+    ]);
+  }
+  if (commands.length === 0) {
+    return committedNoOp(document);
+  }
+
+  let candidate = document;
+  const patches: GanttPatch[] = [];
+  let inversePatches: GanttPatch[] = [];
+  const affected: EntityReference[] = [];
+  for (const [index, child] of commands.entries()) {
+    const outcome = applyGanttCommand(candidate, child as GanttCommand);
+    if (outcome.status === 'rejected') {
+      return rejected(
+        document,
+        prefixTransactionDiagnostics(outcome.diagnostics, `/command/commands/${index}`),
+      );
+    }
+    candidate = outcome.document;
+    patches.push(...outcome.patches);
+    inversePatches = [...outcome.inversePatches, ...inversePatches];
+    affected.push(...outcome.affected);
+  }
+
+  if (patches.length === 0 || structuralEqual(document, candidate)) {
+    return committedNoOp(document);
+  }
+  return Object.freeze({
+    affected: freezeAffected(affected),
+    diagnostics: Object.freeze([]),
+    document: candidate,
+    inversePatches: Object.freeze(inversePatches),
+    patches: Object.freeze(patches),
+    status: 'committed',
+  });
+}
+
 export function applyGanttCommand(document: GanttDocument, command: GanttCommand): CommandOutcome {
   if (!isPlainObject(command) || typeof command.type !== 'string') {
     return rejected(document, [
@@ -581,6 +646,10 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
     case 'dependency.delete': {
       const invalid = commandShape(document, command, ['type', 'id']);
       return invalid ?? deleteDirect(document, 'dependencies', command.id);
+    }
+    case 'transaction': {
+      const invalid = commandShape(document, command, ['type', 'commands']);
+      return invalid ?? applyTransaction(document, command.commands);
     }
     default:
       return rejected(document, [
