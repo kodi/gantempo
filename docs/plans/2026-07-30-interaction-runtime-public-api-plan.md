@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; planning complete, implementation not started
+Status: Active; Slice 1 complete, Slice 2 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -73,9 +73,10 @@ At M4 completion:
 
 ## Decisions
 
-These are the planning decisions to formalize in the Slice 1 interaction-runtime
-decision record. Exact exported names may be refined there, but later slices must not
-quietly choose different semantics.
+These planning decisions are formalized by the accepted
+[`interaction-runtime and public-API contract`](../decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+The decision record fixes the exact M4 boundary; later slices must not quietly choose
+different semantics.
 
 ### 1. Keep five runtime state categories distinct
 
@@ -758,7 +759,7 @@ never calls `applyGanttCommand` directly.
 
 ### Slice 1: Freeze the M4 runtime and public API contract
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1567,6 +1568,43 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Working Notes
 
+### 2026-07-30 — Slice 1 contract implementation
+
+- Added the accepted
+  [`interaction-runtime and public-API contract`](../decisions/2026-07-30-interaction-runtime-public-api-contract.md)
+  and linked it from architecture, roadmap, and this active plan.
+- Fixed one combined controlled/uncontrolled session value and retained the existing
+  controlled horizontal `range` with a new request callback rather than adding
+  `defaultRange` before M5 zoom policy.
+- Fixed occurrence-based selection/focus identity, instant-only task move/resize
+  payloads, fail-closed derived-placement mapping, FIFO interception, exact controlled
+  acknowledgement, revision-aware history replacement, immutable candidate envelopes,
+  event ordering, the occurrence-aware imperative handle, and the narrow selector
+  facade.
+- Fixed a flat treegrid structure with task controls inside timeline cells,
+  mode-based keyboard editing, live announcements, focus retention, and the minimum
+  M4 slot/class/column/menu/tooltip/editor contract.
+- Selected a focused jsdom, Testing Library, user-event, and direct axe-core
+  integration stack for later React slices, with deterministic test-only adapters
+  and live Chrome remaining authoritative for real browser behavior.
+- Updated durable architecture state categories, command shapes, React ownership,
+  imperative, selector, accessibility, and Architecture Slice 3 text to match the
+  accepted decision.
+- This slice intentionally adds no production runtime, React behavior, package export,
+  interaction test, benchmark, or browser claim.
+- Verification passed:
+  - `vp check` reported all 82 files formatted and no warning, lint, or type error
+    across 71 checked files;
+  - `git diff --check` passed;
+  - the decision file exists and focused heading/link reads confirmed all seven open
+    questions are resolved and linked from architecture, roadmap, and this plan;
+  - a focused read across architecture Sections 7–10, 16–19, Architecture Slice 3,
+    the M2/M3 decisions, this plan, roadmap, and the accepted M4 decision found no
+    ownership, event-phase, occurrence-identity, range, accessibility, or public-facade
+    conflict;
+  - `mise run ci` passed the complete check, 29-test-file/125-test, and four-artifact
+    package build gates.
+
 ### 2026-07-30 — Planning baseline
 
 - Read the complete `planning-slices` skill and applied its target-state, ordered-slice,
@@ -1633,7 +1671,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Progress
 
-- [ ] Slice 1: Freeze the M4 runtime and public API contract
+- [x] Slice 1: Freeze the M4 runtime and public API contract
 - [ ] Slice 2: Add pure semantic task move and resize commands
 - [ ] Slice 3: Build the React-free runtime store and ownership state machine
 - [ ] Slice 4: Add the async command bus, events, and bounded history orchestration
@@ -1650,9 +1688,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 1. Add and link the interaction-runtime/public-API decision record, resolve
-the seven open questions with focused type/DOM prototypes where necessary, and freeze
-ownership, local proposal correlation, candidate-versus-commit acknowledgement,
-persistence-ready change-envelope, interception, target, viewport, imperative,
-accessibility, and customization contracts before editing production runtime or React
-behavior.
+Start Slice 2. Add pure semantic `task.move` and `task.resize` command variants,
+normalization, strict instant-only reduction, deterministic patches/inverses and
+affected references, focused examples, and fixed-seed properties without introducing
+React or browser dependencies.

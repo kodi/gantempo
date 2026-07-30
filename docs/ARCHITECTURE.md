@@ -388,7 +388,9 @@ adding a runtime schema dependency or changing those public persistence rules.
 
 ## 7. State architecture
 
-State is divided into three categories.
+Each interaction-runtime instance keeps five categories distinct. Only document state
+is persistent business data; committed session fields may be persisted separately by
+an application when useful.
 
 ### 7.1 Document state
 
@@ -406,20 +408,35 @@ Serializable business data:
 
 ### 7.2 Session state
 
-Ephemeral user-interface state:
+Committed user-interface state:
 
-- selected and focused entities;
+- selected and logically focused view occurrences;
 - expanded task and lane IDs;
-- current viewport and zoom level;
-- active editor;
-- drag preview;
+- application-meaningful viewport intent and zoom level;
 - column widths;
 - temporary filters and sorting.
 
 Applications may choose to persist selected session fields, but they do not belong to
 the document by default.
 
-### 7.3 Derived state
+### 7.3 Transient interaction state
+
+Per-instance operational values that never enter document or committed session state:
+
+- active pointer or keyboard gesture;
+- drag and resize previews;
+- pending command/interceptor and controlled-acknowledgement state;
+- active editor, tooltip, and menu state;
+- element measurement and scheduled browser publication;
+- focus reconciliation and live announcement text.
+
+### 7.4 History state
+
+Bounded forward/inverse patch entries, undo/redo branches, and controlled
+acknowledgement metadata are local operational state. They are not serialized into
+`GanttDocument` or treated as a persistent audit log.
+
+### 7.5 Derived state
 
 Recomputable data:
 
@@ -436,6 +453,9 @@ Recomputable data:
 Derived state is cached by document revision and relevant configuration. It must never
 be serialized as authoritative data.
 
+The exact M4 ownership and public-snapshot boundary is fixed by the
+[interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+
 ## 8. Commands, patches, and events
 
 ### 8.1 Command model
@@ -448,8 +468,14 @@ export type SchedulePoint = EpochMilliseconds | LocalDateString;
 export type GanttCommand =
   | { type: "task.add"; task: TaskInput; parentId?: EntityId }
   | { type: "task.update"; id: EntityId; changes: Partial<TaskRecord> }
-  | { type: "task.move"; id: EntityId; start: SchedulePoint }
-  | { type: "task.resize"; id: EntityId; edge: "start" | "end"; time: SchedulePoint }
+  | { type: "task.move"; id: EntityId; start: EpochMilliseconds; delta?: never }
+  | { type: "task.move"; id: EntityId; delta: number; start?: never }
+  | {
+      type: "task.resize";
+      id: EntityId;
+      edge: "start" | "end";
+      time: EpochMilliseconds;
+    }
   | { type: "task.split"; id: EntityId; at: SchedulePoint }
   | { type: "task.delete"; id: EntityId; cascade?: boolean }
   | { type: "resource.add"; resource: ResourceInput }
@@ -594,6 +620,12 @@ moving work to a different resource may update an assignment and a placement, wh
 pure visual regrouping changes only the placement. The interaction layer must not hide
 those differences inside a generic row move.
 
+M4 movement and resize are instant-only. Calendar-aware or all-day movement remains a
+later command specialization. Ownership, interception, candidate acknowledgement,
+event ordering, history replay, occurrence targeting, and mapper semantics are fixed
+by the
+[interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+
 ## 9. Public React API
 
 ### 9.1 Controlled usage
@@ -601,11 +633,13 @@ those differences inside a generic row move.
 ```tsx
 <Gantt
   document={document}
-  onDocumentChange={(nextDocument, change) => {
-    setDocument(nextDocument); // acknowledge locally without waiting for the server
+  range={range}
+  onDocumentChange={(change) => {
+    setDocument(change.document); // acknowledge locally without waiting for the server
     persistenceQueue.enqueue(change);
   }}
-  view={{ type: "resource", laneIds }}
+  onRangeChange={setRange}
+  view={{ kind: "resource" }}
   timeZone="Europe/Belgrade"
 />
 ```
@@ -620,9 +654,16 @@ retry-safe operation ID.
 ```tsx
 <Gantt
   defaultDocument={document}
-  onCommandCommitted={({ patches }) => persist(patches)}
+  range={range}
+  onDocumentChange={(change) => persist(change.patches)}
 />
 ```
+
+Document ownership is an exclusive `document`/`defaultDocument` union. Committed
+selection, logical focus, and vertical viewport intent use one independently
+controlled or uncontrolled session value. M4 keeps the existing horizontal `range`
+controlled and uses `onRangeChange` for edge-pan and imperative requests; it does not
+add `defaultRange` before M5 fixes adaptive zoom policy.
 
 ### 9.3 Imperative handle
 
@@ -630,17 +671,21 @@ The component ref may expose orchestration methods, not a second state model:
 
 ```ts
 export interface GanttHandle {
-  dispatch(command: GanttCommand): Promise<CommandOutcome>;
+  dispatch(command: GanttCommand): Promise<GanttDispatchResult>;
   getDocument(): GanttDocument;
-  getSelection(): SelectionState;
-  scrollToTask(id: EntityId, options?: ScrollOptions): void;
-  scrollToTime(time: number, options?: ScrollOptions): void;
-  fitToProject(): void;
-  zoomTo(level: ZoomLevel): void;
-  undo(): void;
-  redo(): void;
+  getSession(): GanttSessionState;
+  getSelection(): readonly GanttInteractionTarget[];
+  focusTask(target: GanttTaskTarget): boolean;
+  scrollToTask(target: GanttTaskTarget, options?: GanttScrollOptions): boolean;
+  scrollToTime(time: EpochMilliseconds, options?: GanttScrollOptions): boolean;
+  undo(): Promise<GanttDispatchResult>;
+  redo(): Promise<GanttDispatchResult>;
+  canUndo(): boolean;
+  canRedo(): boolean;
 }
 ```
+
+M4 deliberately omits `fitToProject` and `zoomTo`; M5 owns those policies.
 
 ### 9.4 Customization
 
@@ -671,15 +716,17 @@ React surfaces subscribe to the smallest useful state slice:
 
 ```ts
 export function useGanttSelector<T>(
-  selector: (state: GanttRuntimeState) => T,
+  selector: (state: GanttSelectorSnapshot) => T,
   isEqual?: (previous: T, next: T) => boolean
 ): T;
 ```
 
-Selectors are stable public contracts for document, session, and derived state. A
-command affecting one task or lane must not force every visible cell and bar to
-re-render. The imperative handle remains limited to commands, viewport orchestration,
-focus, and reading snapshots; it is never the primary data-binding API.
+The public selector snapshot contains authoritative document/session values and narrow
+interaction, history-capability, viewport, and visible-occurrence summaries. Private
+resolved views, layouts, viewport indexes, caches, queues, and history entries are not
+selector state. A command affecting one task or lane must not force every visible cell
+and bar to re-render. The imperative handle remains limited to commands, viewport
+orchestration, focus, and reading snapshots; it is never the primary data-binding API.
 
 ## 10. Rendering and layout
 
@@ -1134,6 +1181,13 @@ The React layer must provide:
 If canvas is used, visible or focused items receive synchronized DOM proxies. The
 screen-reader experience must not depend on canvas pixel inspection.
 
+M4 represents each visible lane as one flat treegrid row with a row header and one
+timeline grid cell. Task occurrences are buttons inside the timeline cell rather than
+false spreadsheet cells. Roving focus, mode-based keyboard move/resize, live
+announcements, virtualization focus retention, and the exact M4 key bindings are
+fixed by the
+[interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+
 ## 17. SSR and browser boundaries
 
 - Packages must not read `window`, `document`, or element dimensions at module scope.
@@ -1320,6 +1374,10 @@ Exit condition: a large, read-only task and resource document can be navigated s
 
 Exit condition: applications can implement full CRUD through the same command API used
 by built-in UI.
+
+The slice's durable ownership, acknowledgement, occurrence-target, accessibility, and
+minimum customization choices are fixed by the
+[interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
 
 ### Slice 4: Project Gantt capabilities
 
