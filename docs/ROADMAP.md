@@ -102,7 +102,7 @@ Detailed completion evidence is recorded in
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
-| M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
+| M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | [Active plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -136,14 +136,14 @@ M7 hardening/release
 
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
-viewport, and read-only rendering foundations. M4 interaction-runtime/public-API
-planning is next.
+viewport, and read-only rendering foundations. The detailed M4
+interaction-runtime/public-API plan is ready; its contract slice is next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[ ]` Not started; detailed plan not yet created
+**Status:** `[ ]` Planned; implementation not started
 
 **Target outcome**
 
@@ -161,11 +161,12 @@ and derived state separate.
 
 **Next action**
 
-Create the detailed M4 interaction-runtime/public-API plan before implementation.
-Resolve controlled/uncontrolled ownership, session state, viewport subscriptions and
-measurement, command interception, pointer/touch/keyboard parity, focus/selection,
-drag preview, hit testing, imperative handles, accessibility announcements, and
-incremental invalidation boundaries without weakening the verified M1–M3 contracts.
+Execute Slice 1 of the
+[M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
+Freeze controlled/uncontrolled document and session ownership, controlled proposal
+acknowledgement, command interception/events, target identity, viewport intent,
+imperative handles, accessibility, and the minimum customization surface in a linked
+decision record before editing production runtime or React behavior.
 
 **Adjacent proof complete**
 
@@ -251,6 +252,24 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 interaction-runtime implementation plan ready
+
+- Added the detailed
+  [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md)
+  with eleven ordered implementation slices.
+- Kept M4 not started while fixing the planned boundaries for semantic task
+  move/resize commands, runtime ownership, async interception/history, incremental
+  derivation, viewport measurement, hit testing, React ownership, pointer/touch,
+  keyboard/accessibility, customization/CRUD, and final consumer evidence.
+- Preserved M5 ownership of hierarchy, dependency editing, adaptive zoom,
+  localization, and calendar-aware behavior, and preserved M6 ownership of advanced
+  scheduling/resource semantics.
+- Selected the M4 decision-record/contract slice as the next action; no runtime,
+  package, benchmark, or browser claim was added by this docs-only planning pass.
+- `vp check` passed all 82 formatted files and 71 lint/type-checked files;
+  `git diff --check`, linked-file existence, and focused M4 status/link/slice checks
+  also passed.
 
 ### 2026-07-30 — Interactive controlled playground proof complete
 
