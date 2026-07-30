@@ -175,6 +175,93 @@ button {
   font-size: 12px;
 }
 
+.interactive-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 62px;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 11px 13px;
+  border: 1px solid rgb(36 48 68 / 9%);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 48%);
+}
+
+.interactive-controls__buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.interactive-controls button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgb(36 48 68 / 14%);
+  border-radius: 8px;
+  color: #2d3a4b;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(36 48 68 / 5%);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.interactive-controls button:first-child {
+  border-color: #176b57;
+  color: #fff;
+  background: #176b57;
+}
+
+.interactive-controls button:hover:not(:disabled) {
+  border-color: #176b57;
+}
+
+.interactive-controls button:focus-visible {
+  outline: 3px solid rgb(23 107 87 / 24%);
+  outline-offset: 2px;
+}
+
+.interactive-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.interactive-controls__separator {
+  width: 1px;
+  height: 24px;
+  margin-inline: 3px;
+  background: rgb(36 48 68 / 12%);
+}
+
+.interactive-controls__status {
+  max-width: 330px;
+  color: #6f7784;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.chart-frame--interactive .chart-frame__toolbar {
+  min-height: 70px;
+}
+
+.interactive-chart-count {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--gt-color-text-muted);
+}
+
+.interactive-chart-count strong {
+  color: var(--gt-color-text);
+  font-size: 18px;
+}
+
+.interactive-chart-count span {
+  font-size: 10px;
+}
+
 .scenario-matrix {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -409,6 +496,16 @@ button {
     align-items: start;
     flex-direction: column;
   }
+
+  .interactive-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .interactive-controls__status {
+    max-width: none;
+    text-align: left;
+  }
 }
 
 @media (max-width: 560px) {
@@ -416,8 +513,12 @@ button {
     padding-inline: 16px;
   }
 
-  .brand small {
+  .brand > span:last-child {
     display: none;
+  }
+
+  .playground-nav__link {
+    padding-inline: 9px;
   }
 
   .page {
@@ -433,6 +534,18 @@ button {
   }
 
   .gt-gantt__time-header span:nth-child(even) {
+    display: none;
+  }
+
+  .interactive-controls__buttons {
+    align-items: stretch;
+  }
+
+  .interactive-controls button {
+    flex: 1 1 calc(50% - 7px);
+  }
+
+  .interactive-controls__separator {
     display: none;
   }
 }

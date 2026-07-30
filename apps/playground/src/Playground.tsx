@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 
+import { InteractivePage } from './pages/InteractivePage';
 import { MainPage } from './pages/MainPage';
 import { MatrixPage } from './pages/MatrixPage';
 
@@ -11,6 +12,7 @@ interface PlaygroundLink {
 const links: readonly PlaygroundLink[] = [
   { href: '/', label: 'Main' },
   { href: '/matrix', label: 'Matrix' },
+  { href: '/interactive', label: 'Interactive' },
 ];
 
 function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
@@ -48,7 +50,14 @@ function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
 
 export function Playground(): ReactElement {
   const pathname = window.location.pathname;
-  const page = pathname === '/matrix' ? <MatrixPage /> : <MainPage />;
+  const page =
+    pathname === '/matrix' ? (
+      <MatrixPage />
+    ) : pathname === '/interactive' ? (
+      <InteractivePage />
+    ) : (
+      <MainPage />
+    );
 
   return (
     <div className="playground-shell">

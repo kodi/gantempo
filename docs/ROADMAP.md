@@ -167,6 +167,16 @@ measurement, command interception, pointer/touch/keyboard parity, focus/selectio
 drag preview, hit testing, imperative handles, accessibility announcements, and
 incremental invalidation boundaries without weakening the verified M1–M3 contracts.
 
+**Adjacent proof complete**
+
+The
+[interactive playground plan](plans/2026-07-30-interactive-playground-plan.md)
+records a completed bounded controlled-consumer example that composes the existing
+public M2 command/history kernel with the read-only M3 React renderer. The new
+`/interactive` route proves add, batch-add, cascade remove, transactional clear,
+undo, and redo across responsive chart layouts without starting M4 or defining
+chart-owned interaction, session, or imperative contracts.
+
 ## Later Milestone Outcomes
 
 ### M5: Basic project Gantt
@@ -241,6 +251,23 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — Interactive controlled playground proof complete
+
+- Confirmed that external toolbar-driven document changes can be demonstrated with
+  the already-public M2 commands/history and M3 immutable `document` prop.
+- Added a playground-only `/interactive` proof with an initially empty four-lane
+  canvas plus add, batch-add, remove, clear, undo, and redo controls.
+- `vp check` passed 82 formatted and 71 lint/type-checked files; 29 test files and
+  125 tests passed; the production playground transformed 46 modules.
+- Final `mise run ci` repeated the full check and test gates and built all four
+  package artifacts.
+- Chrome DevTools passed `/interactive` at 1440 × 900 and 560 × 900 with zero chart
+  diagnostics, no horizontal overflow, aligned lane/timeline geometry, correct
+  control state and live feedback, complete chart/task accessible names, and no
+  application-owned console or network failure.
+- Kept M4 not started: chart-owned pointer, touch, keyboard, focus, selection,
+  scrolling, zooming, and imperative APIs remain subject to the required M4 plan.
 
 ### 2026-07-30 — M3 view, layout, and viewport kernel complete
 
