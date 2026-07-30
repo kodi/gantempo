@@ -145,6 +145,21 @@ customization, menus, tooltip, columns, and instant-task editing are next.
 
 ## Current Focus
 
+### Cross-cutting M1/M2 document-kernel hardening
+
+**Status:** `[x]` Complete and verified
+
+The [Zod runtime schema migration plan](plans/2026-07-30-zod-runtime-schema-migration-plan.md)
+consolidates duplicated wire and strict-command structural validation behind private
+Zod 4 Mini schemas while preserving schema-version-1 behavior. The durable codec
+decision, architecture responsibility split, fixed-seed codec baseline, focused
+characterization gate, packed artifact, and playground production bundle baseline are
+recorded. Private Zod wire schemas now power production normalization, strict
+canonical schemas power command/patch shape validation, legacy structural duplication
+is removed, public declarations remain Zod-free, final benchmark/package evidence is
+inside the migration budgets, and the complete local CI gate passes with 237 tests
+across 49 files.
+
 ### M4: Interaction runtime and public API
 
 **Status:** `[-]` In progress; Slices 1–9 complete, Slice 10 next
@@ -249,6 +264,24 @@ chart-owned interaction, session, or imperative contracts.
   without evidence at the scope of the claim.
 - Every repository change and every discovered deviation must be recorded in the
   active detailed plan and reflected in this roadmap in the same change set.
+
+## Change Log
+
+- 2026-07-30: Started the cross-cutting Zod runtime-schema migration. The document
+  codec decision now selects private Zod 4 Mini schemas while retaining Gantempo-owned
+  migrations, recovery, diagnostics, graph policy, freezing, and serialization.
+- 2026-07-30: Completed migration Slice 1 with 77 focused tests, a fixed-seed
+  50/2,000/10,000-task codec baseline, packed-artifact measurements, and a playground
+  consumer bundle baseline; Slice 2 private schema foundations are active.
+- 2026-07-30: Completed Zod migration Slices 2–5. Private wire/canonical schemas now
+  own record structure across codec and strict command paths; 892 net legacy lines
+  were removed from those paths, focused tests/type checks pass, large-valid parsing
+  remains within the local budget, and the downstream bundle delta is +14.11 kB
+  raw/+5.39 kB gzip with one Zod copy.
+- 2026-07-30: Completed and verified Zod migration Slice 6. Package, Node import,
+  playground consumer, declaration privacy, dependency uniqueness, fixed-seed
+  performance, formatting, lint, type checking, all 237 tests, and the final package
+  build pass.
 
 ## Decision Queue
 

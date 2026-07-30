@@ -1,6 +1,6 @@
 # Zod Runtime Schema Migration Plan
 
-Status: Active; implementation not started
+Status: Complete; all slices verified
 Date: 2026-07-30
 Milestone: Cross-cutting M1/M2 document-kernel hardening
 
@@ -433,7 +433,7 @@ types remain explicit responsibilities.
 
 ### Slice 1: Update the decision and freeze parity/performance baselines
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -495,7 +495,7 @@ reasoning from package metadata.
 
 ### Slice 2: Add Zod and private scalar/schema foundations
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -558,7 +558,7 @@ isolation before six record decoders change together.
 
 ### Slice 3: Move wire record normalization into Zod schemas
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -618,7 +618,7 @@ than rediscovering foundational semantics.
 
 ### Slice 4: Reuse canonical schemas in strict command and patch validation
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -669,7 +669,7 @@ schemas without conflating repairable external input with atomic command validat
 
 ### Slice 5: Prove type ownership and remove residual structural duplication
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -724,7 +724,7 @@ documentation.
 
 ### Slice 6: Complete package, performance, compatibility, and documentation gates
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -978,6 +978,99 @@ decision and synchronized architecture/roadmap update.
 
 ## Working Notes
 
+### 2026-07-30 — Slice 1 started
+
+- Selected and verified the current Zod release as `4.4.3`; the implementation will
+  import the Mini entry point through `zod/mini`.
+- Updated the accepted codec decision and architecture before adding the dependency.
+- Baseline measurement uses a versioned fixed-seed codec benchmark plus the existing
+  packed library and playground production build.
+
+### 2026-07-30 — Slice 1 complete
+
+- Environment: arm64 Apple M2 Max with 32 GiB memory on Darwin 25.5.0; fixed
+  generator `codec-v1`, seed `20260730`, Vitest `4.1.10`, Vite+ `0.2.6`, pnpm
+  `11.18.0`, and the repository Node 24 toolchain.
+- The reusable benchmark uses Vitest's default warmup/sample policy and records:
+  - ordinary valid, 50 tasks/10 lanes, 11,833 bytes: mean `0.1564 ms`, p75
+    `0.1546 ms`, p99 `0.3108 ms`;
+  - medium valid, 2,000 tasks/400 lanes, 486,433 bytes: mean `6.2054 ms`, p75
+    `6.3354 ms`, p99 `6.8992 ms`;
+  - large valid, 10,000 tasks/2,000 lanes, 2,459,593 bytes: mean `37.9509 ms`, p75
+    `37.5208 ms`, p99 `63.9192 ms`;
+  - large bounded malformed, 10,000 tasks/2,000 lanes, 2,459,564 bytes and 33
+    diagnostics: mean `33.9599 ms`, p75 `34.6266 ms`, p99 `37.1967 ms`.
+- Migration-local review budgets are an ordinary-input mean below `1 ms`, a
+  10,000-task valid-input mean below `100 ms`, and no worse than `3x` the recorded
+  large-input baseline. These are local review guides, not CI thresholds.
+- `vp pack` produced `index.js` 269.76 kB raw/52.12 kB gzip, `index.d.ts` 35.45
+  kB raw/6.02 kB gzip, CSS 6.67 kB raw/1.63 kB gzip, and 879.00 kB reported total.
+- `vp build apps/playground` produced one application JS bundle of 356.21 kB
+  raw/101.29 kB gzip and CSS of 13.42 kB raw/3.44 kB gzip.
+- Characterization verification passed 77 tests across 16 focused model and command
+  files. Existing coverage was sufficient; no expectations were changed.
+- Exact commands passed: the Slice 1 focused `vp test run ...` command, `vp test
+  bench packages/gantt/src/model/codec.bench.ts --run`, `vp pack`, `vp build
+  apps/playground`, and `git diff --check`.
+
+### 2026-07-30 — Slices 2–5 complete
+
+- Added direct dependency `zod@4.4.3` and confirmed Zod 4 Mini exposes the required
+  public object, strict-object, transform, pipe, check, discriminated-union, exact
+  optional, readonly, and safe-parse APIs. No switch to regular Zod was needed.
+- Added private scalar, guarded JSON-clone, schedule, duration, object-pair,
+  issue-adapter, segment, record, registry, and type-equivalence modules under
+  `model/schema/`.
+- One shape definition now supplies each wire schema, strict canonical schema, and
+  known-key set. Wire schemas strip only after Gantempo records stable unknown-property
+  warnings; canonical schemas reject unknown keys and do not coerce or default.
+- Replaced the production codec's hand-written scalar and record decoders with
+  per-record Zod parsing. Task shells retain opaque raw segments and parse each segment
+  independently, preserving partial recovery and order.
+- Replaced strict command `RECORD_KEYS`, `REQUIRED_KEYS`, plain-object, calendar-date,
+  schedule, duration, and equivalent predicates with `canonicalRecordSchemas`.
+  Duplicate and relationship validation remains explicit domain code.
+- Removed 759 legacy codec lines while adding 189 orchestration/adapter lines; removed
+  133 strict-validator lines while adding 3 schema-registry lines. Searches confirm no
+  residual legacy scalar/schedule/duration/key-table validator names.
+- Kept explicit public interfaces because they preserve readable readonly and exact
+  optional contracts. Bidirectional compile-time assertions cover all schedules,
+  durations, segments, and six record families.
+- Focused verification passed 86 tests across 18 model/command files; the production
+  parity subset passed 62 tests across 14 files; type checking passed across 116 files.
+- `vp pack` emits the expected external `import * as z from "zod/mini"` in JavaScript,
+  while `dist/index.d.ts` contains no Zod or private schema reference.
+- Implementation finding: validating the wire output a second time through the
+  canonical schema raised the large-valid mean to `113.23 ms`. The production wire
+  schema already outputs canonical structural data, so the redundant second parse was
+  removed; canonical schemas remain authoritative at strict command/patch boundaries.
+  This restored the large-valid mean to `81.2168 ms`, within both review budgets.
+
+### 2026-07-30 — Slice 6 complete
+
+- Final fixed-seed Zod benchmark:
+  - ordinary valid mean `0.3523 ms`, p75 `0.3521 ms`, p99 `0.5323 ms`;
+  - medium valid mean `15.3975 ms`, p75 `15.8055 ms`, p99 `17.0860 ms`;
+  - large valid mean `81.2168 ms`, p75 `80.5702 ms`, p99 `103.08 ms`;
+  - large bounded malformed mean `74.0846 ms`, p75 `74.6337 ms`, p99 `75.7891 ms`.
+- Compared with baseline, ordinary mean is `2.25x` and large-valid mean is `2.14x`;
+  both remain inside the migration-local budgets and validation remains a
+  load/external-update boundary rather than a frame-sensitive path.
+- The packed library remains external-dependency based: final `index.js` is 268.53 kB
+  raw/52.54 kB gzip, declarations remain 35.45 kB raw/6.02 kB gzip, and one
+  `zod/mini` import is present.
+- The playground consumer JS bundle is 370.32 kB raw/106.68 kB gzip: a delta of
+  +14.11 kB raw/+5.39 kB gzip from baseline. pnpm reports exactly one resolved
+  `zod@4.4.3` version.
+- A direct Node import of the packed ESM and schema-version-1 numeric-ID parse passed
+  without browser globals. The production playground build passed with 139 transformed
+  modules.
+- `mise run ci` passed from the completed implementation: formatting checked 127
+  files; lint/type checking found no warnings or errors across 116 files; 237 tests
+  passed across 49 files; and the package build completed.
+- No temporary legacy parser, comparison switch, production benchmark export, public
+  schema export, or unused runtime dependency remains.
+
 ### 2026-07-30 — Planning baseline
 
 - Selected a Zod 4 Mini parity migration rather than waiting for schema version `2` or
@@ -995,15 +1088,14 @@ decision and synchronized architecture/roadmap update.
 
 ## Progress
 
-- [ ] Slice 1: Update the decision and freeze parity/performance baselines
-- [ ] Slice 2: Add Zod and private scalar/schema foundations
-- [ ] Slice 3: Move wire record normalization into Zod schemas
-- [ ] Slice 4: Reuse canonical schemas in strict command and patch validation
-- [ ] Slice 5: Prove type ownership and remove residual structural duplication
-- [ ] Slice 6: Complete package, performance, compatibility, and documentation gates
+- [x] Slice 1: Update the decision and freeze parity/performance baselines
+- [x] Slice 2: Add Zod and private scalar/schema foundations
+- [x] Slice 3: Move wire record normalization into Zod schemas
+- [x] Slice 4: Reuse canonical schemas in strict command and patch validation
+- [x] Slice 5: Prove type ownership and remove residual structural duplication
+- [x] Slice 6: Complete package, performance, compatibility, and documentation gates
 
 ## Next Slice
 
-Start Slice 1. Update the accepted codec decision and architecture first, then capture
-black-box compatibility, current decoder timing, and downstream bundle baselines
-before adding Zod or changing production parsing.
+Migration complete. Keep the worktree unmerged until the user explicitly approves
+integration.
