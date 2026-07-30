@@ -1,11 +1,12 @@
 import { Gantt } from '@gantempo/gantt';
 import type { ReactElement } from 'react';
 
-import type { PlaygroundScenario } from './scenarios';
+import type { PlaygroundScenario, ScenarioTheme } from './scenarios';
 
 interface ScenarioGanttProps {
   readonly scenario: PlaygroundScenario;
   readonly size: 'main' | 'matrix';
+  readonly theme?: ScenarioTheme;
 }
 
 function formatRange(scenario: PlaygroundScenario): string {
@@ -18,13 +19,17 @@ function formatRange(scenario: PlaygroundScenario): string {
   return `${formatter.format(scenario.range.start)} – ${formatter.format(scenario.range.end)}`;
 }
 
-export function ScenarioGantt({ scenario, size }: ScenarioGanttProps): ReactElement {
+export function ScenarioGantt({
+  scenario,
+  size,
+  theme = scenario.theme,
+}: ScenarioGanttProps): ReactElement {
   const classes = ['chart-frame', `chart-frame--${size}`, `chart-frame--${scenario.density}`].join(
     ' ',
   );
 
   return (
-    <div className={classes} data-theme={scenario.theme}>
+    <div className={classes} data-theme={theme}>
       <div className="chart-frame__toolbar">
         <div>
           <strong>{scenario.title}</strong>

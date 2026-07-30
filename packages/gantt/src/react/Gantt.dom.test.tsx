@@ -415,6 +415,74 @@ describe('Gantt React facade in a DOM environment', () => {
     );
   });
 
+  it('clears task selection and focus from an empty primary timeline press', async () => {
+    const ref = createRef<GanttHandle>();
+    const mounted = await render(
+      <Gantt {...commonProps()} defaultDocument={documentFixture()} ref={ref} />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector<SVGGElement>('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      task.focus();
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 21,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 21,
+        pointerType: 'mouse',
+      });
+    });
+    expect(ref.current?.getSelection()).toHaveLength(1);
+    expect(ref.current?.getSession().focused).toMatchObject({ taskId: 'task-a' });
+    expect(document.activeElement).toBe(task);
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 710,
+        clientY: 29,
+        pointerId: 22,
+        pointerType: 'mouse',
+      });
+    });
+    expect(ref.current?.getSelection()).toEqual([]);
+    expect(ref.current?.getSession().focused).toBeUndefined();
+    expect(task.getAttribute('data-selected')).toBeNull();
+    expect(document.activeElement).not.toBe(task);
+  });
+
+  it('clears stale DOM and runtime focus from an empty press in a read-only chart', async () => {
+    const ref = createRef<GanttHandle>();
+    const mounted = await render(
+      <Gantt {...commonProps()} document={documentFixture()} ref={ref} />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector<SVGGElement>('[data-task-id="task-a"]')!;
+
+    await act(async () => task.focus());
+    expect(ref.current?.getSession().focused).toMatchObject({ taskId: 'task-a' });
+    expect(document.activeElement).toBe(task);
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 710,
+        clientY: 29,
+        pointerId: 23,
+        pointerType: 'mouse',
+      });
+    });
+    expect(ref.current?.getSession().focused).toBeUndefined();
+    expect(document.activeElement).not.toBe(task);
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-disabled'),
+    ).toBe('true');
+  });
+
   it.each(['mouse', 'pen', 'touch'] as const)(
     'moves a task through the shared %s pointer command path',
     async (pointerType) => {

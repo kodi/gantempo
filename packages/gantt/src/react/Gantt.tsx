@@ -1116,14 +1116,25 @@ function GanttSurface({
   );
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (disabled || event.button !== 0 || event.isPrimary === false) {
+      if (event.button !== 0 || event.isPrimary === false) {
         return;
       }
       const input = pointerInput(event);
-      if (
-        input === undefined ||
-        !runtime.pointerDown({ ...input, pointerType: pointerType(event) })
-      ) {
+      if (input === undefined) {
+        return;
+      }
+      if (input.candidateViewKey === undefined) {
+        runtime.clearTaskFocusAndSelection();
+        const activeElement = event.currentTarget.ownerDocument.activeElement;
+        if (
+          (activeElement instanceof HTMLElement || activeElement instanceof SVGElement) &&
+          event.currentTarget.contains(activeElement) &&
+          activeElement.closest('[data-gt-part="task"]') !== null
+        ) {
+          activeElement.blur();
+        }
+      }
+      if (disabled || !runtime.pointerDown({ ...input, pointerType: pointerType(event) })) {
         return;
       }
       event.preventDefault();

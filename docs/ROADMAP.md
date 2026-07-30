@@ -163,6 +163,20 @@ queued after that additive post-M4 work.
 
 ## Current Focus
 
+### Post-M4 playground focus and theme refinement
+
+**Status:** `[x]` Complete and verified
+
+The
+[playground focus and theme refinement plan](plans/2026-07-30-playground-focus-theme-refinement-plan.md)
+replaces the browser's square SVG task outline with one rounded focus treatment,
+clears active task focus/selection from empty timeline presses, and turns the main
+page's static theme label into a light/dark/high-contrast selector. The work stays
+inside the verified M4 session boundary and existing playground theme tokens; no
+public contract changes. Focused tests, the complete 52-file/251-test CI gate,
+package/playground builds, and live Chrome checks at 1,440 × 900 and 560 × 900 pass.
+Appendix Slice A1 is again the next action.
+
 ### Post-M4 default-surface modernization
 
 **Status:** `[x]` Complete and verified
@@ -312,6 +326,21 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Started the bounded playground focus/theme refinement after Chrome
+  reproduced the square SVG focus outline and retained active task on empty timeline
+  clicks at `/`. The active plan keeps visible keyboard focus, clears both runtime
+  and DOM focus for empty primary presses, and reuses existing scenario tokens in an
+  accessible main-page theme selector.
+- 2026-07-30: The first focused run found that the repository test include omitted
+  `apps/**`, silently excluding the new playground selector regression. The active
+  refinement expands the normal test gate to app tests and records the direct-test
+  matcher correction without changing runtime behavior.
+- 2026-07-30: Completed and verified the playground focus/theme refinement. Empty
+  primary timeline presses clear runtime and DOM task focus/selection, task focus uses
+  one rounded two-pixel bar stroke, and the labelled selector switches all three
+  existing themes. Focused tests, 52 files/all 251 tests, formatting/lint/types,
+  package and playground builds, and desktop/narrow Chrome gates pass with zero page
+  overflow, console errors, warnings, or failed requests.
 - 2026-07-30: Started the bounded post-M4 default-surface modernization. The active
   plan selects internally owned Lucide icons and native local date-time controls while
   preserving the public slots, menu items, epoch-millisecond command boundary,

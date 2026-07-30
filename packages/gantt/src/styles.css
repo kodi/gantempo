@@ -183,9 +183,9 @@
     pointer-events: none;
   }
 
-  :where(.gt-gantt [data-gt-part='task']:focus-visible .gt-gantt__task-bar) {
+  :where(.gt-gantt [data-gt-part='task']:focus .gt-gantt__task-bar) {
     stroke: var(--gt-color-focus);
-    stroke-width: 3px;
+    stroke-width: 2px;
     vector-effect: non-scaling-stroke;
   }
 
@@ -259,11 +259,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  :where(.gt-gantt [data-gt-part='task']:focus) {
-    outline: 2px solid var(--gt-color-focus);
-    outline-offset: 2px;
   }
 
   :where(.gt-gantt__empty) {
@@ -860,7 +855,7 @@
       outline-color: Highlight;
     }
 
-    :where(.gt-gantt [data-gt-part='task']:focus-visible .gt-gantt__task-bar) {
+    :where(.gt-gantt [data-gt-part='task']:focus .gt-gantt__task-bar) {
       fill: Canvas;
       stroke: Highlight;
     }

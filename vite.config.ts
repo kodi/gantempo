@@ -17,7 +17,7 @@ export default defineConfig({
     '*': 'vp check --fix',
   },
   test: {
-    include: ['packages/**/*.test.{ts,tsx}'],
+    include: ['apps/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}'],
   },
   pack: {
     clean: true,

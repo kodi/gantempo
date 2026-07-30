@@ -169,6 +169,39 @@ button {
   background: rgb(255 255 255 / 45%);
 }
 
+.theme-selector {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 5px 4px 10px;
+  border: 1px solid rgb(36 48 68 / 9%);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 45%);
+}
+
+.theme-selector > span {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.theme-selector select {
+  min-height: 26px;
+  padding: 0 24px 0 8px;
+  border: 1px solid rgb(36 48 68 / 12%);
+  border-radius: 6px;
+  color: #435064;
+  background: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.theme-selector select:focus-visible {
+  outline: 3px solid rgb(23 107 87 / 24%);
+  outline-offset: 2px;
+}
+
 .page-note {
   margin: 16px 2px 0;
   color: #818792;

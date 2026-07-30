@@ -68,6 +68,7 @@ export interface GanttReactRuntimeSnapshot {
 export interface GanttReactRuntime {
   activate(): void;
   clearMeasurement(): void;
+  clearTaskFocusAndSelection(): boolean;
   deactivate(): void;
   dispose(): void;
   dispatchAction(
@@ -999,6 +1000,23 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return;
       }
       store.clearViewportMeasurement();
+    },
+
+    clearTaskFocusAndSelection() {
+      if (disposed) {
+        return false;
+      }
+      const session = store.getSnapshot().session;
+      if (session.focused === undefined && session.selection.length === 0) {
+        return false;
+      }
+      return updateSession(
+        Object.freeze({
+          selection: Object.freeze([]),
+          viewport: session.viewport,
+        }),
+        'runtime',
+      );
     },
 
     deactivate() {
