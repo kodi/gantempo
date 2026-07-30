@@ -393,6 +393,66 @@ describe('Gantt keyboard and accessibility integration', () => {
     await expectNoSemanticViolations(mounted.container);
   });
 
+  it('pages by keyboard in read-only mode and describes navigation gestures', async () => {
+    const ranges: { readonly end: number; readonly start: number }[] = [];
+    const ref = createRef<GanttHandle>();
+    const mounted = render(
+      <Gantt
+        {...commonProps()}
+        document={virtualizedDocument()}
+        onRangeChange={(range) => ranges.push(range)}
+        ref={ref}
+      />,
+    );
+    installGeometry(mounted.container, 116);
+    const root = mounted.getByRole('region', { name: 'Gantt chart' });
+    root.focus();
+
+    fireEvent.keyDown(root, { key: 'PageDown' });
+    const viewport = mounted.container.querySelector<HTMLDivElement>('[data-gt-part="viewport"]')!;
+    expect(ref.current?.getSession().viewport.verticalStart).toBe(58);
+    expect(viewport.scrollTop).toBe(58);
+    fireEvent.keyDown(root, { altKey: true, key: 'PageDown' });
+    expect(ranges).toEqual([
+      {
+        start: START + 6.3 * DAY,
+        end: START + 13.3 * DAY,
+      },
+    ]);
+    const description = root.getAttribute('aria-describedby');
+    expect(document.getElementById(description!)?.textContent).toContain(
+      'horizontal wheel or trackpad gesture',
+    );
+    expect(document.getElementById(description!)?.textContent).toContain(
+      'Alt plus PageUp or PageDown',
+    );
+    await expectNoSemanticViolations(mounted.container);
+  });
+
+  it('hands browser focus to the root and restores it when logical focus is revealed', async () => {
+    const user = userEvent.setup();
+    const initialRange = commonProps().range;
+    const futureRange = { start: START + 18 * DAY, end: START + 25 * DAY };
+    const fixture = documentFixture();
+    const mounted = render(<Gantt {...commonProps()} defaultDocument={fixture} />);
+    installGeometry(mounted.container, 116);
+    await user.tab();
+    const task = document.activeElement as SVGGElement;
+    expect(task.dataset.taskId).toBe('task-a');
+    await user.keyboard(' ');
+    const root = mounted.getByRole('region', { name: 'Gantt chart' });
+
+    mounted.rerender(<Gantt {...commonProps()} defaultDocument={fixture} range={futureRange} />);
+    expect(document.activeElement).toBe(root);
+    expect(root.tabIndex).toBe(0);
+
+    mounted.rerender(<Gantt {...commonProps()} defaultDocument={fixture} range={initialRange} />);
+    const restored = mounted.container.querySelector<SVGGElement>('[data-task-id="task-a"]')!;
+    expect(document.activeElement).toBe(restored);
+    expect(restored.getAttribute('aria-pressed')).toBe('true');
+    await expectNoSemanticViolations(mounted.container);
+  });
+
   it('undoes deletion from the empty-chart fallback tab stop', async () => {
     const fixture = documentFixture();
     const ref = createRef<GanttHandle>();

@@ -278,6 +278,71 @@ describe('React runtime adapter', () => {
     runtime.dispose();
   });
 
+  it('pages both viewport axes and reveals full-catalog keyboard destinations', () => {
+    const ranges: { readonly end: number; readonly start: number }[] = [];
+    let props: GanttProps = {
+      ...commonProps(),
+      defaultDocument: navigationDocumentFixture(),
+      onRangeChange(range) {
+        ranges.push(range);
+      },
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    runtime.measure({ clientHeight: 116, clientWidth: 700, verticalStart: 0 });
+    const geometry = {
+      height: 116,
+      verticalStart: 0,
+      width: 700,
+      x: 160,
+      y: 0,
+    };
+    const firstTarget = runtime.getSnapshot().selector.occurrences[0]!.target;
+    expect(runtime.getHandle().focusTask(firstTarget)).toBe(true);
+
+    expect(
+      runtime.keyboardAction({
+        action: { axis: 'vertical', direction: 1, type: 'page' },
+        geometry,
+      }),
+    ).toBe(true);
+    expect(runtime.getHandle().getSession().viewport.verticalStart).toBe(58);
+
+    expect(
+      runtime.keyboardAction({
+        action: { axis: 'horizontal', direction: 1, type: 'page' },
+        geometry,
+      }),
+    ).toBe(true);
+    expect(ranges[0]).toEqual({
+      start: START + 6.3 * DAY,
+      end: START + 13.3 * DAY,
+    });
+    props = { ...props, range: ranges[0]! };
+    runtime.updateCallbacks(props);
+    runtime.reconcile(props);
+    expect(runtime.getSnapshot().selector.interaction).toMatchObject({
+      announcement: expect.stringContaining('Visible time range'),
+      status: 'idle',
+    });
+
+    expect(
+      runtime.keyboardAction({
+        action: { direction: 'down', type: 'navigate' },
+        geometry,
+      }),
+    ).toBe(true);
+    expect(runtime.getHandle().getSession()).toMatchObject({
+      focused: { taskId: 'task-b' },
+      viewport: { verticalStart: 157 },
+    });
+    expect(ranges[1]).toEqual({
+      start: START + 17.5 * DAY,
+      end: START + 24.5 * DAY,
+    });
+    runtime.dispose();
+  });
+
   it('rejects an offscreen task reveal atomically when horizontal range cannot be acknowledged', () => {
     const runtime = createGanttReactRuntime({
       ...commonProps(),
@@ -400,6 +465,7 @@ describe('React runtime adapter', () => {
       props = { ...props, range: ranges[0]! };
       runtime.updateCallbacks(props);
       runtime.reconcile(props);
+      expect(runtime.getSnapshot().selector.interaction).toEqual({ status: 'idle' });
 
       expect(
         runtime.navigateViewport({

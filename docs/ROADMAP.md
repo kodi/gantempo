@@ -167,7 +167,7 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Mouse grab navigation complete; Slice 6 next
+**Status:** `[-]` Keyboard/focus parity complete; Slice 7 next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
@@ -202,7 +202,14 @@ DOM coverage, and live horizontal input evidence. Slice 5 added pure thresholded
 mouse-pan state plus header, conditional empty-body, and middle-body/task bindings
 with edit/create/pen/touch/secondary conflict preservation, read-only navigation,
 capture cleanup, cursor state, automated isolation, and responsive live drag
-evidence. Slice 6 will complete keyboard, focus, and accessibility behavior.
+evidence. Slice 6 added read-only vertical/time paging, full-catalog keyboard
+geometry and offscreen reveal, root focus handoff/restoration, discrete-only live
+announcements, accessible gesture guidance, focused hydration/axe regression
+coverage, and responsive live accessibility evidence. The existing four-lane
+consumer cannot provide the planned live offscreen-lane flow, so the automated
+vertical proof remains complete here and the live flow moves to Slice 7's required
+36-lane navigation fixture for the final gate. Slice 7 will prove the public
+consumer and playground experience.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -368,6 +375,20 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed timeline-navigation Slice 6. Keyboard paging now moves
+  vertical session state with one-lane overlap or controlled time with ten-percent
+  overlap, including read-only charts. Arrow/Home/End navigation uses the full
+  private occurrence catalog, fails closed when combined reveal cannot be
+  acknowledged, and retains logical focus/selection while browser focus hands to
+  the root and restores after adoption. Focused keyboard/session/hydration/axe
+  coverage passed 7 files / 65 tests, including silence for continuous navigation.
+  Chrome DevTools remained profile locked; the approved in-app Browser verified
+  time paging, root/task focus handoff/restoration, named accessibility trees at
+  1,440 × 900 and 560 × 900, zero overflow, and a clean console. The current
+  four-lane fixture cannot overflow vertically, so live offscreen-lane proof moves
+  to Slice 7's already-required 36-lane route and remains in the final gate. Complete
+  CI passed 57 files / 283 tests and rebuilt all four artifacts. Public
+  consumer/playground proof is Slice 7.
 - 2026-07-30: Completed timeline-navigation Slice 5. Primary header, conditional
   primary empty-body, and middle body/task mouse drags now pan through one pure,
   thresholded, instance-owned gesture without commands or history. Existing task

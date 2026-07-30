@@ -11,7 +11,7 @@ import {
   beginKeyboardInteraction,
   keyboardCreationIntent,
 } from '../interaction/keyboard';
-import { navigateInteractionOccurrence } from '../interaction/navigation';
+import { navigateRuntimeOccurrence } from '../interaction/navigation';
 import {
   beginViewportPanGesture,
   endViewportPanGesture,
@@ -20,7 +20,11 @@ import {
   type ViewportPanAxis,
   type ViewportPanGestureState,
 } from '../interaction/pan-gesture';
-import { shiftVerticalViewport } from '../interaction/viewport-navigation';
+import {
+  pageTimeRange,
+  pageVerticalViewport,
+  shiftVerticalViewport,
+} from '../interaction/viewport-navigation';
 import type {
   InteractionGestureOptions,
   InteractionGestureState,
@@ -173,6 +177,11 @@ export type GanttKeyboardAction =
   | { readonly mode: InteractionKeyboardMode; readonly type: 'begin' }
   | { readonly type: 'activate' | 'cancel' | 'commit' | 'create' | 'delete' }
   | { readonly direction: InteractionNavigationDirection; readonly type: 'navigate' }
+  | {
+      readonly axis: 'horizontal' | 'vertical';
+      readonly direction: -1 | 1;
+      readonly type: 'page';
+    }
   | { readonly action: 'redo' | 'undo'; readonly type: 'history' }
   | { readonly type: 'toggle-selection' };
 
@@ -359,6 +368,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let panGesture: ViewportPanGestureState = IDLE_VIEWPORT_PAN_GESTURE;
   let gestureGeometry: GanttPointerGeometry | undefined;
   let keyboardGesture: InteractionKeyboardState | undefined;
+  let pendingRangeAnnouncement = false;
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
   const pipeline = createChartScenePipeline();
@@ -864,7 +874,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
   function focusedKeyboardTarget(): GanttTaskTarget | undefined {
     const focused = store.getSnapshot().session.focused;
-    return focused?.kind === 'task' ? visibleTarget(focused) : undefined;
+    return focused?.kind === 'task' && catalogOccurrence(focused) !== undefined
+      ? focused
+      : undefined;
   }
 
   function taskTitle(target: GanttTaskTarget): string {
@@ -874,10 +886,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     );
   }
 
-  function revealKeyboardTarget(target: GanttTaskTarget): void {
-    const task = snapshot.scene.taskBars.find((candidate) => candidate.viewKey === target.viewKey);
+  function revealKeyboardTarget(target: GanttTaskTarget): boolean {
+    const task = catalogOccurrence(target);
     if (task === undefined) {
-      return;
+      return false;
     }
     const session = store.getSnapshot().session;
     const extent =
@@ -886,25 +898,84 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         : snapshot.scene.bounds.defaultLaneHeight;
     const currentStart = session.viewport.verticalStart;
     const currentEnd = currentStart + extent;
-    const verticalStart =
+    const unclampedVerticalStart =
       task.y < currentStart
         ? task.y
         : task.y + task.height > currentEnd
           ? task.y + task.height - extent
           : currentStart;
-    updateSession(
+    const verticalStart = Math.max(
+      0,
+      Math.min(unclampedVerticalStart, Math.max(0, snapshot.scene.bounds.timelineHeight - extent)),
+    );
+    const horizontalRange =
+      task.end <= display.range.start || task.start >= display.range.end
+        ? alignedTaskRange(task)
+        : undefined;
+    if (
+      (sessionControlled && callbacks.onSessionChange === undefined) ||
+      (horizontalRange !== undefined && callbacks.onRangeChange === undefined)
+    ) {
+      return false;
+    }
+    if (horizontalRange !== undefined && !rangeProposals.requestRange(horizontalRange, 'runtime')) {
+      return false;
+    }
+    return updateSession(
       Object.freeze({
         focused: target,
         selection: session.selection,
-        viewport: Object.freeze({
-          verticalStart: Math.max(
-            0,
-            Math.min(verticalStart, Math.max(0, snapshot.scene.bounds.timelineHeight - extent)),
-          ),
-        }),
+        viewport: Object.freeze({ verticalStart }),
       }),
       'runtime',
     );
+  }
+
+  function pageKeyboardViewport(
+    axis: 'horizontal' | 'vertical',
+    direction: -1 | 1,
+    geometry: GanttPointerGeometry,
+  ): boolean {
+    if (axis === 'horizontal') {
+      const range = pageTimeRange(display.range, direction);
+      if (range === undefined || callbacks.onRangeChange === undefined) {
+        return false;
+      }
+      pendingRangeAnnouncement = true;
+      if (!rangeProposals.requestRange(range, 'runtime')) {
+        pendingRangeAnnouncement = false;
+        return false;
+      }
+      return true;
+    }
+    const session = store.getSnapshot().session;
+    const verticalStart = pageVerticalViewport(
+      session.viewport.verticalStart,
+      direction,
+      snapshot.scene.bounds.timelineHeight,
+      geometry.height,
+      snapshot.scene.bounds.defaultLaneHeight,
+    );
+    if (verticalStart === undefined || verticalStart === session.viewport.verticalStart) {
+      return false;
+    }
+    const updated = updateSession(
+      Object.freeze({
+        ...(session.focused === undefined ? {} : { focused: session.focused }),
+        selection: session.selection,
+        viewport: Object.freeze({ verticalStart }),
+      }),
+      'runtime',
+    );
+    if (updated) {
+      setInteraction(
+        Object.freeze({
+          announcement: `Timeline moved ${direction < 0 ? 'up' : 'down'} one page.`,
+          status: 'idle',
+        }),
+      );
+    }
+    return updated;
   }
 
   function toggleKeyboardSelection(target: GanttTaskTarget): void {
@@ -1234,6 +1305,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (input.geometry === undefined) {
         return false;
       }
+      if (input.action.type === 'page' && keyboardGesture === undefined) {
+        return pageKeyboardViewport(input.action.axis, input.action.direction, input.geometry);
+      }
       const options = interactionOptions(input.geometry);
       if (keyboardGesture !== undefined) {
         if (input.action.type === 'cancel') {
@@ -1274,12 +1348,15 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return false;
       }
       if (input.action.type === 'navigate') {
-        const next = navigateInteractionOccurrence(options.index, target, input.action.direction);
+        const next = navigateRuntimeOccurrence(
+          occurrences(snapshot.scene, snapshot.occurrenceCatalog).runtime,
+          target,
+          input.action.direction,
+        );
         if (next === undefined) {
           return false;
         }
-        revealKeyboardTarget(next);
-        return true;
+        return revealKeyboardTarget(next);
       }
       if (input.action.type === 'toggle-selection') {
         toggleKeyboardSelection(target);
@@ -1620,6 +1697,19 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         const event = Object.freeze({ source: 'controlled-prop' as const });
         emitCallback('onViewportChange', () =>
           callbacks.onViewportChange?.(viewportEvent(snapshot.selector), event),
+        );
+      }
+      if (
+        pendingRangeAnnouncement &&
+        (previousSelector.range.start !== snapshot.selector.range.start ||
+          previousSelector.range.end !== snapshot.selector.range.end)
+      ) {
+        pendingRangeAnnouncement = false;
+        setInteraction(
+          Object.freeze({
+            announcement: `Visible time range ${new Date(snapshot.selector.range.start).toISOString()} to ${new Date(snapshot.selector.range.end).toISOString()}.`,
+            status: 'idle',
+          }),
         );
       }
     },

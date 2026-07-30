@@ -399,6 +399,18 @@ function keyboardActionForEvent(
   if (platformModifier && !event.altKey && key === 'y') {
     return { action: 'redo', type: 'history' };
   }
+  if (
+    (event.key === 'PageUp' || event.key === 'PageDown') &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.shiftKey
+  ) {
+    return {
+      axis: event.altKey ? 'horizontal' : 'vertical',
+      direction: event.key === 'PageUp' ? -1 : 1,
+      type: 'page',
+    };
+  }
   if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return undefined;
   }
@@ -692,7 +704,12 @@ function GanttSurface({
     focused?.kind === 'task' && scene.taskBars.some((task) => task.viewKey === focused.viewKey)
       ? focused.viewKey
       : undefined;
-  const rovingViewKey = disabled ? undefined : (focusedViewKey ?? scene.taskBars[0]?.viewKey);
+  const logicalTaskFocused = focused?.kind === 'task';
+  const rovingViewKey = disabled
+    ? undefined
+    : logicalTaskFocused
+      ? focusedViewKey
+      : scene.taskBars[0]?.viewKey;
   const activeTooltipTask = tooltip === undefined ? undefined : taskByViewKey.get(tooltip.viewKey);
   const activeMenuTask = menu === undefined ? undefined : taskByViewKey.get(menu.viewKey);
   const activeEditorTask = editor === undefined ? undefined : taskByViewKey.get(editor.viewKey);
@@ -754,11 +771,18 @@ function GanttSurface({
       }
       return;
     }
+    if (logicalTaskFocused) {
+      if (hadLogicalTaskFocus.current) {
+        root.focus();
+      }
+      hadLogicalTaskFocus.current = true;
+      return;
+    }
     if (hadLogicalTaskFocus.current) {
       hadLogicalTaskFocus.current = false;
       root.focus();
     }
-  }, [focusedViewKey]);
+  }, [focusedViewKey, logicalTaskFocused]);
   const focusTaskElement = useCallback((viewKey: string) => {
     queueMicrotask(() => {
       const root = rootRef.current;
@@ -1358,10 +1382,8 @@ function GanttSurface({
   );
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
       if (
+        !disabled &&
         menuEnabled &&
         focusedViewKey !== undefined &&
         (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
@@ -1377,6 +1399,9 @@ function GanttSurface({
         return;
       }
       const action = keyboardActionForEvent(event, interaction.status === 'keyboard');
+      if (disabled && action?.type !== 'page') {
+        return;
+      }
       const bounds = geometry();
       if (
         action === undefined ||
@@ -1744,11 +1769,14 @@ function GanttSurface({
       tabIndex={rovingViewKey === undefined ? 0 : -1}
     >
       <p hidden id={helpId}>
-        Use arrow keys to navigate tasks, Space to select, Enter to activate or open the enabled
-        editor, Shift+F10 to open the enabled task menu, M to move, S or E to resize, N to create,
-        Delete to remove, and platform undo or redo shortcuts. In move or resize mode, use arrow
-        keys, Enter to commit, and Escape to cancel. Dependency links and all-day task editing are
-        not available in this interaction version.
+        Pan time with a horizontal wheel or trackpad gesture, Shift plus a vertical wheel, a
+        primary-button drag on the time header, or a middle-button drag on the timeline. Use PageUp
+        or PageDown to move lanes and Alt plus PageUp or PageDown to move time. Use arrow keys to
+        navigate tasks, Space to select, Enter to activate or open the enabled editor, Shift+F10 to
+        open the enabled task menu, M to move, S or E to resize, N to create, Delete to remove, and
+        platform undo or redo shortcuts. In move or resize mode, viewport gestures do not edit
+        tasks; use arrow keys, Enter to commit, and Escape to cancel. Dependency links and all-day
+        task editing are not available in this interaction version.
       </p>
       <div
         aria-colcount={resolvedColumns.length + 1}

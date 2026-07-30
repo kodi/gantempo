@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import type { ChartScene, LaneRowPrimitive, TaskBarPrimitive } from '../render/primitives';
 import { createInteractionHitTestIndex } from './hit-test';
-import { interactionOccurrences, navigateInteractionOccurrence } from './navigation';
+import {
+  interactionOccurrences,
+  navigateInteractionOccurrence,
+  navigateRuntimeOccurrence,
+} from './navigation';
 
 function lane(viewKey: string, y: number, height = 60): LaneRowPrimitive {
   return {
@@ -122,5 +126,21 @@ describe('visual occurrence navigation', () => {
         'right',
       ),
     ).toBeUndefined();
+  });
+
+  it('navigates the full runtime catalog independently of visible hit-test tasks', () => {
+    const index = fixture();
+    const visible = interactionOccurrences(index).slice(0, 2);
+    const fullCatalog = interactionOccurrences(index);
+    const current = visible[1]!.target;
+    expect(current.kind).toBe('task');
+    if (current.kind !== 'task') {
+      throw new Error('Expected a task occurrence.');
+    }
+
+    expect(navigateRuntimeOccurrence(fullCatalog, current, 'down')).toMatchObject({
+      viewKey: 'lower-right',
+    });
+    expect(navigateRuntimeOccurrence(visible, current, 'down')).toBeUndefined();
   });
 });

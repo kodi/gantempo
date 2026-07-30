@@ -685,7 +685,7 @@ Verification:
 
 ### Slice 6: Complete keyboard, focus, and accessibility behavior
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Keep navigation usable and focus-correct when virtualization changes both axes.
 
@@ -721,6 +721,43 @@ Verification:
 - `git diff --check`.
 
 Dependencies: Slice 5.
+
+Completed in this slice:
+
+- added discrete vertical paging with one lane of overlap and controlled horizontal
+  paging with a ten-percent time overlap;
+- kept paging available when document editing is read-only while preserving
+  keyboard-edit mode conflicts and browser/system modifier pass-through;
+- moved arrow/Home/End geometry to the private full occurrence catalog, with
+  fail-closed range/session acknowledgement and combined offscreen range/vertical
+  reveal before logical focus changes;
+- retained logical focus and selection while an occurrence is outside the painted
+  range, handed browser focus to the chart root, and restored task focus after the
+  occurrence became visible again;
+- announced only discrete adopted horizontal pages and discrete vertical pages, not
+  wheel or grab frames;
+- expanded the hidden accessible interaction description with wheel, trackpad,
+  header/middle drag, paging, and edit-conflict guidance.
+
+Verification:
+
+- `vp test run packages/gantt/src/interaction/navigation.test.ts packages/gantt/src/interaction/viewport-navigation.test.ts packages/gantt/src/react/runtime.test.ts packages/gantt/src/react/Gantt.keyboard.dom.test.tsx packages/gantt/src/react/Gantt.dom.test.tsx packages/gantt/src/react/Gantt.wheel.dom.test.tsx packages/gantt/src/react/Gantt.customization.dom.test.tsx`
+  passed 7 files / 65 tests, including session retention, read-only paging,
+  hydration, axe, existing keyboard CRUD/history, continuous-announcement absence,
+  and DOM focus handoff/restoration;
+- Chrome DevTools `list_pages` and an isolated-context open were attempted first but
+  the configured profile remained locked; the approved in-app Browser fallback
+  exercised `Alt+PageDown` and `Alt+PageUp` on `/interactive`;
+- live time paging moved the accessible ticks from `Jul 29`–`Aug 26` to
+  `Aug 26`–`Sep 16`, handed focus from the virtualized task to the chart root, and
+  restored focus to `interactive-task-1` after paging back;
+- accessibility-tree inspection at 1,440 × 900 and 560 × 900 retained the named
+  region/treegrid/row/button hierarchy, active task, concise help description, zero
+  page overflow, and no console warnings/errors;
+- temporary responsive viewport emulation was reset and the scoped Browser tab was
+  finalized after inspection.
+- `vp check`, `git diff --check`, and `mise run ci` passed; the complete gate covered
+  57 files / 283 tests and rebuilt all four package artifacts.
 
 ### Slice 7: Prove the public consumer and playground experience
 
@@ -1127,7 +1164,46 @@ during implementation.
 - Focused tests passed 4 files / 45 tests; `vp check`, `git diff --check`, and
   `mise run ci` passed on the completed slice.
 
+### 2026-07-30 Slice 6 keyboard, focus, and accessibility
+
+- Keyboard paging reuses the pure page math and controlled range proposal boundary:
+  `PageUp`/`PageDown` move the vertical session viewport with one lane overlap, while
+  `Alt+PageUp`/`Alt+PageDown` request a time page with ten-percent overlap.
+- Arrow/Home/End navigation now uses full-catalog time/lane geometry. A selected
+  destination must be known and both controlled range/session changes must be
+  publishable before logical focus or either viewport axis changes.
+- A focused occurrence that leaves the painted range gives its browser focus to the
+  chart root without losing logical focus/selection. Re-adoption restores the task's
+  roving stop and browser focus deterministically.
+- Discrete page changes may announce their adopted window once. Continuous
+  wheel/grab range adoption remains silent, preventing per-frame live-region noise.
+- Chrome DevTools remained profile locked, so the approved in-app Browser verified
+  the keyboard time transition, focus handoff/restoration, clean console, zero
+  overflow, help text, and accessibility trees at 1,440 × 900 and 560 × 900.
+- The current `/interactive` fixture has only four non-overflowing lanes, so this
+  slice's live flow proved horizontal virtualization and focus restoration while
+  vertical offscreen arrow reveal remains automated evidence. Slice 7's required
+  36-lane `/navigation` fixture will supply the planned live offscreen-lane surface
+  for the final gate.
+- Focused tests passed 7 files / 65 tests; `vp check`, `git diff --check`, and
+  `mise run ci` passed with 57 files / 283 tests and all four package artifacts.
+
 ## Deviations
+
+### 2026-07-30 — Live offscreen-lane keyboard proof follows the stress fixture
+
+- Slice 6 originally called for a live keyboard flow across initially offscreen lanes
+  and times, but the existing `/interactive` consumer has only four lanes and no
+  vertical overflow.
+- The live Slice 6 gate therefore proved time virtualization, root focus handoff,
+  deterministic task-focus restoration, responsive accessibility trees, and zero
+  overflow; full-catalog vertical destination/reveal behavior passed focused pure,
+  runtime, and DOM tests.
+- Slice 7 already owns the deterministic 36-lane `/navigation` fixture. The live
+  offscreen-lane keyboard flow moves to that fixture and remains required by the
+  final Slice 8 gate.
+- This changes evidence timing only. It does not change keyboard semantics, public
+  types, architecture, or milestone order.
 
 ### 2026-07-30 — Missing-range empty mouse drag no longer enters creation rejection
 
@@ -1190,11 +1266,9 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 6 by adding `PageUp`/`PageDown` and
-`Alt+PageUp`/`Alt+PageDown` to the keyboard adapter, then move arrow/Home/End
-geometric navigation from the viewport hit-test index to the full occurrence
-catalog. Request offscreen range/vertical reveal before DOM focus transfer, hand DOM
-focus to the root when logical focus virtualizes out, restore it after adoption, and
-update accessible help without continuous live-region noise. Verify focused
-keyboard/session/focus/hydration/axe suites, live keyboard flows and accessibility
-trees at desktop/narrow widths, `vp check`, `git diff --check`, and `mise run ci`.
+Start Slice 7 by making `ScenarioGantt` acknowledge a locally owned range, then add
+the deterministic 144-event, 36-lane, 18-month `/navigation` fixture and its
+top-level menu entry. Document the controlled navigation boundary and gestures,
+verify exact fixture metadata/range updates and public-facade consumption, build and
+pack the artifacts, and use the new long-range surface for responsive two-axis
+playground checks.
