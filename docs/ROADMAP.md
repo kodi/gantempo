@@ -163,6 +163,22 @@ queued after that additive post-M4 work.
 
 ## Current Focus
 
+### Post-M4 default-surface modernization
+
+**Status:** `[x]` Complete and verified
+
+The [default surface modernization plan](plans/2026-07-30-default-surface-modernization-plan.md)
+refreshes the built-in task editor and context menu with a tighter hierarchy,
+consistent Lucide iconography, native local date-time controls, modern control and
+action states, and responsive overlay styling. Public slot, command, accessibility,
+focus, and overlay contracts remain unchanged.
+
+The menu and editor now pass focused and full CI, package/playground builds, and live
+Chrome gates at 1,440 × 900 and 560 × 900. Menu collision safety, responsive
+bottom-sheet layout, focus, Escape restoration, modal isolation, console, network,
+and accessibility-tree behavior are recorded in the completed plan. Appendix Slice
+A1 is again the next action.
+
 ### Post-M4 overlay-boundary hardening
 
 **Status:** `[x]` Complete and verified
@@ -296,6 +312,49 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Started the bounded post-M4 default-surface modernization. The active
+  plan selects internally owned Lucide icons and native local date-time controls while
+  preserving the public slots, menu items, epoch-millisecond command boundary,
+  accessible labels, keyboard/focus behavior, and overlay ownership.
+- 2026-07-30: The first Lucide install attempt found that the checkout's existing
+  modules use the user pnpm store while sandboxed pnpm defaults to a project-local
+  store. No dependency files changed; implementation will reuse the existing store
+  rather than relink the workspace.
+- 2026-07-30: The shell pnpm is 11.9.0 while the repository pins 11.18.0, and the
+  successful dependency add rewrote unrelated peer snapshots. The lockfile will be
+  normalized with the pinned client so this slice retains only Lucide-related changes.
+- 2026-07-30: Lockfile normalization now retains only 12 Lucide-specific lines.
+  Existing `@napi-rs/wasm-runtime` alpha peer warnings remain unrelated; Lucide's
+  React peer is satisfied.
+- 2026-07-30: Pnpm 11.18.0 would require purging modules linked by 11.9.0 before
+  scripts run. This bounded UI pass will not perform a broad reinstall; existing
+  linked tooling runs verification and the pinned client remains lockfile authority.
+- 2026-07-30: Direct formatting passed 132 files. Direct type checking then exposed
+  an unrelated Vite/plugin config type collision after the older install changed
+  module links; repository-managed verification will confirm whether accepted
+  lockfile links need repair.
+- 2026-07-30: Focused DOM tests caught the visible Required hint changing the Title
+  input's computed accessible name. The implementation now preserves the stable
+  `Title` name explicitly while retaining the visual hint.
+- 2026-07-30: Completed default-surface implementation. Eight focused tests, all 248
+  repository tests, formatting/lint/types, package build, and production playground
+  build pass. Live Chrome verification is the remaining gate.
+- 2026-07-30: The first live-gate server start was blocked by sandbox `EPERM` while
+  binding local port 5173; the verified repository dev task requires local-listener
+  permission for Chrome inspection.
+- 2026-07-30: The selected Chrome tab retained a prior 150-pixel emulation after a
+  window resize request. The menu remained operable in that stress case; explicit
+  viewport emulation will own the recorded desktop/narrow matrix.
+- 2026-07-30: Desktop Chrome exposed unnecessary seconds/milliseconds in ordinary
+  date controls. Inputs now use minute precision for minute-aligned tasks and preserve
+  sub-minute precision only when present.
+- 2026-07-30: Chrome's issue panel found unnamed editor controls. Stable
+  `title`/`start`/`end` names now satisfy form diagnostics without changing command
+  submission.
+- 2026-07-30: Completed and verified default-surface modernization. The 1,440 × 900
+  and 560 × 900 Chrome gates pass menu/editor geometry, responsive layout, focus and
+  modal restoration, accessibility-tree, console, and 69-request network checks.
+  Final CI passes all 248 tests and the production builds.
 - 2026-07-30: Started post-M4 overlay-boundary hardening after Chrome DevTools
   reproduced a 74-pixel clipped context menu and chart-confined modal on
   `/interactive`. Accepted the document-default, explicit-root/custom-container,
@@ -352,6 +411,61 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — Default-surface modernization started
+
+- Created and linked the active implementation plan for the built-in task editor and
+  context menu.
+- Kept the work inside the existing M4 surface and overlay boundaries: no public
+  contract or architecture decision changes.
+- Selected internal `lucide-react` icons, native `datetime-local` inputs, modern
+  control/action styling, destructive action treatment, and responsive verification.
+- Baseline inspection confirmed the existing role, accessible-name, keyboard,
+  focus-return, collision, and modal-isolation contracts can be preserved.
+- Recorded the non-product dependency-store deviation: the first install stopped
+  before mutation because the checkout and sandbox selected different pnpm stores.
+- Recorded the pnpm-version deviation after 11.9.0 rewrote unrelated lockfile peer
+  snapshots; the pinned 11.18.0 client owns final lockfile verification.
+- Normalization removed all unrelated lockfile churn. The remaining peer warnings
+  predate and are independent of this surface refinement.
+- Avoided an unnecessary full module purge when the pinned client rejected script
+  execution against older links; verification uses the working linked runtime.
+- Direct formatting passed; the first typecheck exposed a Vite/plugin type collision
+  in tooling resolution rather than the changed surface code.
+- The first focused DOM run caught and corrected the Title-label regression introduced
+  by the visual Required hint.
+- Slice 2 now passes 8 focused tests and the complete 51-file/248-test CI gate.
+  Package output is 307.90 kB JavaScript/20.38 kB CSS, and the production playground
+  emits 408.69 kB JavaScript/26.23 kB CSS before compression.
+- Live inspection remains active after the sandbox blocked the first local-listener
+  attempt before the application served.
+- Chrome's stale 150-pixel emulation was identified before accepting live geometry;
+  intended viewport evidence will use explicit emulation.
+- Live desktop inspection tightened the native date controls after their universal
+  millisecond step produced visual noise for minute-aligned schedules.
+- Live console/issue inspection added stable form-control names after Chrome flagged
+  the otherwise-labelled controls for autofill diagnostics.
+
+### 2026-07-30 — Default-surface modernization complete
+
+- Added internally owned Lucide iconography without changing public surface-slot or
+  menu-item contracts.
+- Modernized the default menu with task context, four icon-backed actions, consumer
+  action ordering, keyboard focus treatment, and separated destructive Delete.
+- Modernized the editor with a structured header, local native date-time controls,
+  precision-aware date display, styled validation, primary Save, responsive
+  two-column/bottom-sheet layouts, and stable form/accessibility names.
+- The final local gate passed 132-file formatting, 121-file lint/type checking, 51
+  test files/all 248 tests, package build, and the production playground build.
+- Chrome DevTools passed `/interactive` at 1,440 × 900 and 560 × 900: the desktop
+  menu measured 248 × 239.59 pixels, the desktop editor 540 × 353.70 pixels, the
+  narrow menu retained the eight-pixel collision safe area, and the narrow editor
+  became a 540-pixel bottom sheet with one-column dates and no page overflow.
+- The modal accessibility tree, initial focus, Escape focus return, body scroll/inert
+  restoration, form issue cleanup, zero application console errors/warnings, and all
+  69 successful requests passed. Extension/DevTools warnings matched prior recorded
+  environment noise.
+- Appendix Slice A1 is again the next action.
 
 ### 2026-07-30 — Overlay-boundary hardening started
 

@@ -18,6 +18,11 @@ import type {
 const DAY = 24 * 60 * 60 * 1_000;
 const START = Date.UTC(2026, 6, 29);
 
+function localEditorDate(epoch: number): string {
+  const date = new Date(epoch);
+  return new Date(epoch - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
 function documentFixture(title = 'Task A'): GanttDocument {
   return {
     assignments: [],
@@ -187,6 +192,12 @@ describe('Gantt customization surfaces', () => {
     expect(document.body.style.overflow).toBe('hidden');
     expect(view.container.hasAttribute('inert')).toBe(true);
     expect(view.container.getAttribute('aria-hidden')).toBe('true');
+    const startInput = screen.getByLabelText<HTMLInputElement>('Start (ISO 8601)');
+    const endInput = screen.getByLabelText<HTMLInputElement>('End (ISO 8601)');
+    expect(startInput.type).toBe('datetime-local');
+    expect(endInput.type).toBe('datetime-local');
+    expect(Date.parse(startInput.value)).toBe(START + DAY);
+    expect(Date.parse(endInput.value)).toBe(START + 2 * DAY);
     const lateBodyChild = document.createElement('div');
     document.body.append(lateBodyChild);
     await waitFor(() => {
@@ -198,16 +209,8 @@ describe('Gantt customization surfaces', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toBe('Title is required.');
 
     await user.type(screen.getByLabelText('Title'), 'Task A updated');
-    await user.clear(screen.getByLabelText('Start (ISO 8601)'));
-    await user.type(
-      screen.getByLabelText('Start (ISO 8601)'),
-      new Date(START + 2 * DAY).toISOString(),
-    );
-    await user.clear(screen.getByLabelText('End (ISO 8601)'));
-    await user.type(
-      screen.getByLabelText('End (ISO 8601)'),
-      new Date(START + 4 * DAY).toISOString(),
-    );
+    fireEvent.change(startInput, { target: { value: localEditorDate(START + 2 * DAY) } });
+    fireEvent.change(endInput, { target: { value: localEditorDate(START + 4 * DAY) } });
     await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -250,6 +253,14 @@ describe('Gantt customization surfaces', () => {
     await user.keyboard('{Shift>}{F10}{/Shift}');
 
     const menu = await screen.findByRole('menu', { name: 'Task A actions' });
+    expect(menu.querySelector('.gt-gantt__context-menu-header')?.textContent).toContain('Task A');
+    expect(menu.querySelectorAll('.gt-gantt__context-menu-icon svg')).toHaveLength(4);
+    expect(
+      Array.from(
+        menu.querySelectorAll('[role="menuitem"]'),
+        (item) => item.getAttribute('aria-label')?.split(':')[0],
+      ),
+    ).toEqual(['Create task', 'Edit task', 'Rename from command', 'Delete task']);
     const createItem = within(menu).getByRole<HTMLButtonElement>('menuitem', {
       name: /Create task/,
     });
@@ -260,6 +271,11 @@ describe('Gantt customization surfaces', () => {
     expect(
       within(menu).getByRole<HTMLButtonElement>('menuitem', { name: 'Edit task' }).disabled,
     ).toBe(false);
+    expect(
+      within(menu)
+        .getByRole<HTMLButtonElement>('menuitem', { name: 'Delete task' })
+        .getAttribute('data-destructive'),
+    ).toBe('true');
     await user.click(within(menu).getByRole('menuitem', { name: 'Rename from command' }));
 
     const renamed = await screen.findByRole('button', { name: /Command renamed/ });

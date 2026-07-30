@@ -321,11 +321,13 @@
   :where(.gt-gantt__tooltip, .gt-gantt__context-menu) {
     position: absolute;
     max-width: min(290px, calc(100% - 16px));
-    border: 1px solid var(--gt-color-border);
-    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--gt-color-border) 82%, transparent);
+    border-radius: 12px;
     color: var(--gt-color-text);
     background: var(--gt-color-surface);
-    box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
+    box-shadow:
+      0 1px 2px rgb(20 30 25 / 8%),
+      0 16px 48px rgb(20 30 25 / 18%);
     pointer-events: auto;
   }
 
@@ -344,33 +346,130 @@
 
   :where(.gt-gantt__context-menu) {
     display: grid;
-    min-width: min(190px, calc(100% - 16px));
-    padding: 5px;
+    width: min(248px, calc(100% - 16px));
+    overflow: hidden;
+    padding: 6px;
   }
 
-  :where(.gt-gantt__context-menu button) {
+  :where(.gt-gantt__context-menu-header) {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+    padding: 9px 10px 10px;
+    border-bottom: 1px solid var(--gt-color-grid);
+    margin: 0 2px 5px;
+  }
+
+  :where(.gt-gantt__context-menu-header span) {
+    color: var(--gt-color-text-muted);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  :where(.gt-gantt__context-menu-header strong) {
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :where(.gt-gantt__context-menu-items) {
     display: grid;
     gap: 2px;
-    padding: 8px 9px;
-    border: 0;
-    border-radius: 5px;
-    color: inherit;
-    background: transparent;
-    font: inherit;
-    text-align: left;
   }
 
-  :where(
-    .gt-gantt__context-menu button:not(:disabled):hover,
-    .gt-gantt__context-menu button:focus-visible
-  ) {
-    outline: 2px solid var(--gt-color-focus);
-    outline-offset: -2px;
+  :where(.gt-gantt__context-menu-item) {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    min-height: 40px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 9px 6px 6px;
+    border: 0;
+    border-radius: 8px;
+    color: inherit;
+    background: transparent;
+    cursor: default;
+    font: inherit;
+    text-align: left;
+    transition:
+      color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  :where(.gt-gantt__context-menu-icon) {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 7px;
+    color: var(--gt-color-text-muted);
     background: var(--gt-color-surface-muted);
   }
 
-  :where(.gt-gantt__context-menu button:disabled) {
+  :where(.gt-gantt__context-menu-icon svg) {
+    width: 15px;
+    height: 15px;
+  }
+
+  :where(.gt-gantt__context-menu-copy) {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  :where(.gt-gantt__context-menu-copy > span) {
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 625;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :where(
+    .gt-gantt__context-menu-item:not(:disabled):hover,
+    .gt-gantt__context-menu-item:focus-visible
+  ) {
+    outline: none;
+    background: color-mix(in srgb, var(--gt-color-task) 10%, var(--gt-color-surface));
+  }
+
+  :where(
+    .gt-gantt__context-menu-item:not(:disabled):hover .gt-gantt__context-menu-icon,
+    .gt-gantt__context-menu-item:focus-visible .gt-gantt__context-menu-icon
+  ) {
+    color: var(--gt-color-task);
+    background: color-mix(in srgb, var(--gt-color-task) 15%, var(--gt-color-surface));
+  }
+
+  :where(.gt-gantt__context-menu-item:focus-visible) {
+    box-shadow: inset 0 0 0 2px var(--gt-color-focus);
+  }
+
+  :where(.gt-gantt__context-menu-item:disabled) {
     color: var(--gt-color-text-muted);
+    opacity: 0.62;
+  }
+
+  :where(.gt-gantt__context-menu-item[data-destructive='true']) {
+    margin-top: 5px;
+    color: #b42318;
+    box-shadow: 0 -1px var(--gt-color-grid);
+  }
+
+  :where(.gt-gantt__context-menu-item[data-destructive='true'] .gt-gantt__context-menu-icon) {
+    color: #b42318;
+    background: color-mix(in srgb, #b42318 9%, var(--gt-color-surface));
+  }
+
+  :where(.gt-gantt__context-menu-item[data-destructive='true']:not(:disabled):hover) {
+    background: color-mix(in srgb, #b42318 9%, var(--gt-color-surface));
   }
 
   :where(.gt-gantt__context-menu small) {
@@ -386,25 +485,26 @@
     inset: 0;
     padding: 16px;
     place-items: center;
-    background: rgb(0 0 0 / 28%);
+    background: rgb(15 23 20 / 42%);
+    backdrop-filter: blur(3px);
     pointer-events: auto;
   }
 
   :where(.gt-gantt__editor) {
-    width: min(430px, 100%);
+    width: min(540px, 100%);
     max-height: 100%;
     overflow: auto;
-    border: 1px solid var(--gt-color-border);
-    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--gt-color-border) 80%, transparent);
+    border-radius: 18px;
     color: var(--gt-color-text);
     background: var(--gt-color-surface);
-    box-shadow: 0 20px 60px rgb(0 0 0 / 24%);
+    box-shadow:
+      0 2px 8px rgb(13 24 19 / 10%),
+      0 28px 90px rgb(13 24 19 / 30%);
   }
 
   :where(.gt-gantt__editor form) {
     display: grid;
-    gap: 12px;
-    padding: 16px;
   }
 
   :where(.gt-gantt__editor-header, .gt-gantt__editor-actions) {
@@ -414,54 +514,271 @@
     gap: 12px;
   }
 
-  :where(.gt-gantt__editor-header > div) {
-    display: grid;
-    gap: 2px;
+  :where(.gt-gantt__editor-header) {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--gt-color-grid);
   }
 
-  :where(.gt-gantt__editor-header span) {
+  :where(.gt-gantt__editor-heading) {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+  }
+
+  :where(.gt-gantt__editor-heading-icon) {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 11px;
+    color: var(--gt-color-task);
+    background: color-mix(in srgb, var(--gt-color-task) 13%, var(--gt-color-surface));
+  }
+
+  :where(.gt-gantt__editor-heading-icon svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  :where(.gt-gantt__editor-heading > div) {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  :where(.gt-gantt__editor-heading strong) {
+    font-size: 18px;
+    font-weight: 720;
+    letter-spacing: -0.018em;
+    line-height: 1.25;
+  }
+
+  :where(.gt-gantt__editor-heading > div > span) {
     color: var(--gt-color-text-muted);
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  :where(.gt-gantt__editor-close) {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    color: var(--gt-color-text-muted);
+    background: transparent;
+  }
+
+  :where(.gt-gantt__editor-close svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  :where(.gt-gantt__editor-close:not(:disabled):hover) {
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface-muted);
+  }
+
+  :where(.gt-gantt__editor-content) {
+    display: grid;
+    gap: 18px;
+    padding: 22px 24px 24px;
   }
 
   :where(.gt-gantt__editor label) {
     display: grid;
-    gap: 5px;
-    font-size: 10px;
-    font-weight: 750;
+    min-width: 0;
+    gap: 7px;
+  }
+
+  :where(.gt-gantt__editor-label) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  :where(.gt-gantt__editor-label > span) {
+    font-size: 11px;
+    font-weight: 680;
+    line-height: 1.4;
+  }
+
+  :where(.gt-gantt__editor-label small) {
+    color: var(--gt-color-text-muted);
+    font-size: 9px;
+    font-weight: 550;
+    line-height: 1.4;
+  }
+
+  :where(.gt-gantt__editor-schedule) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  :where(.gt-gantt__editor input, .gt-gantt__editor-input-shell) {
+    min-width: 0;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 10px;
+    color: inherit;
+    background: var(--gt-color-surface-muted);
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      background-color 120ms ease;
   }
 
   :where(.gt-gantt__editor input) {
-    min-width: 0;
-    padding: 8px 9px;
-    border: 1px solid var(--gt-color-border);
-    border-radius: 6px;
-    color: inherit;
-    background: var(--gt-color-surface-muted);
+    min-height: 42px;
+    padding: 9px 11px;
     font: inherit;
+    font-size: 12px;
+    line-height: 1.4;
   }
 
-  :where(.gt-gantt__editor input:focus-visible, .gt-gantt__editor button:focus-visible) {
+  :where(.gt-gantt__editor > form > .gt-gantt__editor-content > label > input) {
+    width: 100%;
+  }
+
+  :where(.gt-gantt__editor-input-shell) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    padding-left: 11px;
+  }
+
+  :where(.gt-gantt__editor-input-shell > svg) {
+    width: 16px;
+    height: 16px;
+    color: var(--gt-color-text-muted);
+    pointer-events: none;
+  }
+
+  :where(.gt-gantt__editor-input-shell input) {
+    width: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  :where(.gt-gantt__editor input:focus-visible) {
+    outline: none;
+    border-color: var(--gt-color-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--gt-color-focus) 18%, transparent);
+    background: var(--gt-color-surface);
+  }
+
+  :where(.gt-gantt__editor-input-shell:focus-within) {
+    border-color: var(--gt-color-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--gt-color-focus) 18%, transparent);
+    background: var(--gt-color-surface);
+  }
+
+  :where(.gt-gantt__editor-input-shell input:focus-visible) {
+    box-shadow: none;
+  }
+
+  :where(.gt-gantt__editor button:focus-visible) {
     outline: 2px solid var(--gt-color-focus);
     outline-offset: 2px;
   }
 
   :where(.gt-gantt__editor button) {
-    padding: 7px 10px;
-    border: 1px solid var(--gt-color-border);
-    border-radius: 6px;
-    color: inherit;
-    background: var(--gt-color-surface-muted);
     font: inherit;
+    cursor: default;
+  }
+
+  :where(.gt-gantt__editor button:disabled, .gt-gantt__editor input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+
+  :where(.gt-gantt__editor-actions) {
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--gt-color-grid);
+    background: color-mix(in srgb, var(--gt-color-surface-muted) 64%, transparent);
+  }
+
+  :where(.gt-gantt__editor-button) {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 680;
+    line-height: 1;
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  :where(.gt-gantt__editor-button svg) {
+    width: 15px;
+    height: 15px;
+  }
+
+  :where(.gt-gantt__editor-button--secondary) {
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface);
+  }
+
+  :where(.gt-gantt__editor-button--secondary:not(:disabled):hover) {
+    background: var(--gt-color-surface-muted);
+  }
+
+  :where(.gt-gantt__editor-button--primary) {
+    margin-left: auto;
+    border-color: var(--gt-color-task);
+    color: var(--gt-color-task-text);
+    background: var(--gt-color-task);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--gt-color-task) 26%, transparent);
+  }
+
+  :where(.gt-gantt__editor-button--primary:not(:disabled):hover) {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--gt-color-task) 88%, black);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--gt-color-task) 32%, transparent);
+  }
+
+  :where(.gt-gantt__editor-spinner) {
+    animation: gt-editor-spin 800ms linear infinite;
   }
 
   :where(.gt-gantt__editor [role='alert']) {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
     margin: 0;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, #b42318 24%, transparent);
+    border-radius: 9px;
     color: #b42318;
+    background: color-mix(in srgb, #b42318 7%, var(--gt-color-surface));
     font-size: 10px;
+    line-height: 1.4;
+  }
+
+  :where(.gt-gantt__editor [role='alert'] svg) {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  @keyframes gt-editor-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   :where(.gt-gantt__sr-only) {
@@ -478,12 +795,63 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :where(.gt-gantt__task-bar, .gt-gantt__interaction-preview) {
+    :where(
+      .gt-gantt__task-bar,
+      .gt-gantt__interaction-preview,
+      .gt-gantt__context-menu-item,
+      .gt-gantt__editor input,
+      .gt-gantt__editor-input-shell,
+      .gt-gantt__editor-button
+    ) {
       transition: none;
     }
 
     :where(.gt-gantt__body-scroll) {
       scroll-behavior: auto;
+    }
+
+    :where(.gt-gantt__editor-spinner) {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    :where(.gt-gantt__editor-backdrop) {
+      padding: 10px;
+      place-items: end center;
+    }
+
+    :where(.gt-gantt__editor) {
+      width: 100%;
+      max-height: calc(100% - 10px);
+      border-radius: 16px;
+    }
+
+    :where(.gt-gantt__editor-header) {
+      padding: 18px 18px 16px;
+    }
+
+    :where(.gt-gantt__editor-heading-icon) {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+    }
+
+    :where(.gt-gantt__editor-heading strong) {
+      font-size: 16px;
+    }
+
+    :where(.gt-gantt__editor-content) {
+      gap: 16px;
+      padding: 18px;
+    }
+
+    :where(.gt-gantt__editor-schedule) {
+      grid-template-columns: 1fr;
+    }
+
+    :where(.gt-gantt__editor-actions) {
+      padding: 14px 18px 18px;
     }
   }
 
@@ -506,6 +874,22 @@
     :where(.gt-gantt__tooltip, .gt-gantt__context-menu, .gt-gantt__editor) {
       border-color: CanvasText;
       background: Canvas;
+      box-shadow: none;
+    }
+
+    :where(
+      .gt-gantt__context-menu-icon,
+      .gt-gantt__editor-heading-icon,
+      .gt-gantt__editor [role='alert']
+    ) {
+      color: CanvasText;
+      background: Canvas;
+    }
+
+    :where(.gt-gantt__editor-button--primary) {
+      border-color: ButtonText;
+      color: ButtonText;
+      background: ButtonFace;
       box-shadow: none;
     }
   }

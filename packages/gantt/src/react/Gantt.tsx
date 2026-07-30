@@ -1288,17 +1288,17 @@ function GanttSurface({
             id: 'edit',
             label: 'Edit task',
           },
+          ...additionalMenuItems.map((item) =>
+            disabled && item.disabledReason === undefined
+              ? { ...item, disabledReason: 'The chart is read-only.' }
+              : item,
+          ),
           {
             action: 'delete',
             ...(disabled ? { disabledReason: 'The chart is read-only.' } : {}),
             id: 'delete',
             label: 'Delete task',
           },
-          ...additionalMenuItems.map((item) =>
-            disabled && item.disabledReason === undefined
-              ? { ...item, disabledReason: 'The chart is read-only.' }
-              : item,
-          ),
         ];
   const onMenuSelect = (item: GanttContextMenuItem) => {
     if (item.disabledReason !== undefined || activeMenuTask === undefined) {

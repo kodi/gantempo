@@ -17,6 +17,7 @@
     "./styles.css": "./dist/style.css"
   },
   "dependencies": {
+    "lucide-react": "1.27.0",
     "zod": "4.4.3"
   },
   "peerDependencies": {
