@@ -45,8 +45,8 @@ Completion evidence and implementation findings are recorded in
 [`2026-07-30-simplest-chart-primitives-plan.md`](plans/2026-07-30-simplest-chart-primitives-plan.md).
 
 This rendering baseline is a deliberately narrow vertical subset of architecture
-Slice 2. The completed M1 and M2 kernels now provide its canonical document and change
-foundations; resolved-view and viewport foundations remain for M3.
+Slice 2. The completed M1, M2, and M3 kernels now provide its canonical document,
+change, resolved-view, variable-height layout, and indexed viewport foundations.
 
 The M1 document kernel is also complete:
 
@@ -78,6 +78,22 @@ The M2 change kernel is complete:
 Detailed completion evidence is recorded in
 [`2026-07-30-change-kernel-plan.md`](plans/2026-07-30-change-kernel-plan.md).
 
+The M3 view, layout, and viewport kernel is complete:
+
+- one immutable React-free boundary resolves document, flat project, flat resource,
+  and application-defined view topology with stable identity and provenance;
+- task and explicit segment references resolve to isolated half-open instant
+  intervals with structured diagnostics;
+- deterministic lowest-track stacking computes exact variable lane geometry;
+- binary-searched lane boundaries and augmented interval trees answer repeated
+  two-dimensional viewport queries with brute-force parity;
+- the read-only React component and real playground consume the same scene path;
+- fixed-seed properties, the 10,000-task/2,000-lane baseline, package/facade
+  inspection, full CI, production build, and responsive browser matrix pass.
+
+Detailed completion evidence is recorded in
+[`2026-07-30-view-layout-viewport-kernel-plan.md`](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
+
 ## Milestone Map
 
 | Milestone | Architecture mapping | Outcome | Status | Detailed plan |
@@ -85,7 +101,7 @@ Detailed completion evidence is recorded in
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
-| M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[-]` | [Active plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
+| M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
@@ -103,7 +119,7 @@ M1 document kernel [done]
 M2 change kernel [done]
   |
   v
-M3 view/layout/viewport kernel
+M3 view/layout/viewport kernel [done]
   |
   v
 M4 interaction runtime
@@ -118,46 +134,40 @@ M6 advanced scheduling/resources
 M7 hardening/release
 ```
 
-The completed M0 vertical slice proves the renderer direction, M1 supplies the
-canonical document boundary, and M2 completes architecture Slice 1 with the pure
-change path. M3 is next and must establish resolved view, layout, and viewport
-contracts before interaction or a broader public React API begins.
+The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
+architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
+viewport, and read-only rendering foundations. M4 interaction-runtime/public-API
+planning is next.
 
 ## Current Focus
 
-### M3: View, layout, and viewport kernel
+### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slice 8 React/browser integration complete
+**Status:** `[ ]` Not started; detailed plan not yet created
 
 **Target outcome**
 
-Resolve persisted document state into deterministic project, resource, and
-application-defined lane views; stack overlaps with variable lane heights; and query
-only the horizontal and vertical primitives required by the viewport.
+Give controlled and uncontrolled applications the same command path as pointer,
+touch, keyboard, toolbar, and imperative interaction while keeping document, session,
+and derived state separate.
 
 **Verified prerequisites**
 
-- M1 supplies the canonical six-domain document, stable serialization, reference
-  validation, and deterministic indexes.
-- M2 supplies strict typed changes, atomic patches and inverses, deterministic
-  transactions, bounded history, and collection-qualified invalidation references.
-- The existing read-only scene and responsive renderer remain the regression baseline.
+- M1 supplies the canonical document, diagnostics, persistence, and indexes.
+- M2 supplies strict commands, patches/inverses, transactions, affected references,
+  and bounded history.
+- M3 supplies stable view/provenance identity, absolute variable geometry, reusable
+  viewport indexes, semantic primitives, and one read-only React renderer.
 
 **Next action**
 
-Complete the intentional facade, README, packed-artifact inspection, and final
-ordinary/benchmark/playground evidence in Slice 9 of the
-[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
+Create the detailed M4 interaction-runtime/public-API plan before implementation.
+Resolve controlled/uncontrolled ownership, session state, viewport subscriptions and
+measurement, command interception, pointer/touch/keyboard parity, focus/selection,
+drag preview, hit testing, imperative handles, accessibility announcements, and
+incremental invalidation boundaries without weakening the verified M1–M3 contracts.
 
 ## Later Milestone Outcomes
-
-### M4: Interaction runtime and public API
-
-- Separate document, session, and derived runtime state.
-- Add selection, focus, drag preview, viewport, and editor session state.
-- Support controlled and uncontrolled React ownership.
-- Route pointer, touch, keyboard, toolbar, and imperative operations through commands.
-- Add interception, subscriptions, component handles, and accessible announcements.
 
 ### M5: Basic project Gantt
 
@@ -231,6 +241,33 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 view, layout, and viewport kernel complete
+
+- Completed all nine slices: durable contract, four-view topology, task/segment
+  intervals, deterministic variable-height stacks, immutable indexed viewport,
+  performance baseline, semantic scene composition, React/playground integration, and
+  intentional facade/documentation.
+- Public M3 surface is limited to optional `GanttProps.view` and seven data-only
+  definition/descriptor types. Resolved keys/views, layout, viewport, counters,
+  generators, and oracles remain private.
+- Final `mise run ci` passed 81 formatted and 70 lint/type-checked files, 29 test files
+  and 125 tests, and four package artifacts. Focused root imports passed 3 files and
+  12 tests; the production playground transformed 45 modules.
+- The final `m3-v1`/seed `20260738` benchmark retained exact oracle parity. Cold means
+  were `37.4279`–`39.8472` ms; warm horizontal/vertical/diagonal means were `0.4483`,
+  `0.0033`, and `0.0030` ms with unchanged structural work counts. This remains a
+  local baseline without a timing threshold.
+- Packed inspection found exactly five npm entries, ten intentional runtime exports,
+  seven M3 public view types, React/browser-free pure sources, no private declaration
+  leakage, and no test/benchmark/oracle/playground dependency leakage.
+- Reused the final Slice 8 Chrome DevTools matrix because no rendered source changed:
+  `/` and `/matrix` passed at 1440 × 900, 900 × 900, and 560 × 900 with aligned
+  variable geometry, zero diagnostics, no page overflow, complete accessible names,
+  intended provenance/themes/clipping/stacks, disabled controls, and no
+  playground-owned console or network failure.
+- Marked M3 complete and selected detailed M4 interaction-runtime/public-API planning
+  as the next action.
 
 ### 2026-07-30 — M3 Slice 8 React and playground integration
 

@@ -91,6 +91,65 @@ The React `Gantt` component accepts the normalized `GanttDocument`; parsing does
 run inside React. Keep the external trust boundary in application loading or
 persistence code, then pass the accepted document to the component.
 
+## Read-only views and layout
+
+`Gantt` defaults to persisted document lanes and placements. Its optional data-only
+`view` prop can instead derive one flat lane per task, derive resource lanes from
+assignments, or consume application-defined lane and placement descriptors:
+
+```tsx
+import { Gantt, type GanttViewDefinition } from '@gantempo/gantt';
+
+const view: GanttViewDefinition = {
+  kind: 'custom',
+  id: 'delivery-phases',
+  lanes: [
+    { key: 'shape', title: 'Shape the work', minimumHeight: 72 },
+    { key: 'ship', title: 'Ship the work' },
+  ],
+  placements: [
+    { key: 'requirements', laneKey: 'shape', taskId: 'requirements' },
+    {
+      key: 'campaign-part-1',
+      laneKey: 'ship',
+      taskId: 'campaign',
+      segmentId: 'campaign-part-1',
+    },
+  ],
+};
+
+<Gantt
+  document={document}
+  range={{ start: Date.UTC(2026, 6, 29), end: Date.UTC(2026, 7, 27) }}
+  tickAnchor={Date.UTC(2026, 6, 29)}
+  tickInterval={7 * 24 * 60 * 60 * 1000}
+  timeZone="Europe/Belgrade"
+  view={view}
+/>;
+```
+
+Built-in `{ kind: 'project' }` follows canonical task order. Built-in
+`{ kind: 'resource' }` follows resource and assignment order. Custom descriptors
+follow caller order and require non-empty stable keys; they remain derived input and
+are never serialized into `GanttDocument`.
+
+Resolved view identity is separate from canonical entity identity. Rendered lanes and
+bars always expose `data-view-key`; persisted or derived canonical provenance is also
+exposed through the applicable `data-task-id`, `data-lane-id`, `data-resource-id`,
+`data-assignment-id`, `data-placement-id`, and `data-segment-id` attributes.
+
+Renderable instant intervals use half-open `[start, end)` semantics. An explicit
+`segmentId` selects that segment; otherwise a placement uses its task schedule.
+All-day schedules are not coerced to instants. Missing or invalid individual
+intervals emit structured `layout.*` diagnostics without removing usable siblings.
+
+Overlapping bars use deterministic stacking and grow the lane beyond its minimum
+outer height when necessary. Touching intervals may share a track. Variable lane
+height, interval indexing, and viewport intersection are pure derived kernels; the
+current React component remains read-only and does not own scrolling, zooming,
+selection, focus, hit testing, drag state, editors, or command dispatch. Those are M4
+interaction-runtime concerns.
+
 ## Pure change flow
 
 The root package also exports a synchronous framework-independent change kernel.
@@ -189,12 +248,14 @@ Start the React playground:
 pnpm dev
 ```
 
-The playground exercises the first real read-only rendering pipeline: canonical task,
-lane, and placement records pass through deterministic time-scale and scene primitives
-before the DOM/SVG renderer draws them. It has two pages:
+The playground exercises the complete M3 read-only pipeline: canonical documents and
+data-only views pass through view resolution, interval resolution, variable-height
+stack layout, indexed viewport query, time-scale primitives, and the DOM/SVG renderer.
+It has two pages:
 
-- `/` keeps the main development scenario at a large, useful size;
-- `/matrix` shows a small set of content, density, and theme variants together.
+- `/` keeps the default persisted document view at a large, useful size;
+- `/matrix` shows project, resource, custom, segment, overlap, density, theme,
+  clipping, and empty variants together.
 
 The equivalent mise command is `mise run dev`. To verify the standalone playground
 build, run `pnpm build:playground`.

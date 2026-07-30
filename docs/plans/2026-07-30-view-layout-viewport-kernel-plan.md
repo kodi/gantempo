@@ -930,7 +930,7 @@ the slice done.
 
 ### Slice 9: Intentional facade, documentation, and M3 completion evidence
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1477,6 +1477,60 @@ None of these questions authorizes implementation before Slice 1 is complete.
   all static checks, and four package artifacts (127.19 kB JavaScript, 272.02 kB source
   map, 3.80 kB CSS, and 18.33 kB declarations).
 
+### 2026-07-30 — Slice 9 facade, documentation, and final gate
+
+- Added a README view example and documented built-in/custom ordering, custom key
+  ownership, stable view/canonical DOM identity, explicit segment interval selection,
+  all-day limitation, deterministic stack growth, pure viewport ownership, and M4
+  interaction exclusions.
+- Added focused root-import coverage for default document, project, resource, and
+  custom segment views. The complete root-facade command passed 3 files and 12 tests.
+- `vp pack` emitted 127.19 kB JavaScript, 272.02 kB source map, 3.80 kB CSS, and
+  18.33 kB declarations.
+- Packed inspection found:
+  - exactly ten runtime exports: `Gantt`, codec parse/serialize, command/patch apply,
+    and five history operations;
+  - declarations export only the seven M3 definition/descriptor types required by
+    `GanttProps.view`; no resolved key/view, layout, viewport, query-work, fixture, or
+    oracle name leaked;
+  - the valid version-3 source map contains 23 sources, including view/layout/viewport
+    implementation and no playground source;
+  - CSS contains the scoped `@layer`, semantic parts, and variable lane/timeline
+    height ratios;
+  - source/artifact scans found pure view/layout/viewport modules React/browser-free
+    and no fast-check, Vitest, benchmark, oracle, or playground dependency leakage;
+  - package metadata retains only React 18/19 as a peer runtime boundary.
+- The first `npm pack --dry-run --json packages/gantt` command from the repository
+  root was interpreted by npm as a Git package spec and failed before packing.
+  Rerunning `npm pack --dry-run --json` inside `packages/gantt` succeeded: the 79,752
+  byte archive preview contains exactly the four dist artifacts plus `package.json`
+  (421,696 bytes unpacked) and no bundled dependencies.
+- The complete pre-synchronization final gate passed:
+  - `mise run ci`: 81 formatted files, 70 lint/type-checked files, 29 test files, 125
+    tests, and the four package artifacts;
+  - `mise run build-playground`: 45 modules and the same 0.85 kB HTML, 9.48 kB CSS,
+    and 226.01 kB JavaScript outputs;
+  - focused root facade: 3 files and 12 tests;
+  - `git diff --check`.
+- The final benchmark rerun retained generator `m3-v1`/seed `20260738`, exact
+  brute-force parity, and structural work counts. Cold means were `37.4279` ms
+  document sparse, `39.8472` ms resource sparse, and `39.2169` ms document dense.
+  Warm means were `0.4483` ms horizontal sparse (397 visible, 2,000 lanes/4,326
+  nodes), `0.0033` ms vertical sparse (40 visible, 8/40), and `0.0030` ms diagonal
+  dense (25 visible, 8/34). Vitest again identified benchmark support as
+  experimental; no threshold or browser claim was added.
+- No rendered source changed after Slice 8 browser fixes, so the final browser gate
+  reuses the connected six-combination Chrome DevTools evidence recorded there.
+- Final synchronization verification passed:
+  - `vp check` reported all 81 files formatted and no warning, lint, or type error
+    across 70 checked files;
+  - `git diff --check` passed;
+  - explicit existence checks passed for architecture, roadmap, decision, plan,
+    README, facade, React, view-type, and benchmark files;
+  - a focused cross-document/source read confirmed compatible view variants,
+    identity/provenance, half-open interval, minimum outer height, stack, viewport,
+    benchmark, public/private boundary, M3 completion, and M4 handoff terminology.
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
@@ -1487,14 +1541,20 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - [x] Slice 6: Performance fixture and M3 viewport baseline
 - [x] Slice 7: Compose viewport-backed scene primitives
 - [x] Slice 8: Read-only React and playground integration
-- [ ] Slice 9: Intentional facade, documentation, and M3 completion evidence
-- [ ] Final automated gate
-- [ ] Final browser gate
+- [x] Slice 9: Intentional facade, documentation, and M3 completion evidence
+- [x] Final automated gate
+- [x] Final browser gate
 
 ## Next Slice
 
-Start Slice 9 by tightening root-facade tests, documenting the read-only view contract
-and limitations in `README.md`, inspecting packed declarations/JavaScript/source
-map/CSS and dependencies, rerunning the full ordinary/benchmark/playground gates, and
-synchronizing final architecture/decision/plan/roadmap evidence. Mark M3 complete only
-after that final evidence and select M4 planning as the next action.
+M3 is complete. Create a new detailed M4 interaction-runtime/public-API plan before
+implementation. Start from `docs/ARCHITECTURE.md` state, commands/events, React API,
+rendering/virtualization, accessibility, performance, testing, and Slice 3 sections;
+the completed M1–M3 plans/decisions; `packages/gantt/src/commands/`; the private
+view/layout/viewport identity and geometry; and `packages/gantt/src/react/Gantt.tsx`.
+
+The M4 plan must resolve controlled/uncontrolled document and session ownership,
+viewport measurement/subscriptions, command interception, pointer/touch/keyboard
+parity, selection/focus, drag preview, hit testing, imperative handles, announcements,
+and incremental invalidation. Keep M3 view definitions data-only and do not expose
+private kernel indexes merely to implement runtime caching.
