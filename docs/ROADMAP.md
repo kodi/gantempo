@@ -177,6 +177,14 @@ previews are verified. Integrate the per-instance runtime and intentional public
 facade with React selectors, ownership props, semantic events, measurement, cleanup,
 SSR safety, and the narrow imperative handle.
 
+**Queued M4 appendix**
+
+After the base M4 implementation and both final gates close, execute the
+[item properties, semantic color, and progress appendix](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md).
+The appendix adds task and lane semantic variants, coordinated progress rendering and
+editing, and a bounded standard properties surface without inserting scope into the
+active M4 slices.
+
 **Adjacent proof complete**
 
 The
