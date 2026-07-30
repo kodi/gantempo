@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: In progress; Slice 4 complete, Slice 5 next
+Status: In progress; Slice 5 complete, Slice 6 next
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -609,7 +609,7 @@ Verification:
 
 ### Slice 5: Add direct mouse grab panning without breaking editing
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Let mouse users drag the timeline while preserving M4 task editing and mapped
 creation.
@@ -647,6 +647,41 @@ Verification:
 - `git diff --check`.
 
 Dependencies: Slice 4.
+
+Completed in this slice:
+
+- added a pure mouse-pan threshold/movement/end state machine with horizontal-only
+  and both-axis modes;
+- kept mouse pan state mutually exclusive with the existing edit gesture per runtime
+  instance;
+- added primary time-header pan, primary empty-body pan only without a creation
+  mapper, and middle timeline/task pan regardless of creation capability;
+- preserved primary task move/resize, mapped empty creation, pen/touch editing,
+  secondary/context-menu behavior, click threshold, read-only navigation, and modal
+  editor exclusion;
+- added pointer capture, reversed content-following deltas, cancellation,
+  capture-loss, unmount, and sibling-instance cleanup;
+- dismissed transient tooltip/menu state without clearing selection or dispatching a
+  document command, and added instance-scoped `grab`/`grabbing` states;
+- kept empty mouse presses capable of clearing stale focus when horizontal range
+  acknowledgement is absent, while no longer entering the unavailable creation path
+  on the subsequent drag.
+
+Verification:
+
+- `vp test run packages/gantt/src/interaction/pan-gesture.test.ts packages/gantt/src/react/runtime.test.ts packages/gantt/src/react/Gantt.dom.test.tsx packages/gantt/src/react/Gantt.customization.dom.test.tsx`
+  passed 4 files / 45 tests;
+- conflict coverage passed header/empty/middle pan, mapped creation, task
+  move/resize, mouse/pen/touch, secondary input, read-only document state, threshold,
+  capture/cancel/loss/unmount, selection retention, zero command/history callbacks,
+  and two-instance isolation;
+- the in-app Browser fallback verified primary header drag on `/interactive` at the
+  default width and 560 × 900: ticks advanced at both sizes, computed header cursor
+  was `grab`, release cleared pan state, page overflow remained zero, and console
+  warnings/errors remained empty;
+- temporary responsive viewport emulation was reset after the live check;
+- `vp check`, `git diff --check`, and `mise run ci` passed on the completed Slice 5
+  tree.
 
 ### Slice 6: Complete keyboard, focus, and accessibility behavior
 
@@ -1069,7 +1104,55 @@ during implementation.
 - Focused tests passed 4 files / 37 tests; `vp check`, `git diff --check`, and
   `mise run ci` passed on the completed slice.
 
+### 2026-07-30 Slice 5 mouse grab panning
+
+- A pure pan gesture keeps threshold, active movement, axis lock, foreign-pointer,
+  and completion behavior outside React. Pointer movement is reversed before
+  viewport navigation so timeline content follows the hand.
+- The DOM adapter enters pan only for primary header, primary empty body without a
+  creation mapper, or middle body/task mouse input. All existing primary edit,
+  mapped creation, pen/touch, and secondary paths retain their prior runtime.
+- Read-only document state does not block pan. Missing `onRangeChange` does not claim
+  a grab gesture; a simple empty primary press still clears stale selection/focus,
+  but dragging no longer enters a known-unavailable create/reject path.
+- Capture loss and unmount cancel instance state and scheduled publication. Pan
+  neither clears an existing selected task nor creates document/history callbacks.
+- Live header drag advanced ticks at the default width and 560 × 900 while `grab`,
+  release cleanup, zero page overflow, and clean console state held.
+- The first full package gate exposed that the exported idle pan constant needed an
+  explicit `ViewportPanGestureState` annotation under declaration isolation. Because
+  the failed pack had already cleaned `dist`, the parallel playground test also
+  reported a derivative package-resolution failure. Adding the annotation made the
+  next complete gate pass 57 files / 279 tests and all four package artifacts.
+- Focused tests passed 4 files / 45 tests; `vp check`, `git diff --check`, and
+  `mise run ci` passed on the completed slice.
+
 ## Deviations
+
+### 2026-07-30 — Missing-range empty mouse drag no longer enters creation rejection
+
+- Before this correction, an empty primary mouse drag without a creation mapper
+  entered the generic create gesture and ended with a known mapper-required
+  rejection.
+- Empty primary mouse drag is now the pan binding when creation is unavailable, but
+  a chart without `onRangeChange` must not claim a pan it cannot acknowledge.
+- The reconciled behavior preserves the existing simple empty-press
+  selection/focus clearing, then leaves subsequent mouse movement idle instead of
+  producing a creation rejection. Mapped creation, pen/touch creation, and task
+  editing are unchanged.
+- This is an input-arbitration correction inside the accepted navigation decision;
+  it does not change public types, document commands, history, or architecture.
+
+### 2026-07-30 — Declaration isolation required an explicit pan-state annotation
+
+- Focused `vp check` accepted the inferred exported idle gesture constant, while
+  `vp pack` correctly rejected it under `--isolatedDeclarations`.
+- The failed parallel pack cleaned `packages/gantt/dist` before the playground DOM
+  test resolved `@gantempo/gantt`, so that test's import error was derivative rather
+  than a second source defect.
+- Adding the explicit internal `ViewportPanGestureState` annotation fixed package
+  generation. The complete concurrent CI gate then passed all tests and artifacts.
+- No public export was added and the packed declaration size remained unchanged.
 
 ### 2026-07-30 — Base-M4 “scrolling” evidence did not include ordinary time panning
 
@@ -1107,12 +1190,11 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 5 by adding an explicit mouse-only pan gesture state beside the existing
-edit gesture in `packages/gantt/src/react/runtime.ts` and thin header/body pointer
-adapters in `packages/gantt/src/react/Gantt.tsx`. Preserve primary task edit, mapped
-empty creation, pen/touch, secondary/context-menu, activation threshold, and editor
-behavior; add primary header, conditional primary empty-body, and unconditional
-middle-body pan with capture/cancel/lost-capture/unmount isolation plus
-instance-scoped cursor state. Verify the conflict matrix, zero command/history
-effects, live desktop/narrow mouse drag, `vp check`, `git diff --check`, and
-`mise run ci`.
+Start Slice 6 by adding `PageUp`/`PageDown` and
+`Alt+PageUp`/`Alt+PageDown` to the keyboard adapter, then move arrow/Home/End
+geometric navigation from the viewport hit-test index to the full occurrence
+catalog. Request offscreen range/vertical reveal before DOM focus transfer, hand DOM
+focus to the root when logical focus virtualizes out, restore it after adoption, and
+update accessible help without continuous live-region noise. Verify focused
+keyboard/session/focus/hydration/axe suites, live keyboard flows and accessibility
+trees at desktop/narrow widths, `vp check`, `git diff --check`, and `mise run ci`.

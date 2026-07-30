@@ -12,6 +12,14 @@ import {
   keyboardCreationIntent,
 } from '../interaction/keyboard';
 import { navigateInteractionOccurrence } from '../interaction/navigation';
+import {
+  beginViewportPanGesture,
+  endViewportPanGesture,
+  IDLE_VIEWPORT_PAN_GESTURE,
+  moveViewportPanGesture,
+  type ViewportPanAxis,
+  type ViewportPanGestureState,
+} from '../interaction/pan-gesture';
 import { shiftVerticalViewport } from '../interaction/viewport-navigation';
 import type {
   InteractionGestureOptions,
@@ -88,6 +96,10 @@ export interface GanttReactRuntime {
   keyboardFocus(viewKey: string): boolean;
   measure(measurement: GanttViewportMeasurement): void;
   navigateViewport(input: GanttViewportNavigationInput): GanttViewportNavigationResult;
+  panPointerCancel(pointerId: number): boolean;
+  panPointerDown(input: GanttPanPointerInput): boolean;
+  panPointerMove(input: GanttPanPointerMoveInput): GanttPanPointerMoveResult;
+  panPointerUp(pointerId: number): GanttPanPointerEndResult;
   pointerCancel(pointerId: number): boolean;
   pointerDown(input: GanttPointerInput): boolean;
   pointerMove(input: GanttPointerMoveInput): boolean;
@@ -131,6 +143,29 @@ export interface GanttViewportNavigationInput {
 export interface GanttViewportNavigationResult {
   readonly horizontal: boolean;
   readonly vertical: boolean;
+}
+
+export interface GanttPanPointerInput {
+  readonly axis: ViewportPanAxis;
+  readonly geometry: GanttPointerGeometry;
+  readonly point: InteractionPoint;
+  readonly pointerId: number;
+}
+
+export interface GanttPanPointerMoveInput {
+  readonly geometry: GanttPointerGeometry;
+  readonly point: InteractionPoint;
+  readonly pointerId: number;
+}
+
+export interface GanttPanPointerMoveResult {
+  readonly active: boolean;
+  readonly handled: boolean;
+}
+
+export interface GanttPanPointerEndResult {
+  readonly active: boolean;
+  readonly handled: boolean;
 }
 
 export type GanttKeyboardAction =
@@ -321,6 +356,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let semanticSource: GanttSemanticEvent['source'] = 'runtime';
   let lastDocument: GanttDocument | undefined;
   let gesture: InteractionGestureState = IDLE_INTERACTION_GESTURE;
+  let panGesture: ViewportPanGestureState = IDLE_VIEWPORT_PAN_GESTURE;
   let gestureGeometry: GanttPointerGeometry | undefined;
   let keyboardGesture: InteractionKeyboardState | undefined;
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
@@ -968,6 +1004,44 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     return Object.freeze({ horizontal, vertical });
   }
 
+  function panPointerDown(input: GanttPanPointerInput): boolean {
+    if (
+      disposed ||
+      gesture.status !== 'idle' ||
+      panGesture.status !== 'idle' ||
+      callbacks.onRangeChange === undefined ||
+      !Number.isFinite(input.geometry.width) ||
+      input.geometry.width <= 0 ||
+      !Number.isFinite(input.geometry.height) ||
+      input.geometry.height <= 0
+    ) {
+      return false;
+    }
+    panGesture = beginViewportPanGesture(input.pointerId, input.point, input.axis);
+    return panGesture.status !== 'idle';
+  }
+
+  function panPointerMove(input: GanttPanPointerMoveInput): GanttPanPointerMoveResult {
+    const moved = moveViewportPanGesture(panGesture, input.pointerId, input.point);
+    panGesture = moved.state;
+    if (!moved.handled || panGesture.status !== 'active') {
+      return Object.freeze({ active: false, handled: moved.handled });
+    }
+    navigateViewport({
+      ...(moved.deltaX === 0 ? {} : { horizontalDelta: moved.deltaX }),
+      ...(moved.deltaY === 0 ? {} : { verticalDelta: moved.deltaY }),
+      viewportHeight: input.geometry.height,
+      viewportWidth: input.geometry.width,
+    });
+    return Object.freeze({ active: true, handled: true });
+  }
+
+  function panPointerEnd(pointerId: number): GanttPanPointerEndResult {
+    const ended = endViewportPanGesture(panGesture, pointerId);
+    panGesture = ended.state;
+    return Object.freeze({ active: ended.active, handled: ended.handled });
+  }
+
   function autoPan(input: GanttPointerMoveInput, options: InteractionGestureOptions): void {
     if (gesture.status !== 'active') {
       return;
@@ -1127,6 +1201,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return;
       }
       disposed = true;
+      panGesture = IDLE_VIEWPORT_PAN_GESTURE;
       unsubscribeStore();
       subscribers.clear();
       rangeProposals.dispose();
@@ -1269,6 +1344,16 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
     navigateViewport,
 
+    panPointerCancel(pointerId) {
+      return panPointerEnd(pointerId).handled;
+    },
+
+    panPointerDown,
+
+    panPointerMove,
+
+    panPointerUp: panPointerEnd,
+
     pointerCancel(pointerId) {
       if (
         (gesture.status !== 'pressed' && gesture.status !== 'active') ||
@@ -1296,6 +1381,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (
         disposed ||
         keyboardGesture !== undefined ||
+        panGesture.status !== 'idle' ||
         gesture.status === 'pressed' ||
         gesture.status === 'active' ||
         composedInteraction().status === 'pending'

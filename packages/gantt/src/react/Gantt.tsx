@@ -594,6 +594,7 @@ function GanttSurface({
   interactionMappers,
   label,
   overlayContainer,
+  panCapable,
   runtime,
   scene,
   slots,
@@ -612,6 +613,7 @@ function GanttSurface({
   readonly interactionMappers?: GanttProps['interactionMappers'];
   readonly label: string;
   readonly overlayContainer?: GanttProps['overlayContainer'];
+  readonly panCapable: boolean;
   readonly runtime: GanttReactRuntime;
   readonly scene: GanttReactRuntimeSnapshot['scene'];
   readonly slots?: GanttProps['slots'];
@@ -632,6 +634,7 @@ function GanttSurface({
   const [tooltip, setTooltip] = useState<TaskOverlayPosition | undefined>();
   const [menu, setMenu] = useState<TaskOverlayPosition | undefined>();
   const [editor, setEditor] = useState<EditorOverlay | undefined>();
+  const [panState, setPanState] = useState<'idle' | 'panning' | 'pressing'>('idle');
   const overlayBoundary: OverlayBoundary = overlayContainer === 'root' ? 'root' : 'viewport';
   const overlayHost = overlayBoundary === 'root' ? localOverlayHost : externalOverlayHost;
   const helpId = `${accessibilityId}-keyboard-help`;
@@ -1140,12 +1143,99 @@ function GanttSurface({
     },
     [candidateViewKey, geometry],
   );
+  const beginPan = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, axis: 'both' | 'horizontal'): boolean => {
+      if (editorOpen || event.pointerType !== 'mouse' || event.isPrimary === false) {
+        return false;
+      }
+      const input = pointerInput(event);
+      if (
+        input === undefined ||
+        !runtime.panPointerDown({
+          axis,
+          geometry: input.geometry,
+          point: input.point,
+          pointerId: input.pointerId,
+        })
+      ) {
+        return false;
+      }
+      setTooltip(undefined);
+      setMenu(undefined);
+      setPanState('pressing');
+      event.preventDefault();
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic adapters can lack a browser-managed active pointer.
+      }
+      return true;
+    },
+    [editorOpen, pointerInput, runtime],
+  );
+  const movePan = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>): boolean => {
+      const input = pointerInput(event);
+      if (input === undefined) {
+        return false;
+      }
+      const result = runtime.panPointerMove(input);
+      if (!result.handled) {
+        return false;
+      }
+      if (result.active) {
+        setPanState('panning');
+      }
+      event.preventDefault();
+      return true;
+    },
+    [pointerInput, runtime],
+  );
+  const finishPan = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, cancel: boolean): boolean => {
+      const result = cancel
+        ? {
+            active: false,
+            handled: runtime.panPointerCancel(event.pointerId),
+          }
+        : runtime.panPointerUp(event.pointerId);
+      if (!result.handled) {
+        return false;
+      }
+      setPanState('idle');
+      event.preventDefault();
+      try {
+        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Capture can already be released before cancellation or pointerup.
+      }
+      return true;
+    },
+    [runtime],
+  );
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      const input = pointerInput(event);
+      const mousePan =
+        event.pointerType === 'mouse' &&
+        event.isPrimary !== false &&
+        (event.button === 1 ||
+          (event.button === 0 &&
+            input?.candidateViewKey === undefined &&
+            interactionMappers?.createTask === undefined));
+      if (mousePan) {
+        if (beginPan(event, 'both')) {
+          return;
+        }
+        if (event.button === 1 || panCapable || editorOpen) {
+          return;
+        }
+      }
       if (event.button !== 0 || event.isPrimary === false) {
         return;
       }
-      const input = pointerInput(event);
       if (input === undefined) {
         return;
       }
@@ -1159,6 +1249,9 @@ function GanttSurface({
         ) {
           activeElement.blur();
         }
+        if (mousePan) {
+          return;
+        }
       }
       if (disabled || !runtime.pointerDown({ ...input, pointerType: pointerType(event) })) {
         return;
@@ -1170,19 +1263,34 @@ function GanttSurface({
         // Synthetic adapters can lack a browser-managed active pointer.
       }
     },
-    [disabled, pointerInput, pointerType, runtime],
+    [
+      beginPan,
+      disabled,
+      editorOpen,
+      interactionMappers?.createTask,
+      panCapable,
+      pointerInput,
+      pointerType,
+      runtime,
+    ],
   );
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (movePan(event)) {
+        return;
+      }
       const input = pointerInput(event);
       if (input !== undefined && runtime.pointerMove(input)) {
         event.preventDefault();
       }
     },
-    [pointerInput, runtime],
+    [movePan, pointerInput, runtime],
   );
   const onPointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (finishPan(event, false)) {
+        return;
+      }
       if (disabled) {
         return;
       }
@@ -1196,15 +1304,44 @@ function GanttSurface({
       }
       void runtime.pointerUp(event.pointerId);
     },
-    [disabled, runtime],
+    [disabled, finishPan, runtime],
   );
   const onPointerCancel = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (finishPan(event, true)) {
+        return;
+      }
       if (runtime.pointerCancel(event.pointerId)) {
         event.preventDefault();
       }
     },
-    [runtime],
+    [finishPan, runtime],
+  );
+  const onHeaderPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button === 0) {
+        beginPan(event, 'horizontal');
+      }
+    },
+    [beginPan],
+  );
+  const onHeaderPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      movePan(event);
+    },
+    [movePan],
+  );
+  const onHeaderPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      finishPan(event, false);
+    },
+    [finishPan],
+  );
+  const onHeaderPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      finishPan(event, true);
+    },
+    [finishPan],
   );
   const onFocusCapture = useCallback(
     (event: ReactFocusEvent<HTMLDivElement>) => {
@@ -1595,6 +1732,8 @@ function GanttSurface({
         ) || undefined
       }
       data-interaction-state={interaction.status}
+      data-pan-capable={panCapable || undefined}
+      data-pan-state={panState === 'idle' ? undefined : panState}
       data-pending={interaction.status === 'pending' || undefined}
       data-rejected={interaction.status === 'rejected' || undefined}
       onFocusCapture={onFocusCapture}
@@ -1695,7 +1834,16 @@ function GanttSurface({
             </span>
           ))}
         </div>
-        <div aria-hidden="true" className="gt-gantt__time-header" data-gt-part="time-header">
+        <div
+          aria-hidden="true"
+          className="gt-gantt__time-header"
+          data-gt-part="time-header"
+          onLostPointerCapture={onHeaderPointerCancel}
+          onPointerCancel={onHeaderPointerCancel}
+          onPointerDown={onHeaderPointerDown}
+          onPointerMove={onHeaderPointerMove}
+          onPointerUp={onHeaderPointerUp}
+        >
           {scene.ticks.map((tick) => (
             <span
               data-edge={tick.x < 0.05 ? 'start' : tick.x > 0.95 ? 'end' : undefined}
@@ -1757,6 +1905,9 @@ function GanttSurface({
 
               <div
                 className="gt-gantt__timeline"
+                data-empty-pan={
+                  panCapable && interactionMappers?.createTask === undefined ? true : undefined
+                }
                 data-gt-part="timeline"
                 onDragStart={(event) => event.preventDefault()}
                 onLostPointerCapture={onPointerCancel}
@@ -2056,6 +2207,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         interactionMappers={interactionMappers}
         label={label}
         overlayContainer={overlayContainer}
+        panCapable={props.onRangeChange !== undefined}
         runtime={runtime}
         scene={scene}
         slots={slots}

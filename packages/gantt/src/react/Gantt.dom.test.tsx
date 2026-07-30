@@ -80,9 +80,11 @@ function installPointerGeometry(
 ): {
   readonly body: HTMLDivElement;
   readonly captured: number[];
+  readonly header: HTMLDivElement;
   readonly timeline: HTMLDivElement;
 } {
   const body = host.querySelector<HTMLDivElement>('[data-gt-part="viewport"]')!;
+  const header = host.querySelector<HTMLDivElement>('[data-gt-part="time-header"]')!;
   const timeline = host.querySelector<HTMLDivElement>('[data-gt-part="timeline"]')!;
   const width = options.width ?? 700;
   const height = options.height ?? Math.min(116, body.scrollHeight || 116);
@@ -117,15 +119,17 @@ function installPointerGeometry(
     }) as DOMRect;
   const captured: number[] = [];
   const captures = new Set<number>();
-  timeline.setPointerCapture = (pointerId) => {
-    captured.push(pointerId);
-    captures.add(pointerId);
-  };
-  timeline.hasPointerCapture = (pointerId) => captures.has(pointerId);
-  timeline.releasePointerCapture = (pointerId) => {
-    captures.delete(pointerId);
-  };
-  return { body, captured, timeline };
+  for (const surface of [header, timeline]) {
+    surface.setPointerCapture = (pointerId) => {
+      captured.push(pointerId);
+      captures.add(pointerId);
+    };
+    surface.hasPointerCapture = (pointerId) => captures.has(pointerId);
+    surface.releasePointerCapture = (pointerId) => {
+      captures.delete(pointerId);
+    };
+  }
+  return { body, captured, header, timeline };
 }
 
 function dispatchPointer(
@@ -651,7 +655,7 @@ describe('Gantt React facade in a DOM environment', () => {
     );
   });
 
-  it('rejects secondary pointers, cancels capture loss, and holds async preview pending', async () => {
+  it('passes unsupported empty mouse drag, cancels capture loss, and holds async preview pending', async () => {
     let resolve!: (value: GanttCommandInterception) => void;
     const interception = new Promise<GanttCommandInterception>((accept) => {
       resolve = accept;
@@ -748,10 +752,10 @@ describe('Gantt React facade in a DOM environment', () => {
       mounted.container
         .querySelector('[data-gt-part="root"]')
         ?.getAttribute('data-interaction-state'),
-    ).toBe('rejected');
-    expect(mounted.container.querySelector('[data-gt-part="live-region"]')?.textContent).toContain(
-      'Task creation requires an application command mapper',
-    );
+    ).toBe('idle');
+    expect(
+      mounted.container.querySelector('[data-gt-part="live-region"]')?.textContent,
+    ).not.toContain('Task creation requires an application command mapper');
 
     await act(async () => {
       dispatchPointer(task, 'pointerdown', {
@@ -854,5 +858,369 @@ describe('Gantt React facade in a DOM environment', () => {
         .querySelector('[data-gt-part="root"]')
         ?.getAttribute('data-interaction-state'),
     ).toBe('idle');
+  });
+
+  it('pans from the header without clearing session state or entering document history', async () => {
+    const ref = createRef<GanttHandle>();
+    const ranges: GanttProps['range'][] = [];
+    let documentChanges = 0;
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        onDocumentChange={() => {
+          documentChanges += 1;
+        }}
+        onRangeChange={(range) => ranges.push(range)}
+        ref={ref}
+      />,
+    );
+    const { captured, header, timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 20,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 20,
+        pointerType: 'mouse',
+      });
+    });
+    const selected = ref.current?.getSelection()[0];
+    expect(selected).toBeDefined();
+
+    await act(async () => {
+      dispatchPointer(header, 'pointerdown', {
+        clientX: 700,
+        clientY: -20,
+        pointerId: 21,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(header, 'pointermove', {
+        clientX: 630,
+        clientY: -20,
+        pointerId: 21,
+        pointerType: 'mouse',
+      });
+    });
+    expect(captured).toContain(21);
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-pan-state'),
+    ).toBe('panning');
+    await act(async () => {
+      dispatchPointer(header, 'pointerup', {
+        clientX: 630,
+        clientY: -20,
+        pointerId: 21,
+        pointerType: 'mouse',
+      });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+
+    expect(ranges).toEqual([{ start: START + 0.7 * DAY, end: START + 7.7 * DAY }]);
+    expect(ref.current?.getSelection()[0]?.viewKey).toBe(selected?.viewKey);
+    expect(ref.current?.canUndo()).toBe(false);
+    expect(documentChanges).toBe(0);
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-pan-state'),
+    ).toBeNull();
+  });
+
+  it('keeps header panning available when controlled document mutation is read-only', async () => {
+    const ranges: GanttProps['range'][] = [];
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        document={documentFixture()}
+        onRangeChange={(range) => ranges.push(range)}
+      />,
+    );
+    const { header } = installPointerGeometry(mounted.container);
+
+    await act(async () => {
+      dispatchPointer(header, 'pointerdown', {
+        clientX: 700,
+        clientY: -20,
+        pointerId: 29,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(header, 'pointermove', {
+        clientX: 630,
+        clientY: -20,
+        pointerId: 29,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(header, 'pointerup', {
+        clientX: 630,
+        clientY: -20,
+        pointerId: 29,
+        pointerType: 'mouse',
+      });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(ranges).toHaveLength(1);
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-disabled'),
+    ).toBe('true');
+  });
+
+  it('uses empty primary drag for pan only without a creation mapper and cleans up capture loss', async () => {
+    const ranges: GanttProps['range'][] = [];
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={multiLaneDocument(5)}
+        onRangeChange={(range) => ranges.push(range)}
+      />,
+    );
+    const { body, captured, timeline } = installPointerGeometry(mounted.container, {
+      height: 100,
+    });
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 800,
+        clientY: 90,
+        pointerId: 22,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 730,
+        clientY: 50,
+        pointerId: 22,
+        pointerType: 'mouse',
+      });
+    });
+    expect(captured).toContain(22);
+    expect(body.scrollTop).toBe(40);
+    await act(async () => {
+      dispatchPointer(timeline, 'lostpointercapture', {
+        clientX: 730,
+        clientY: 50,
+        pointerId: 22,
+        pointerType: 'mouse',
+      });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(ranges).toHaveLength(1);
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-pan-state'),
+    ).toBeNull();
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 660,
+        clientY: 20,
+        pointerId: 22,
+        pointerType: 'mouse',
+      });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(ranges).toHaveLength(1);
+  });
+
+  it('does not claim an empty mouse pan when the controlled range cannot acknowledge it', async () => {
+    const ref = createRef<GanttHandle>();
+    const mounted = await render(
+      <Gantt {...commonProps()} defaultDocument={documentFixture()} ref={ref} />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 27,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 27,
+        pointerType: 'mouse',
+      });
+    });
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 800,
+        clientY: 90,
+        pointerId: 28,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 700,
+        clientY: 50,
+        pointerId: 28,
+        pointerType: 'mouse',
+      });
+    });
+    expect(ref.current?.getSelection()).toEqual([]);
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-pan-state'),
+    ).toBeNull();
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
+  });
+
+  it('preserves mapped primary creation while middle task drag always pans', async () => {
+    const ranges: GanttProps['range'][] = [];
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={multiLaneDocument()}
+        interactionMappers={{
+          createTask(intent) {
+            return {
+              command: {
+                type: 'task.add',
+                value: {
+                  id: 'created',
+                  title: 'Created',
+                  schedule: { mode: 'instant', start: intent.start, end: intent.end },
+                },
+              },
+              status: 'mapped',
+            };
+          },
+        }}
+        onRangeChange={(range) => ranges.push(range)}
+      />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 700,
+        clientY: 87,
+        pointerId: 23,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 760,
+        clientY: 87,
+        pointerId: 23,
+        pointerType: 'mouse',
+      });
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('creating');
+    expect(
+      mounted.container.querySelector('[data-gt-part="root"]')?.getAttribute('data-pan-state'),
+    ).toBeNull();
+    expect(ranges).toEqual([]);
+    await act(async () => {
+      dispatchPointer(timeline, 'pointercancel', {
+        clientX: 760,
+        clientY: 87,
+        pointerId: 23,
+        pointerType: 'mouse',
+      });
+    });
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        button: 1,
+        clientX: 310,
+        clientY: 29,
+        pointerId: 24,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        button: 1,
+        clientX: 240,
+        clientY: 29,
+        pointerId: 24,
+        pointerType: 'mouse',
+      });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(ranges).toHaveLength(1);
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerup', {
+        button: 1,
+        clientX: 240,
+        clientY: 29,
+        pointerId: 24,
+        pointerType: 'mouse',
+      });
+    });
+  });
+
+  it('isolates mouse pans across instances and cancels scheduled publication on unmount', async () => {
+    const firstRanges: GanttProps['range'][] = [];
+    const secondRanges: GanttProps['range'][] = [];
+    const first = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture('First')}
+        onRangeChange={(range) => firstRanges.push(range)}
+      />,
+    );
+    const second = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture('Second')}
+        onRangeChange={(range) => secondRanges.push(range)}
+      />,
+    );
+    const firstGeometry = installPointerGeometry(first.container);
+    const secondGeometry = installPointerGeometry(second.container);
+
+    await act(async () => {
+      dispatchPointer(firstGeometry.header, 'pointerdown', {
+        clientX: 700,
+        clientY: -20,
+        pointerId: 25,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(firstGeometry.header, 'pointermove', {
+        clientX: 630,
+        clientY: -20,
+        pointerId: 25,
+        pointerType: 'mouse',
+      });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(firstRanges).toHaveLength(1);
+    expect(secondRanges).toEqual([]);
+
+    await act(async () => {
+      dispatchPointer(secondGeometry.header, 'pointerdown', {
+        clientX: 700,
+        clientY: -20,
+        pointerId: 26,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(secondGeometry.header, 'pointermove', {
+        clientX: 630,
+        clientY: -20,
+        pointerId: 26,
+        pointerType: 'mouse',
+      });
+      second.root.unmount();
+    });
+    roots.splice(roots.indexOf(second.root), 1);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    expect(firstRanges).toHaveLength(1);
+    expect(secondRanges).toEqual([]);
   });
 });

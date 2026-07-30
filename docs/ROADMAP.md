@@ -167,7 +167,7 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Wheel/trackpad navigation complete; Slice 5 next
+**Status:** `[-]` Mouse grab navigation complete; Slice 6 next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
@@ -198,8 +198,11 @@ operation, and shared edge-auto-pan/imperative range orchestration. No public AP
 expanded. Slice 4 connected a scoped non-passive wheel/trackpad adapter with
 deterministic axes/modifiers/units, diagonal vertical preservation, browser-zoom and
 missing-callback pass-through, cleanup/isolation, overscroll containment, automated
-DOM coverage, and live horizontal input evidence. Slice 5 will add conflict-safe
-mouse grab panning.
+DOM coverage, and live horizontal input evidence. Slice 5 added pure thresholded
+mouse-pan state plus header, conditional empty-body, and middle-body/task bindings
+with edit/create/pen/touch/secondary conflict preservation, read-only navigation,
+capture cleanup, cursor state, automated isolation, and responsive live drag
+evidence. Slice 6 will complete keyboard, focus, and accessibility behavior.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -365,6 +368,18 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed timeline-navigation Slice 5. Primary header, conditional
+  primary empty-body, and middle body/task mouse drags now pan through one pure,
+  thresholded, instance-owned gesture without commands or history. Existing task
+  edits, mapped creation, pen/touch, secondary input, selection, read-only document
+  navigation, capture loss, unmount, and sibling instances pass focused regression
+  coverage (4 files / 45 tests). A missing range callback preserves simple empty
+  selection clearing but no longer enters an unavailable create rejection on drag.
+  Live desktop and 560 × 900 header drags advanced ticks with `grab`, clean release,
+  zero overflow, and no console errors. The first pack caught a missing explicit
+  internal pan-state annotation under declaration isolation; after that narrow fix,
+  complete CI passed 57 files / 279 tests and all artifacts. Keyboard/focus parity
+  is Slice 6.
 - 2026-07-30: Completed timeline-navigation Slice 4. Each chart now owns a scoped
   non-passive wheel listener that claims only acknowledged horizontal time
   navigation, retains native vertical-only scrolling, preserves accepted diagonal

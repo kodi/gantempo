@@ -431,6 +431,81 @@ describe('React runtime adapter', () => {
     }
   });
 
+  it('keeps mouse pan state separate from edit gestures and document history', () => {
+    const ranges: { readonly end: number; readonly start: number }[] = [];
+    let documentChanges = 0;
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: navigationDocumentFixture(),
+      onDocumentChange() {
+        documentChanges += 1;
+      },
+      onRangeChange(range) {
+        ranges.push(range);
+      },
+    });
+    runtime.activate();
+    const geometry = {
+      height: 58,
+      verticalStart: 0,
+      width: 700,
+      x: 160,
+      y: 0,
+    };
+
+    expect(
+      runtime.panPointerDown({
+        axis: 'both',
+        geometry,
+        point: { x: 500, y: 40 },
+        pointerId: 11,
+      }),
+    ).toBe(true);
+    expect(
+      runtime.pointerDown({
+        geometry,
+        point: { x: 300, y: 29 },
+        pointerId: 12,
+        pointerType: 'mouse',
+      }),
+    ).toBe(false);
+    expect(
+      runtime.panPointerMove({
+        geometry,
+        point: { x: 502, y: 42 },
+        pointerId: 11,
+      }),
+    ).toEqual({ active: false, handled: true });
+    expect(
+      runtime.panPointerMove({
+        geometry,
+        point: { x: 430, y: -18 },
+        pointerId: 11,
+      }),
+    ).toEqual({ active: true, handled: true });
+    expect(runtime.getHandle().getSession().viewport.verticalStart).toBe(58);
+    expect(ranges).toEqual([{ start: START + 0.7 * DAY, end: START + 7.7 * DAY }]);
+    expect(runtime.panPointerUp(11)).toEqual({ active: true, handled: true });
+    expect(runtime.getHandle().getDocument()).toEqual(navigationDocumentFixture());
+    expect(runtime.getHandle().canUndo()).toBe(false);
+    expect(documentChanges).toBe(0);
+
+    const passive = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: navigationDocumentFixture(),
+    });
+    expect(
+      passive.panPointerDown({
+        axis: 'horizontal',
+        geometry,
+        point: { x: 500, y: 40 },
+        pointerId: 1,
+      }),
+    ).toBe(false);
+    runtime.dispose();
+    passive.dispose();
+  });
+
   it('coalesces numeric measurement and cancels a scheduled frame on disposal', () => {
     const originalRequest = globalThis.requestAnimationFrame;
     const originalCancel = globalThis.cancelAnimationFrame;

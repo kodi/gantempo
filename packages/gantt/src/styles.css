@@ -74,6 +74,25 @@
     transform: translate(-100%, -50%);
   }
 
+  :where(.gt-gantt[data-pan-capable='true'] .gt-gantt__time-header),
+  :where(.gt-gantt__timeline[data-empty-pan='true']) {
+    cursor: grab;
+  }
+
+  :where(.gt-gantt__timeline[data-empty-pan='true'] [data-gt-part='task']) {
+    cursor: default;
+  }
+
+  :where(.gt-gantt[data-pan-state='panning']) {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  :where(.gt-gantt[data-pan-state='panning'] .gt-gantt__time-header),
+  :where(.gt-gantt[data-pan-state='panning'] .gt-gantt__timeline) {
+    cursor: grabbing;
+  }
+
   :where(.gt-gantt__lanes) {
     position: relative;
     min-width: 0;
