@@ -137,14 +137,15 @@ M7 hardening/release
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
 viewport, and read-only rendering foundations. M4 is in progress: its public contract
-semantic task-command foundation, and React-free ownership store are complete; the
-async command bus and history orchestration are next.
+semantic task-command foundation, React-free ownership store, and async
+command/history lifecycle are complete; staged derivation and measured viewport work
+are next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–3 complete, Slice 4 next
+**Status:** `[-]` In progress; Slices 1–4 complete, Slice 5 next
 
 **Target outcome**
 
@@ -164,14 +165,14 @@ persistence.
 
 **Next action**
 
-Execute Slice 4 of the
+Execute Slice 5 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
-pure instant-only `task.move`/`task.resize` foundation, and React-free ownership store
-are verified. Add the ordered async command bus, interception, immutable lifecycle
-events, controlled/uncontrolled adoption, and bounded undo/redo orchestration before
-React or DOM integration.
+pure instant-only `task.move`/`task.resize` foundation, React-free ownership store,
+and async command/history lifecycle are verified. Stage the private derived pipeline,
+add affected-reference invalidation/work observations, and model measured vertical
+viewport/overscan publication before hit testing or React integration.
 
 **Adjacent proof complete**
 
@@ -260,6 +261,28 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 async command bus and history orchestration complete
+
+- Added one React-free FIFO command bus with normalized immutable proposals,
+  registration-order allow/reject/replace interception, exact one-reducer delegation,
+  stale/pending/read-only rejection, and active/queued abort and disposal settlement.
+- Added immutable candidate/commit/rejection/error phases, local proposal correlation,
+  uncontrolled adoption, controlled exact acknowledgement/divergence, callback-error
+  reporting without rollback, and JSON-compatible change envelopes.
+- Composed bounded M2 history with acknowledgement-time controlled entries, one-entry
+  transactions, explicit undo/redo proposals, revision-only rebasing, and fail-closed
+  external-content invalidation.
+- Added fixed-seed mixed controlled operation sequences and focused queue,
+  interception, cancellation, callback, candidate, history, transaction, and envelope
+  evidence.
+- Combined focused M2/M4 tests passed 15 files/73 tests, `vp check` passed all 93
+  formatted and 82 lint/type-checked files, `vp pack` built four artifacts, and
+  `git diff --check` plus framework-boundary import inspection passed.
+- `mise run ci` passed the complete check, 35-test-file/167-test, and four-artifact
+  package build gates.
+- No React, renderer, style, playground, or browser behavior changed; no browser claim
+  was added.
 
 ### 2026-07-30 — M4 React-free runtime ownership store complete
 

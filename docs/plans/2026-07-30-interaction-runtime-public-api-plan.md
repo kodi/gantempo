@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–3 complete, Slice 4 next
+Status: Active; Slices 1–4 complete, Slice 5 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -925,7 +925,7 @@ bugs are easier to prove without React effects or pointer events obscuring them.
 
 ### Slice 4: Add the async command bus, events, and bounded history orchestration
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1727,6 +1727,48 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - No React, primitive, style, scenario, or playground file changed, so this pure
   runtime slice did not trigger a browser gate.
 
+### 2026-07-30 — Slice 4 async command bus, lifecycle events, and bounded history
+
+- Added one private per-instance FIFO command bus with instance-local proposal IDs,
+  immutable normalized source/target/command snapshots, bounded registration-order
+  interceptors, typed allow/reject/replace outcomes, and transaction replacement
+  without recursive interceptor passes.
+- Added cancellation that settles active and queued work, disposal that settles active
+  work and rejects an unacknowledged controlled proposal, async stale-base detection,
+  one-pending controlled rejection, read-only controlled rejection, and stable runtime
+  diagnostics for every exit.
+- Delegated each allowed dispatch to `applyGanttCommand` exactly once, adopted
+  uncontrolled candidates before callbacks, staged controlled candidates without
+  optimistic authority, and preserved the proposal ID through exact prop
+  acknowledgement or later divergence rejection.
+- Added deeply immutable JSON-compatible change envelopes and ordered
+  `onDocumentChange`, `commandCommitted`, `commandRejected`, and `onRuntimeError`
+  callbacks. Callback and store-subscriber failures are surfaced to a host-error
+  reporter without rollback or a second mutation.
+- Added runtime history descriptors over the existing M2 bounded history kernel so
+  transactions remain one entry, controlled entries appear only after
+  acknowledgement, undo/redo use explicit inverse/forward proposals, revision-only
+  replacements rebase, and content-changing external replacements clear unsafe
+  branches.
+- Fixed-seed properties cover mixed controlled dispatch, undo, redo, revision, and
+  external-content sequences. Focused examples cover queue order, replacement chains,
+  typed/thrown/invalid interceptors, reducer/no-op paths, abort, disposal, stale bases,
+  pending proposals, acknowledgement, divergence, callback failures, capacity,
+  transaction grouping, controlled/uncontrolled undo/redo, and JSON envelopes.
+- Source inspection confirmed command-bus/history production files import only
+  M1/M2/private runtime modules and contain no React, DOM, browser, locale, clock, or
+  time zone dependency.
+- Verification passed:
+  - combined focused M2 command and M4 runtime tests passed 15 files and 73 tests;
+  - `vp check` reported all 93 files formatted and no warning, lint, or type error
+    across 82 checked files;
+  - `vp pack` built all four package artifacts;
+  - `git diff --check` and framework-boundary import inspection passed;
+  - `mise run ci` passed the complete check, 35-test-file/167-test, and four-artifact
+    package build gates.
+- No React, primitive, style, scenario, or playground file changed, so this pure
+  runtime slice did not trigger a browser gate.
+
 ## Deviations
 
 ### 2026-07-30 — Persistence-ready event boundary clarification
@@ -1747,7 +1789,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 1: Freeze the M4 runtime and public API contract
 - [x] Slice 2: Add pure semantic task move and resize commands
 - [x] Slice 3: Build the React-free runtime store and ownership state machine
-- [ ] Slice 4: Add the async command bus, events, and bounded history orchestration
+- [x] Slice 4: Add the async command bus, events, and bounded history orchestration
 - [ ] Slice 5: Stage derived caches and add measured viewport subscriptions
 - [ ] Slice 6: Add renderer-independent hit testing and interaction intent
 - [ ] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
@@ -1761,7 +1803,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 4. Add the per-instance async command bus, bounded interceptor lifecycle,
-immutable candidate/commit/rejection events, controlled/uncontrolled adoption,
-acknowledgement-aware M2 history, explicit undo/redo operations, abort/disposal
-settlement, and fixed-seed mixed operation properties without adding the React facade.
+Start Slice 5. Refactor the monolithic scene composer into reusable private derivation
+stages, add affected-reference invalidation and work observations, prove
+cached-versus-cold parity, and extend the pure runtime with measured vertical viewport,
+overscan, and deterministic coalesced publication without exposing M3 kernels.

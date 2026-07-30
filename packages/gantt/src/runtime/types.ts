@@ -1,4 +1,6 @@
+import type { Diagnostic } from '../model/diagnostics';
 import type { GanttDocument } from '../model/types';
+import type { EntityReference, GanttCommand, GanttPatch } from '../commands/types';
 
 export interface GanttLaneTarget {
   readonly kind: 'lane';
@@ -157,4 +159,132 @@ export interface GanttRuntimeStore {
   updateControlledDocument(document: GanttDocument): UpdateControlledDocumentResult;
   updateControlledSession(session: GanttSessionState): void;
   updateUncontrolledSession(session: GanttSessionState): void;
+}
+
+export type GanttCommandSource =
+  | { readonly kind: 'imperative' }
+  | {
+      readonly kind: 'pointer';
+      readonly pointerType: 'mouse' | 'pen' | 'touch';
+    }
+  | { readonly kind: 'keyboard' }
+  | { readonly kind: 'toolbar' }
+  | { readonly kind: 'context-menu' }
+  | { readonly kind: 'editor' }
+  | { readonly action: 'redo' | 'undo'; readonly kind: 'history' };
+
+export interface GanttCommandProposal {
+  readonly command: GanttCommand;
+  readonly document: GanttDocument;
+  readonly proposalId: string;
+  readonly source: GanttCommandSource;
+  readonly target?: GanttInteractionTarget;
+}
+
+export type GanttCommandInterception =
+  | { readonly kind: 'allow' }
+  | { readonly diagnostic: Diagnostic; readonly kind: 'reject' }
+  | { readonly command: GanttCommand; readonly kind: 'replace' };
+
+export type GanttCommandInterceptor = (
+  proposal: GanttCommandProposal,
+) => GanttCommandInterception | Promise<GanttCommandInterception>;
+
+export interface GanttCommandCancellation {
+  readonly aborted: boolean;
+  subscribe(subscriber: () => void): () => void;
+}
+
+export interface GanttDispatchOptions {
+  readonly cancellation?: GanttCommandCancellation;
+  readonly source?: GanttCommandSource;
+  readonly target?: GanttInteractionTarget;
+}
+
+export interface GanttDocumentChange {
+  readonly affected: readonly EntityReference[];
+  readonly baseRevision?: number | string;
+  readonly command: GanttCommand;
+  readonly diagnostics: readonly Diagnostic[];
+  readonly document: GanttDocument;
+  readonly inversePatches: readonly GanttPatch[];
+  readonly operation: 'dispatch' | 'redo' | 'undo';
+  readonly originalCommand: GanttCommand;
+  readonly patches: readonly GanttPatch[];
+  readonly proposalId: string;
+  readonly source: GanttCommandSource;
+  readonly target?: GanttInteractionTarget;
+}
+
+export interface GanttCommandCommittedEvent {
+  readonly change?: GanttDocumentChange;
+  readonly command?: GanttCommand;
+  readonly operation: 'dispatch' | 'redo' | 'undo';
+  readonly originalCommand?: GanttCommand;
+  readonly proposalId: string;
+  readonly source: GanttCommandSource;
+  readonly target?: GanttInteractionTarget;
+  readonly type: 'commandCommitted';
+}
+
+export interface GanttCommandRejectedEvent {
+  readonly command?: GanttCommand;
+  readonly diagnostics: readonly Diagnostic[];
+  readonly operation: 'dispatch' | 'redo' | 'undo';
+  readonly originalCommand?: GanttCommand;
+  readonly proposalId: string;
+  readonly source: GanttCommandSource;
+  readonly target?: GanttInteractionTarget;
+  readonly type: 'commandRejected';
+}
+
+export interface GanttRuntimeErrorEvent {
+  readonly callback:
+    | 'onCommandCommitted'
+    | 'onCommandRejected'
+    | 'onDocumentChange'
+    | 'onRuntimeError';
+  readonly diagnostic: Diagnostic;
+  readonly type: 'runtimeError';
+}
+
+export type GanttDispatchResult =
+  | {
+      readonly change?: GanttDocumentChange;
+      readonly proposalId: string;
+      readonly status: 'committed';
+    }
+  | {
+      readonly change: GanttDocumentChange;
+      readonly proposalId: string;
+      readonly status: 'proposed';
+    }
+  | {
+      readonly diagnostics: readonly Diagnostic[];
+      readonly proposalId: string;
+      readonly status: 'rejected';
+    };
+
+export interface CreateGanttCommandBusOptions {
+  readonly interceptors?: readonly GanttCommandInterceptor[];
+  readonly onCommandCommitted?: (event: GanttCommandCommittedEvent) => void;
+  readonly onCommandRejected?: (event: GanttCommandRejectedEvent) => void;
+  readonly onDocumentChange?: (change: GanttDocumentChange) => void;
+  readonly onRuntimeError?: (event: GanttRuntimeErrorEvent) => void;
+  readonly reportHostError?: (error: unknown) => void;
+  readonly store: GanttRuntimeStore;
+}
+
+export interface GanttCommandBus {
+  dispatch(command: GanttCommand, options?: GanttDispatchOptions): Promise<GanttDispatchResult>;
+  dispose(): void;
+  isDisposed(): boolean;
+  redo(options?: Omit<GanttDispatchOptions, 'source'>): Promise<GanttDispatchResult>;
+  undo(options?: Omit<GanttDispatchOptions, 'source'>): Promise<GanttDispatchResult>;
+  updateControlledDocument(document: GanttDocument): UpdateControlledDocumentResult;
+}
+
+export interface GanttCommandCancellationController {
+  abort(): void;
+  readonly signal: GanttCommandCancellation;
 }
