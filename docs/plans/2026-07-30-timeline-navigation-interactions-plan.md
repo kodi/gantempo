@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: In progress; Slice 7 complete, Slice 8 next
+Status: Complete and verified
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -862,7 +862,7 @@ Verification:
 
 ### Slice 8: Run final automated, performance, and live gates
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Close the correction only with repository-wide and real-input evidence.
 
@@ -906,6 +906,59 @@ Verification:
   can produce trusted diagonal/momentum input.
 
 Dependencies: Slice 7.
+
+Completed in this slice:
+
+- added a fixed-seed steady controlled horizontal-pan benchmark case to the existing
+  2,000-task/400-lane runtime interaction fixture;
+- guarded the exact companion pipeline work profile:
+  `topology0/interval0/stack0/catalog0/kernel0/ticks1/query1`;
+- reran the focused navigation/runtime/scene/session/DOM/keyboard/playground/public
+  facade and SSR/hydration matrix;
+- exercised trusted horizontal and diagonal wheel input, native vertical scrolling,
+  primary header grab, vertical/time keyboard paging, offscreen arrow navigation,
+  task drag, mapped creation, context menu/editor/Escape restoration, early-to-late
+  focus/selection traversal, and sibling-instance isolation;
+- inspected every route at 1,440 × 900, 900 × 900, and 560 × 900 for current-page
+  state, page/menu overflow, chart count, and lane/timeline alignment;
+- synchronized final evidence into this plan, the accepted decision, README, and the
+  roadmap without changing the durable architecture target.
+
+Verification:
+
+- 18 focused files / 108 tests passed across pure navigation/properties, pan,
+  proposals, store/session, scene pipeline/properties, React runtime, wheel,
+  keyboard, customization, hydration, public facade, and playground consumers;
+- `vp test bench packages/gantt/src/react/runtime-interaction.bench.ts --run` passed
+  the fixed-seed `m4-runtime-v2` fixture and printed the guarded work metadata above;
+  local timing output is diagnostic only and is not a portable acceptance claim;
+- trusted in-app Browser horizontal wheel moved the 12-week range from
+  `Jun 01`–`Aug 24` to `Jul 02`–`Sep 24`; diagonal input then moved it to
+  `Jul 24`–`Oct 16` while vertical scroll moved from `0` to `360`;
+- primary header grab moved the range to `Aug 08`–`Oct 31`; vertical-only input
+  changed lane scroll without changing time;
+- six `Alt+PageDown` operations traversed the fixture to
+  `Aug 28, 2026`–`Nov 20, 2026` with root focus while the selected task was
+  virtualized; six reverse pages restored the initial range, browser focus, and
+  selection on `navigation-task-040`;
+- live task drag moved Work item 1 from Jul 29–Aug 2 to Aug 1–Aug 5, mapped creation
+  raised the controlled item count from three to four, the task context menu opened
+  the editor, and Escape restored focus to the task;
+- a trusted wheel on the first `/matrix` chart changed only its
+  `data-visible-range-start`; the sibling retained the original range;
+- all five routes at all three viewports had exactly one current navigation link,
+  zero page/menu horizontal overflow, and zero lane/timeline top-offset difference;
+  medium/narrow accessibility trees retained the named navigation, summary, chart,
+  treegrid, row, and task hierarchy;
+- Chrome DevTools was attempted first and remained profile locked. The approved
+  in-app Browser produced no application warnings/errors. Its shifted-wheel modifier
+  did not reach the page as `Shift`, its drag surface cannot hold the middle button,
+  and no connected tool can reproduce physical trackpad momentum; those bindings
+  remain covered by focused DOM tests, with physical trackpad confirmation explicitly
+  outstanding rather than claimed;
+- `mise run ci`, `mise run build-playground`, `vp pack`, packed declaration
+  inspection, SSR/hydration coverage, and `git diff --check` passed. Complete CI
+  covered 58 files / 287 tests and rebuilt all four package artifacts.
 
 ## Testing Plan
 
@@ -1340,7 +1393,9 @@ Do not mark this plan complete until:
 - `mise run ci`, `mise run build-playground`, `vp pack`, SSR/hydration inspection,
   and `git diff --check` pass;
 - fixed-seed performance/work evidence is recorded without a portable timing claim;
-- Chrome DevTools responsive/accessibility/console/network gates pass;
+- Chrome DevTools responsive/accessibility/console/network gates pass, or the
+  repository-approved in-app Browser covers its available gates after a required
+  DevTools attempt and any unavailable network-panel claim is recorded explicitly;
 - trusted wheel evidence is recorded, and physical trackpad evidence is either
   recorded or explicitly left unverified;
 - the top-level `/navigation` example renders the deterministic 144-event, 36-lane,
@@ -1351,9 +1406,8 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Run Slice 8's final automated, performance, artifact, and live gates. Recheck proposal
-coalescing, cleanup, full-catalog reuse, selection/focus retention, public facade,
-SSR/hydration, fixed-seed work counters, all five routes, long-range two-axis input,
-responsive accessibility/overflow, console/network state, and physical-trackpad
-evidence status. Synchronize final plan/roadmap/decision/architecture/README wording
-before marking the correction complete.
+Resume Appendix Slice A1 of
+`docs/plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md`.
+Audit the final facade and freeze task/lane appearance, description, progress,
+properties, compatibility, editor, and accessibility contracts before implementing
+the appendix.

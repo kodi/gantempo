@@ -147,6 +147,35 @@ and navigation scheduler are private implementation details.
 - Hardware momentum and natural-scroll preference remain browser/platform behavior;
   synthetic wheel evidence is not represented as physical trackpad evidence.
 
+## Verification Evidence
+
+The completed implementation is evidenced by the
+[timeline navigation interactions plan](../plans/2026-07-30-timeline-navigation-interactions-plan.md):
+
+- the complete local CI gate passes 58 files / 287 tests plus package generation;
+- 18 final focused files / 108 tests cover pure navigation, proposal ownership,
+  occurrence lifetime, session retention, scene reuse, DOM inputs, focus,
+  accessibility, hydration, public facade, and playground consumers;
+- the fixed-seed 2,000-task/400-lane runtime benchmark includes steady controlled
+  horizontal pan and guards exact work metadata:
+  `topology0/interval0/stack0/catalog0/kernel0/ticks1/query1`;
+- the deterministic `/navigation` consumer contains 144 events across 36 lanes and a
+  fixed 18-month UTC period with a 12-week controlled viewport;
+- trusted in-app Browser wheel/diagonal input, header grab, keyboard traversal,
+  task drag, mapped creation, menu/editor, selection/focus restoration, and
+  sibling-instance isolation pass;
+- all five routes at 1,440 × 900, 900 × 900, and 560 × 900 retain exact lane
+  alignment, one current menu link, zero page/menu overflow, named accessibility
+  structure, and no application console warnings/errors.
+
+Chrome DevTools was attempted first but its configured profile remained locked, so
+the repository-approved in-app Browser supplied live input and responsive evidence.
+That surface could not deliver a shifted wheel modifier or held middle-button drag;
+focused DOM tests cover both. No connected tool can reproduce physical trackpad
+momentum, so physical trackpad confirmation remains explicitly outstanding. The
+DevTools network panel was unavailable; the fixture remains deterministic and
+network-free, but this record makes no standalone live network-panel claim.
+
 ## Revisit Triggers
 
 Revisit this decision before adding uncontrolled range ownership, zoom or pinch,

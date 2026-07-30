@@ -159,22 +159,22 @@ M7 hardening/release
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
-timeline navigation interaction correction is next, followed by the bounded
-item-properties, semantic-color, and progress appendix; M5 remains queued after that
-additive post-M4 work.
+timeline navigation interaction correction is complete. The bounded item-properties,
+semantic-color, and progress appendix is next; M5 remains queued after that additive
+post-M4 work.
 
 ## Current Focus
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Public playground proof complete; Slice 8 final gates next
+**Status:** `[x]` Complete and verified
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
 corrects a user-discovered base interaction gap before the queued item-properties
 appendix. The chart now supports semantic horizontal wheel/trackpad, grab, paging,
 edge-auto-pan, and imperative range navigation alongside native vertical scrolling.
-Slice 8 is the remaining final-evidence gate.
+Slice 8 completed the final automated, performance, artifact, and live gates.
 
 The selected plan adds a viewport-independent occurrence catalog before input
 adapters so panning cannot discard offscreen selection/focus. It then adds controlled
@@ -214,8 +214,10 @@ top-level 144-event/36-lane/18-month `/navigation` route with a 12-week viewport
 documented all navigation bindings, and proved the public facade and packed
 declaration boundary. Its live keyboard flow closed the deferred offscreen-lane
 evidence and exposed one read-only roving-stop mismatch; task navigation now remains
-available while document mutation stays disabled. Slice 8 will run and record the
-final automated, performance, artifact, and live gates.
+available while document mutation stays disabled. Slice 8 added a guarded steady-pan
+benchmark, reran the complete automated, performance, artifact, and live verification
+matrix, and closed the correction with the physical-trackpad limitation recorded
+rather than claimed.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -229,7 +231,7 @@ page's static theme label into a light/dark/high-contrast selector. The work sta
 inside the verified M4 session boundary and existing playground theme tokens; no
 public contract changes. Focused tests, the complete 52-file/251-test CI gate,
 package/playground builds, and live Chrome checks at 1,440 × 900 and 560 × 900 pass.
-The timeline navigation correction is now the next action; Appendix Slice A1 follows.
+The timeline navigation correction is complete; Appendix Slice A1 is the next action.
 
 ### Post-M4 default-surface modernization
 
@@ -245,7 +247,7 @@ The menu and editor now pass focused and full CI, package/playground builds, and
 Chrome gates at 1,440 × 900 and 560 × 900. Menu collision safety, responsive
 bottom-sheet layout, focus, Escape restoration, modal isolation, console, network,
 and accessibility-tree behavior are recorded in the completed plan. The timeline
-navigation correction is now the next action; Appendix Slice A1 follows.
+navigation correction is complete; Appendix Slice A1 is the next action.
 
 ### Post-M4 overlay-boundary hardening
 
@@ -265,8 +267,8 @@ background-isolation, and exact restoration behavior. Focused and full tests,
 format/lint/types, package/playground builds, packed declarations, and desktop/narrow
 Chrome gates pass. Detailed evidence is in the completed plan.
 
-The timeline navigation correction is now the next action; Appendix Slice A1 of the
-item-properties, semantic-color, and progress plan follows.
+The timeline navigation correction is complete; Appendix Slice A1 of the
+item-properties, semantic-color, and progress plan is the next action.
 
 ### Cross-cutting M1/M2 document-kernel hardening
 
@@ -285,7 +287,7 @@ across 49 files.
 
 ### M4 appendix: Item properties, semantic color, and progress
 
-**Status:** `[ ]` Planned; base M4 complete, queued after timeline navigation
+**Status:** `[ ]` Planned; Appendix Slice A1 is the next action
 
 **Target outcome**
 
@@ -303,8 +305,7 @@ command, event, accessibility, customization, and package boundaries.
 
 **Next action**
 
-After the timeline navigation interaction correction is complete, execute Appendix
-Slice A1 of the
+Execute Appendix Slice A1 of the
 [item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md).
 Freeze the canonical appearance/description/progress contract and exact command,
 editor, rendering, codec, and package implications before implementation. M5 detailed
@@ -314,7 +315,7 @@ planning follows the verified appendix.
 
 The base-M4 prerequisite has closed. The
 [item properties, semantic color, and progress appendix](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
-remains queued after the higher-priority timeline navigation correction and adds
+is the selected next action and adds
 task/lane semantic variants, coordinated progress rendering/editing, and a bounded
 standard properties surface without reopening the completed base-M4 contract.
 
@@ -381,6 +382,22 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed and verified the timeline-navigation correction. Slice 8
+  added fixed-seed steady controlled horizontal pan to the existing
+  2,000-task/400-lane benchmark and guards the exact companion work profile
+  `topology0/interval0/stack0/catalog0/kernel0/ticks1/query1`; timing remains local
+  diagnostic evidence, not a portable claim. The final focused matrix passed 18
+  files / 108 tests, complete CI passed 58 files / 287 tests, and the playground,
+  package, packed declarations, SSR/hydration, and diff gates passed. Trusted live
+  wheel, diagonal scroll, header grab, keyboard traversal, focus/selection
+  restoration, editing, creation, menu/editor, and sibling-isolation flows passed.
+  All five routes at 1,440 × 900, 900 × 900, and 560 × 900 retained exact alignment,
+  one current link, zero page/menu overflow, named accessibility structure, and a
+  clean application console. Chrome DevTools remained profile locked, so the
+  approved in-app Browser supplied available live evidence; shifted wheel and held
+  middle-button input remain covered by DOM tests, physical trackpad momentum
+  remains explicitly unverified, and no standalone live network-panel claim is
+  made. Appendix Slice A1 is the next action.
 - 2026-07-30: Completed timeline-navigation Slice 7. `ScenarioGantt` now owns an
   independent acknowledged range, the top-level menu includes `/navigation`, and
   the deterministic route contains exactly 144 scheduled events/placements across

@@ -7,12 +7,15 @@ import { createChartScenePipeline } from '../render/scene-pipeline';
 import { createGanttReactRuntime } from './runtime';
 import type { GanttProps } from './types';
 
-const GENERATOR_VERSION = 'm4-runtime-v1';
+const GENERATOR_VERSION = 'm4-runtime-v2';
 const BENCHMARK_SEED = 20_260_730;
 const TASK_COUNT = 2_000;
 const LANE_COUNT = 400;
 const DAY = 24 * 60 * 60 * 1_000;
 const RANGE = { start: 0, end: 365 * DAY };
+const PAN_VIEWPORT_WIDTH = 1_200;
+const PAN_PIXEL_DELTA = 120;
+const PAN_TIME_DELTA = ((RANGE.end - RANGE.start) * PAN_PIXEL_DELTA) / PAN_VIEWPORT_WIDTH;
 const TASK_AFFECTED = Object.freeze([
   Object.freeze({ collection: 'tasks', id: 'task-0' }),
 ]) satisfies readonly EntityReference[];
@@ -103,6 +106,18 @@ const selectiveObservation = pipeline.build(
   { ...baseProps, document: renamedDocument },
   { affected: TASK_AFFECTED, kind: 'affected' },
 );
+const panWorkPipeline = createChartScenePipeline();
+panWorkPipeline.build({
+  ...baseProps,
+  document,
+  viewport: { verticalExtent: 480, verticalStart: 10_000 },
+});
+const panWorkObservation = panWorkPipeline.build({
+  ...baseProps,
+  document,
+  range: { start: PAN_TIME_DELTA, end: RANGE.end + PAN_TIME_DELTA },
+  viewport: { verticalExtent: 480, verticalStart: 10_000 },
+});
 
 const controlledRuntime = createGanttReactRuntime(controlledPropsA);
 let controlledToggle = false;
@@ -111,6 +126,25 @@ const focusTargets = focusRuntime.getSnapshot().selector.occurrences.slice(0, 2)
 let focusToggle = false;
 const scrollRuntime = createGanttReactRuntime(uncontrolledProps);
 let scrollToggle = false;
+let panRange = RANGE;
+let panRuntime!: ReturnType<typeof createGanttReactRuntime>;
+let panProps: GanttProps = {
+  ...baseProps,
+  document,
+  onRangeChange(range) {
+    panRange = range;
+    panProps = { ...panProps, range };
+    panRuntime.updateCallbacks(panProps);
+    panRuntime.reconcile(panProps);
+  },
+};
+panRuntime = createGanttReactRuntime(panProps);
+panRuntime.measure({
+  clientHeight: 480,
+  clientWidth: PAN_VIEWPORT_WIDTH,
+  verticalStart: 10_000,
+});
+let panDirection: -1 | 1 = 1;
 const pointerRuntime = createGanttReactRuntime(uncontrolledProps);
 const pointerTask = pointerRuntime
   .getSnapshot()
@@ -148,13 +182,20 @@ if (
   coldObservation.scene.taskBars.length !== TASK_COUNT ||
   selectiveObservation.work.mode !== 'selective' ||
   selectiveObservation.work.affectedLaneKeys.length !== 1 ||
+  panWorkObservation.work.topologyBuilds !== 0 ||
+  panWorkObservation.work.intervalBuilds !== 0 ||
+  panWorkObservation.work.laneStackBuilds !== 0 ||
+  panWorkObservation.work.occurrenceCatalogBuilds !== 0 ||
+  panWorkObservation.work.viewportKernelBuilds !== 0 ||
+  panWorkObservation.work.tickBuilds !== 1 ||
+  panWorkObservation.work.viewportQueries !== 1 ||
   focusTargets.length !== 2 ||
   hitPoints.length !== 32
 ) {
   throw new Error('Runtime benchmark fixture did not produce the expected work profile.');
 }
 
-describe(`${GENERATOR_VERSION} seed=${BENCHMARK_SEED} tasks=${TASK_COUNT} lanes=${LANE_COUNT} visible=${coldObservation.scene.taskBars.length} cache=${selectiveObservation.work.mode}/${selectiveObservation.work.affectedLaneKeys.length}-lane hitIndex=${hitIndex.tasks.length}-tasks/${hitIndex.lanes.length}-lanes`, () => {
+describe(`${GENERATOR_VERSION} seed=${BENCHMARK_SEED} tasks=${TASK_COUNT} lanes=${LANE_COUNT} visible=${coldObservation.scene.taskBars.length} cache=${selectiveObservation.work.mode}/${selectiveObservation.work.affectedLaneKeys.length}-lane panWork=topology${panWorkObservation.work.topologyBuilds}/interval${panWorkObservation.work.intervalBuilds}/stack${panWorkObservation.work.laneStackBuilds}/catalog${panWorkObservation.work.occurrenceCatalogBuilds}/kernel${panWorkObservation.work.viewportKernelBuilds}/ticks${panWorkObservation.work.tickBuilds}/query${panWorkObservation.work.viewportQueries} hitIndex=${hitIndex.tasks.length}-tasks/${hitIndex.lanes.length}-lanes`, () => {
   bench('cold runtime construction', () => {
     const runtime = createGanttReactRuntime(uncontrolledProps);
     runtime.dispose();
@@ -174,6 +215,19 @@ describe(`${GENERATOR_VERSION} seed=${BENCHMARK_SEED} tasks=${TASK_COUNT} lanes=
       clientWidth: 1_200,
       verticalStart: scrollToggle ? 10_000 : 20_000,
     });
+  });
+
+  bench('steady controlled horizontal pan', () => {
+    panDirection = panDirection === 1 ? -1 : 1;
+    const before = panRange.start;
+    const result = panRuntime.navigateViewport({
+      horizontalDelta: panDirection * PAN_PIXEL_DELTA,
+      viewportHeight: 480,
+      viewportWidth: PAN_VIEWPORT_WIDTH,
+    });
+    if (!result.horizontal || panRange.start === before) {
+      throw new Error('Runtime benchmark pan did not adopt the expected range proposal.');
+    }
   });
 
   bench('selection and focus update', () => {
