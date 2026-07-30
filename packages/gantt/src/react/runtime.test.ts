@@ -343,6 +343,94 @@ describe('React runtime adapter', () => {
     runtime.dispose();
   });
 
+  it('coalesces device-independent navigation per frame and keeps read-only navigation enabled', () => {
+    const originalRequest = globalThis.requestAnimationFrame;
+    const originalCancel = globalThis.cancelAnimationFrame;
+    const frames = new Map<number, FrameRequestCallback>();
+    const cancelled: number[] = [];
+    let nextFrame = 1;
+    globalThis.requestAnimationFrame = (callback) => {
+      const id = nextFrame++;
+      frames.set(id, callback);
+      return id;
+    };
+    globalThis.cancelAnimationFrame = (id) => {
+      frames.delete(id);
+      cancelled.push(id);
+    };
+    try {
+      const ranges: { readonly end: number; readonly start: number }[] = [];
+      let props: GanttProps = {
+        ...commonProps(),
+        document: navigationDocumentFixture(),
+        onRangeChange(range) {
+          ranges.push(range);
+        },
+      };
+      const runtime = createGanttReactRuntime(props);
+      runtime.activate();
+
+      expect(
+        runtime.navigateViewport({
+          horizontalDelta: 70,
+          verticalDelta: 58,
+          viewportHeight: 58,
+          viewportWidth: 700,
+        }),
+      ).toEqual({ horizontal: true, vertical: true });
+      expect(
+        runtime.navigateViewport({
+          horizontalDelta: 140,
+          viewportHeight: 58,
+          viewportWidth: 700,
+        }),
+      ).toEqual({ horizontal: true, vertical: false });
+      expect(frames).toHaveLength(1);
+      expect(runtime.getHandle().getSession().viewport.verticalStart).toBe(58);
+
+      const [frameId, frame] = [...frames][0]!;
+      frames.delete(frameId);
+      frame(0);
+      expect(ranges).toEqual([
+        {
+          start: START + 2.1 * DAY,
+          end: START + 9.1 * DAY,
+        },
+      ]);
+      props = { ...props, range: ranges[0]! };
+      runtime.updateCallbacks(props);
+      runtime.reconcile(props);
+
+      expect(
+        runtime.navigateViewport({
+          horizontalDelta: 70,
+          viewportHeight: 58,
+          viewportWidth: 700,
+        }),
+      ).toEqual({ horizontal: true, vertical: false });
+      runtime.dispose();
+      expect(cancelled).toContain(2);
+
+      const passive = createGanttReactRuntime({
+        ...commonProps(),
+        document: navigationDocumentFixture(),
+      });
+      passive.activate();
+      expect(
+        passive.navigateViewport({
+          horizontalDelta: 70,
+          verticalDelta: 58,
+          viewportHeight: 58,
+          viewportWidth: 700,
+        }),
+      ).toEqual({ horizontal: false, vertical: true });
+      passive.dispose();
+    } finally {
+      globalThis.requestAnimationFrame = originalRequest;
+      globalThis.cancelAnimationFrame = originalCancel;
+    }
+  });
+
   it('coalesces numeric measurement and cancels a scheduled frame on disposal', () => {
     const originalRequest = globalThis.requestAnimationFrame;
     const originalCancel = globalThis.cancelAnimationFrame;

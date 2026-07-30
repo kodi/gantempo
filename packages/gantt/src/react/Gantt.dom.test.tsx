@@ -829,6 +829,7 @@ describe('Gantt React facade in a DOM environment', () => {
         pointerId: 9,
         pointerType: 'mouse',
       });
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     });
     expect(ref.current?.getSession().viewport.verticalStart).toBeGreaterThan(0);
     expect(ranges).toHaveLength(1);

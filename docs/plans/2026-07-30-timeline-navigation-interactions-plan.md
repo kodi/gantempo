@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: In progress; Slice 2 complete, Slice 3 next
+Status: In progress; Slice 3 complete, Slice 4 next
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -469,7 +469,7 @@ Verification:
 
 ### Slice 3: Implement pure pan intent and controlled proposal orchestration
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Convert device-independent pixel/page intent into safe vertical and horizontal
 viewport requests.
@@ -506,6 +506,32 @@ Verification:
 - `git diff --check`.
 
 Dependencies: Slice 2.
+
+Completed in this slice:
+
+- added browser-type-free delta normalization for pixel, line, and page units;
+- added finite duration-preserving pixel/time range shifting plus vertical direct and
+  viewport-page clamping;
+- added one React-free per-instance controlled range proposal controller with
+  deferred frame coalescing, immediate discrete requests, pending-proposal rebasing,
+  exact acknowledgement, unchanged-prop retention, unrelated external replacement,
+  callback absence, cancellation, disposal, and independent-instance behavior;
+- added one runtime `navigateViewport` operation that safely combines optional
+  horizontal pixel and vertical session deltas;
+- routed drag-edge horizontal auto-pan and imperative `scrollToTask`/`scrollToTime`
+  range requests through the same proposal lifecycle;
+- preserved `onViewportChange` as adopted-state observation and kept all navigation
+  outside document commands/history.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/Gantt.dom.test.tsx packages/gantt/src/interaction/viewport-navigation.test.ts packages/gantt/src/interaction/viewport-navigation.property.test.ts packages/gantt/src/runtime/range-proposals.test.ts packages/gantt/src/react/runtime.test.ts packages/gantt/src/interaction/gesture.test.ts`
+  passed 6 files / 38 tests;
+- fixed-seed property coverage passed 200 finite duration-preservation cases;
+- the existing DOM drag-edge auto-pan test passed after observing the intentional
+  animation-frame publication boundary;
+- `vp check`, `git diff --check`, and `mise run ci` passed on the completed Slice 3
+  tree.
 
 ### Slice 4: Connect wheel and trackpad navigation
 
@@ -973,6 +999,23 @@ during implementation.
 - Focused tests passed 4 files / 35 tests; `vp check`, `git diff --check`, and
   `mise run ci` passed on the completed slice.
 
+### 2026-07-30 Slice 3 navigation math and proposals
+
+- Added pure viewport-navigation functions for unit normalization, time shifts,
+  direct vertical movement, and discrete page movement. Non-finite/unmeasured input
+  fails closed without emitting a proposal.
+- Added a React-free proposal controller that keeps one adopted base and one transient
+  proposed base per instance. Continuous shifts publish at most once per scheduled
+  frame; imperative requests remain immediate.
+- Exact adoption clears a proposal, repeated rendering of the unchanged old prop
+  does not discard delayed deltas, and an unrelated replacement cancels scheduled
+  stale work.
+- The runtime now exposes one internal combined pixel-navigation operation for later
+  wheel, grab, and keyboard adapters. Edge auto-pan and imperative range requests
+  already reuse the same controller.
+- Focused tests passed 6 files / 38 tests; `vp check`, `git diff --check`, and
+  `mise run ci` passed on the completed slice.
+
 ## Deviations
 
 ### 2026-07-30 — Base-M4 “scrolling” evidence did not include ordinary time panning
@@ -1011,11 +1054,10 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 3 by adding renderer-independent navigation math under
-`packages/gantt/src/interaction/` and one instance-owned controlled range proposal
-orchestrator in the React-free/runtime boundary. Cover finite delta normalization,
-pixel-to-time conversion, duration preservation, vertical page clamping,
-acknowledgement/rebase/external replacement, frame coalescing, disposal, and
-multi-instance behavior without binding DOM wheel or pointer events yet. Verify the
-focused navigation, edge-auto-pan, imperative runtime, and fixed-seed property suites
-plus `vp check`, `git diff --check`, and `mise run ci`.
+Start Slice 4 by adding a scoped non-passive wheel adapter in
+`packages/gantt/src/react/Gantt.tsx` that normalizes `deltaMode`, maps unmodified and
+shifted axes into `runtime.navigateViewport`, preserves accepted diagonal vertical
+movement, and passes through `Ctrl`/`Meta`, zero/non-finite, overlay/form-control, and
+unacknowledgeable horizontal input. Add DOM callback/default/cleanup/two-instance
+coverage and overscroll styling, then verify the focused wheel/runtime suites, live
+Chrome geometry/console state, `vp check`, `git diff --check`, and `mise run ci`.

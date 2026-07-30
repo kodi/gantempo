@@ -12,6 +12,7 @@ import {
   keyboardCreationIntent,
 } from '../interaction/keyboard';
 import { navigateInteractionOccurrence } from '../interaction/navigation';
+import { shiftVerticalViewport } from '../interaction/viewport-navigation';
 import type {
   InteractionGestureOptions,
   InteractionGestureState,
@@ -34,6 +35,7 @@ import {
 } from '../runtime/command-bus';
 import { sessionEqual } from '../runtime/session';
 import { createGanttRuntimeStore } from '../runtime/store';
+import { createRangeProposalController } from '../runtime/range-proposals';
 import type {
   GanttCommandBus,
   GanttCommandSource,
@@ -85,6 +87,7 @@ export interface GanttReactRuntime {
   keyboardAction(input: GanttKeyboardActionInput): boolean;
   keyboardFocus(viewKey: string): boolean;
   measure(measurement: GanttViewportMeasurement): void;
+  navigateViewport(input: GanttViewportNavigationInput): GanttViewportNavigationResult;
   pointerCancel(pointerId: number): boolean;
   pointerDown(input: GanttPointerInput): boolean;
   pointerMove(input: GanttPointerMoveInput): boolean;
@@ -115,6 +118,19 @@ export interface GanttPointerMoveInput {
   readonly geometry: GanttPointerGeometry;
   readonly point: InteractionPoint;
   readonly pointerId: number;
+}
+
+export interface GanttViewportNavigationInput {
+  readonly horizontalDelta?: number;
+  readonly source?: Extract<GanttSemanticEvent['source'], 'imperative' | 'runtime'>;
+  readonly verticalDelta?: number;
+  readonly viewportHeight: number;
+  readonly viewportWidth: number;
+}
+
+export interface GanttViewportNavigationResult {
+  readonly horizontal: boolean;
+  readonly vertical: boolean;
 }
 
 export type GanttKeyboardAction =
@@ -310,6 +326,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
   const pipeline = createChartScenePipeline();
+  const scheduleFrame = (update: () => void): (() => void) | undefined => {
+    if (typeof requestAnimationFrame !== 'function') {
+      update();
+      return undefined;
+    }
+    const frame = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(frame);
+  };
   const store: GanttRuntimeStore = createGanttRuntimeStore({
     document: documentControlled
       ? { kind: 'controlled', value: initialValidation.document }
@@ -319,15 +343,17 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       : { historyCapacity: initialProps.historyCapacity }),
     session: initialSession(initialProps),
     viewport: {
-      schedule(update) {
-        if (typeof requestAnimationFrame !== 'function') {
-          update();
-          return;
-        }
-        const frame = requestAnimationFrame(update);
-        return () => cancelAnimationFrame(frame);
-      },
+      schedule: scheduleFrame,
     },
+  });
+  const rangeProposals = createRangeProposalController({
+    canPublish: () => callbacks.onRangeChange !== undefined,
+    initialRange: display.range,
+    publish(range, source) {
+      const event = Object.freeze({ source });
+      emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
+    },
+    schedule: scheduleFrame,
   });
 
   const bus: GanttCommandBus = createGanttCommandBus({
@@ -913,6 +939,35 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     );
   }
 
+  function navigateViewport(input: GanttViewportNavigationInput): GanttViewportNavigationResult {
+    const source = input.source ?? 'runtime';
+    const horizontal =
+      input.horizontalDelta === undefined
+        ? false
+        : rangeProposals.shiftByPixels(input.horizontalDelta, input.viewportWidth, source);
+    let vertical = false;
+    if (input.verticalDelta !== undefined) {
+      const session = store.getSnapshot().session;
+      const verticalStart = shiftVerticalViewport(
+        session.viewport.verticalStart,
+        input.verticalDelta,
+        snapshot.scene.bounds.timelineHeight,
+        input.viewportHeight,
+      );
+      if (verticalStart !== undefined && verticalStart !== session.viewport.verticalStart) {
+        vertical = updateSession(
+          Object.freeze({
+            ...(session.focused === undefined ? {} : { focused: session.focused }),
+            selection: session.selection,
+            viewport: Object.freeze({ verticalStart }),
+          }),
+          source,
+        );
+      }
+    }
+    return Object.freeze({ horizontal, vertical });
+  }
+
   function autoPan(input: GanttPointerMoveInput, options: InteractionGestureOptions): void {
     if (gesture.status !== 'active') {
       return;
@@ -947,14 +1002,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     const relativeX = input.point.x - input.geometry.x;
     const horizontalDirection =
       relativeX < edge ? -1 : relativeX > input.geometry.width - edge ? 1 : 0;
-    if (horizontalDirection !== 0 && callbacks.onRangeChange !== undefined) {
+    if (horizontalDirection !== 0) {
       const shift = horizontalDirection * options.snap.step;
-      const range = Object.freeze({
-        end: display.range.end + shift,
-        start: display.range.start + shift,
-      });
-      const event = Object.freeze({ source: 'runtime' as const });
-      emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
+      rangeProposals.shiftByTime(shift, 'runtime');
     }
   }
 
@@ -997,8 +1047,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       if (horizontalChanged) {
         const range = alignedTaskRange(task, options);
-        const event = Object.freeze({ source: 'imperative' as const });
-        emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
+        if (!rangeProposals.requestRange(range, 'imperative')) {
+          return false;
+        }
       }
       if (!verticalChanged) {
         return true;
@@ -1012,7 +1063,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       );
     },
     scrollToTime(time: EpochMilliseconds, options?: GanttScrollOptions) {
-      if (!Number.isFinite(time) || callbacks.onRangeChange === undefined) {
+      if (!Number.isFinite(time)) {
         return false;
       }
       const duration = display.range.end - display.range.start;
@@ -1020,9 +1071,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const start =
         align === 'start' ? time : align === 'end' ? time - duration : time - duration / 2;
       const range = Object.freeze({ start, end: start + duration });
-      const event = Object.freeze({ source: 'imperative' as const });
-      emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
-      return true;
+      return rangeProposals.requestRange(range, 'imperative');
     },
     undo: () => bus.undo(),
   };
@@ -1080,6 +1129,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       disposed = true;
       unsubscribeStore();
       subscribers.clear();
+      rangeProposals.dispose();
       bus.dispose();
     },
 
@@ -1216,6 +1266,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     measure(measurement) {
       store.scheduleViewportMeasurement(measurement);
     },
+
+    navigateViewport,
 
     pointerCancel(pointerId) {
       if (
@@ -1444,6 +1496,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const previousSelector = snapshot.selector;
       const previousVersion = snapshot.version;
       display = nextDisplay;
+      rangeProposals.adopt(display.range);
       if (validation !== undefined) {
         inputDiagnostics = validation.diagnostics;
       }

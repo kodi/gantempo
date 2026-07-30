@@ -167,7 +167,7 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Full occurrence catalog complete; Slice 3 next
+**Status:** `[-]` Navigation math/proposals complete; Slice 4 next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
@@ -192,9 +192,11 @@ private full-occurrence lifetime, focus handoff, browser-zoom exclusion, and
 keyboard paging. Slice 2 added the private viewport-independent occurrence catalog,
 switched session existence and known-target imperative reveal to it, preserved
 viewport-only public/render/hit-test data, and proved catalog/layout reuse across
-ordinary range and scroll changes. No public API expanded. Slice 3 will add pure
-navigation math and the instance-owned controlled range proposal lifecycle before
-DOM input adapters change.
+ordinary range and scroll changes. Slice 3 added pure delta/time/page math, one
+instance-owned controlled range proposal controller, a combined runtime viewport
+operation, and shared edge-auto-pan/imperative range orchestration. No public API
+expanded and no wheel/pointer binding changed yet. Slice 4 will connect the scoped
+wheel/trackpad DOM adapter.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -360,6 +362,15 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed timeline-navigation Slice 3. Browser-free navigation helpers
+  now normalize delta units, preserve finite range duration, and clamp direct/page
+  vertical movement. One React-free proposal controller coalesces continuous
+  per-instance range shifts per frame, rebases delayed acknowledgement, cancels
+  unrelated replacements and disposal, and supports immediate imperative requests.
+  The runtime combines horizontal pixel and vertical session deltas, while edge
+  auto-pan and imperative reveal share the controller. Focused tests passed 6 files /
+  38 tests including fixed-seed properties and the existing DOM auto-pan regression;
+  complete CI passed. Wheel/trackpad binding is Slice 4.
 - 2026-07-30: Completed timeline-navigation Slice 2. A private immutable full
   occurrence catalog now projects from completed layout and carries target, lane,
   absolute geometry, and time data independent of viewport-filtered primitives.
