@@ -506,6 +506,7 @@ propose
   -> reduce
   -> schedule/derive affected records
   -> produce patches
+  -> project changed entity rows
   -> produce an immutable document-change candidate
   -> deliver the candidate to controlled/uncontrolled ownership
   -> adopt in uncontrolled mode or acknowledge through the controlled document prop
@@ -595,6 +596,14 @@ whole documents after mutation. Patch batches apply atomically and are strictly
 validated on their final candidate document. Rejected commands retain the original
 document and return empty patch, inverse, and affected arrays.
 
+Every non-empty runtime document-change envelope also includes a frozen
+`entityChanges` projection. It identifies each first-touched collection-plus-ID once
+as a `create`, `update`, or `delete`; updates contain explicit canonical `before` and
+`after` rows. Repeated patches to one entity inside a transaction collapse to the
+operation's base and final row values. Undo and redo describe the row direction being
+applied now. This is an application-facing persistence view over the existing
+patch-authoritative result, not another reducer or inversion format.
+
 The entity family is part of the affected identity because IDs may repeat across
 families. Local commands preserve the document revision; persistence adapters own
 base revisions, operation IDs, server revisions, retries, and conflict handling.
@@ -607,6 +616,9 @@ These semantics are fixed by the
 [change-kernel contract](decisions/2026-07-30-change-kernel-contract.md). Patches make
 undo/redo, optimistic persistence, audit trails, and future collaboration possible
 without coupling the library to a specific state manager.
+
+The additive row-oriented projection is fixed by the
+[persistence entity-change decision](decisions/2026-07-31-persistence-entity-change-projection.md).
 
 ### 8.4 Events
 
@@ -648,10 +660,12 @@ by the
 />
 ```
 
-The change envelope includes a local proposal ID, base revision, original and final
-commands, source, patches, inverse patches, and affected references. The proposal ID
-correlates runtime callbacks and controlled acknowledgement; it is not the backend's
-retry-safe operation ID.
+The change envelope includes row-oriented `entityChanges`, a local proposal ID, base
+revision, original and final commands, source, patches, inverse patches, and affected
+references. Ordinary database adapters should begin with `entityChanges`; patches
+remain available for atomic replay and rollback. The proposal ID correlates runtime
+callbacks and controlled acknowledgement; it is not the backend's retry-safe
+operation ID.
 
 ### 9.2 Uncontrolled usage
 
@@ -659,7 +673,7 @@ retry-safe operation ID.
 <Gantt
   defaultDocument={document}
   range={range}
-  onDocumentChange={(change) => persist(change.patches)}
+  onDocumentChange={(change) => persist(change.entityChanges)}
 />
 ```
 
@@ -1123,7 +1137,7 @@ The component does not own storage. It exposes adapters:
 export interface PersistenceAdapter {
   load(signal?: AbortSignal): Promise<GanttDocument>;
   apply(
-    patches: GanttPatch[],
+    entityChanges: GanttEntityChange[],
     context: { baseRevision?: string | number; operationId: string }
   ): Promise<{ revision: string | number; idMap?: Record<string, string> }>;
 }
@@ -1142,11 +1156,12 @@ Required behaviors:
 The interaction runtime freezes the persistence-ready change envelope but does not
 make storage part of document ownership. Controlled applications load and normalize
 API data outside React, acknowledge accepted candidates in local state immediately,
-and enqueue the envelope for asynchronous persistence. The persistence layer supplies
-retry-safe operation IDs and applies later server revisions as external controlled
-document updates. Uncontrolled mode can observe committed patches, but controlled mode
-is the recommended authoritative-backend integration until an adapter owns rollback,
-conflict handling, and ID reconciliation.
+and enqueue its row-oriented entity changes for asynchronous persistence. Raw patches
+and inverses remain available when an adapter needs replay or rollback. The
+persistence layer supplies retry-safe operation IDs and applies later server
+revisions as external controlled document updates. Uncontrolled mode can observe the
+same entity changes, but controlled mode is the recommended authoritative-backend
+integration until an adapter owns rollback, conflict handling, and ID reconciliation.
 
 The first release should provide examples for REST, GraphQL, Redux, Zustand, and direct
 React state. State-manager-specific packages are unnecessary unless examples prove

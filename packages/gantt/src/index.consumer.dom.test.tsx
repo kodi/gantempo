@@ -102,26 +102,37 @@ describe('root-facade consumer workflows', () => {
     const change = changes[0]!;
     const request = {
       baseRevision: change.baseRevision ?? null,
-      batch: {
-        commandCount: change.command.type === 'transaction' ? change.command.commands.length : 1,
-        kind: change.command.type === 'transaction' ? 'transaction' : 'command',
-      },
+      changes: change.entityChanges,
       operationId: 'example-operation-001',
-      patches: change.patches,
-      proposalId: change.proposalId,
-      source: change.source,
     };
 
     expect(request).toMatchObject({
       baseRevision: 'server-r1',
-      batch: { commandCount: 2, kind: 'transaction' },
       operationId: 'example-operation-001',
-      source: { kind: 'toolbar' },
     });
-    expect(request.patches).toHaveLength(2);
+    expect(request.changes).toEqual([
+      {
+        after: expect.objectContaining({
+          id: 'task-a',
+          schedule: { end: START + 3 * DAY, mode: 'instant', start: START + 2 * DAY },
+          title: 'Updated through the facade',
+        }),
+        before: expect.objectContaining({
+          id: 'task-a',
+          schedule: { end: START + 2 * DAY, mode: 'instant', start: START + DAY },
+          title: 'Task A',
+        }),
+        collection: 'tasks',
+        id: 'task-a',
+        kind: 'update',
+      },
+    ]);
     expect(request).not.toHaveProperty('document');
     expect(request).not.toHaveProperty('runtime');
     expect(request).not.toHaveProperty('event');
+    expect(request).not.toHaveProperty('patches');
+    expect(request).not.toHaveProperty('proposalId');
+    expect(request).not.toHaveProperty('source');
     expect(handle!.getDocument().tasks[0]).toMatchObject({
       schedule: { start: START + 2 * DAY },
       title: 'Updated through the facade',

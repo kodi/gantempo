@@ -119,15 +119,8 @@ if (!parsed.document) throw new Error('Invalid planning document');
 function toWriteRequest(change: GanttDocumentChange) {
   return {
     operationId: crypto.randomUUID(),
-    proposalId: change.proposalId,
-    operation: change.operation,
     baseRevision: change.baseRevision ?? null,
-    source: change.source,
-    patches: change.patches,
-    batch: {
-      kind: change.command.type === 'transaction' ? 'transaction' : 'command',
-      commandCount: change.command.type === 'transaction' ? change.command.commands.length : 1,
-    },
+    changes: change.entityChanges,
   };
 }
 
@@ -166,11 +159,17 @@ export function ControlledPlan() {
 }
 ```
 
-The write request deliberately omits the full document, DOM events, and runtime
-objects. A transaction remains one proposal, one immutable patch batch, and one local
-history entry. Operation IDs, transport retries, rollback, server revisions,
-temporary-ID reconciliation, and conflict policy belong to the application
-persistence adapter.
+Each entity change says which canonical collection-plus-ID row was created, updated,
+or deleted. Updates include explicit `before` and `after` rows, so ordinary database
+adapters do not need to pair forward and inverse patches. The write request
+deliberately omits the full document, local proposal/source metadata, DOM events, and
+runtime objects.
+
+A transaction remains one callback, one ordered `entityChanges` batch, one immutable
+patch batch, and one local history entry. Raw patches and inverses remain available
+on the change envelope for replay and rollback. Operation IDs, transport retries,
+server revisions, temporary-ID reconciliation, and conflict policy belong to the
+application persistence adapter.
 
 ### Controlled with an external store
 
@@ -515,11 +514,12 @@ Only committed non-empty outcomes enter history, and one transaction is one hist
 step. A new commit after undo clears the redo branch. Stale patch application fails
 closed without moving either stack.
 
-Local commands, patches, and history preserve `document.revision`. Persistence
-adapters remain responsible for server revisions, operation IDs, retries, conflicts,
-temporary-ID reconciliation, and translating domain patches to a backend-specific
-format such as JSON Patch. The interaction runtime adds local ownership and semantic
-events, but not persistent audit history or collaborative rebasing.
+Local commands, patches, entity changes, and history preserve `document.revision`.
+Persistence adapters remain responsible for server revisions, operation IDs, retries,
+conflicts, temporary-ID reconciliation, and translating entity changes or domain
+patches to a backend-specific format such as SQL writes or JSON Patch. The interaction
+runtime adds local ownership and semantic events, but not persistent audit history or
+collaborative rebasing.
 
 ## Local development
 
@@ -539,7 +539,7 @@ renderer. It has five routes:
   clipping, and empty variants together, with independent local ranges;
 - `/interactive` is a controlled application store with one shared command/history
   path, explicit range acknowledgement, and an inspectable network-free API-shaped
-  change log;
+  row-change log;
 - `/uncontrolled` owns its default document/session while demonstrating async
   allow/reject/replace interception, derived resource mapping, lifecycle events, and
   imperative focus/scroll with an acknowledged controlled range;

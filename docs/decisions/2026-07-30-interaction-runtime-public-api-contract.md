@@ -1,6 +1,6 @@
 # Decision: Interaction Runtime and Public API Contract
 
-Status: Accepted
+Status: Accepted; persistence envelope amended 2026-07-31
 Date: 2026-07-30
 Owners: M4 interaction runtime and public API
 
@@ -311,6 +311,7 @@ interface GanttDocumentChange {
   readonly command: GanttCommand;
   readonly source: GanttCommandSource;
   readonly target?: GanttInteractionTarget;
+  readonly entityChanges: readonly GanttEntityChange[];
   readonly patches: readonly GanttPatch[];
   readonly inversePatches: readonly GanttPatch[];
   readonly affected: readonly EntityReference[];
@@ -332,6 +333,11 @@ store state, then may enqueue the same envelope for application-owned persistenc
 Such a queue supplies its own retry-safe operation ID. M4 does not perform, await, or
 model network persistence, rollback, retries, server acknowledgement, revision
 conflicts, or temporary-ID reconciliation.
+
+The additive `entityChanges` field identifies canonical creates, updates, and deletes
+with explicit row values; patches remain the mutation and inversion authority. The
+exact projection contract and simplified primary persistence example are fixed by the
+[2026-07-31 persistence entity-change decision](2026-07-31-persistence-entity-change-projection.md).
 
 No-op commands emit a committed command lifecycle result with no change envelope,
 do not call `onDocumentChange`, and do not enter history.
@@ -611,9 +617,10 @@ Base M4 completed on 2026-07-30 without revising this accepted contract:
   for toolbar, imperative, pointer, keyboard, context-menu, editor, and history
   actions;
 - the controlled playground acknowledges candidates immediately and derives a
-  network-free persistence request containing operation/proposal identity, base
-  revision, source, patches, and transaction batch metadata without a full-document,
-  DOM-event, or runtime-object payload;
+  network-free persistence request containing application operation identity, base
+  revision, and concise row-oriented entity changes without a full document, local
+  proposal/source metadata, lifecycle telemetry, raw patches, DOM events, or runtime
+  objects;
 - the runtime-owned resource-view consumer proves asynchronous allow/reject/replace
   interception, application-mapped atomic resource reassignment, useful mapper
   rejection, document/session defaults, semantic events, typed slots/columns, and

@@ -1,6 +1,12 @@
 import type { Diagnostic } from '../model/diagnostics';
 import type { GanttDocument } from '../model/types';
-import type { EntityReference, GanttCommand, GanttPatch } from '../commands/types';
+import type {
+  DocumentCollection,
+  DomainRecordByCollection,
+  EntityReference,
+  GanttCommand,
+  GanttPatch,
+} from '../commands/types';
 
 export interface GanttLaneTarget {
   readonly kind: 'lane';
@@ -254,12 +260,46 @@ export interface GanttDispatchOptions {
   readonly target?: GanttInteractionTarget;
 }
 
+export type GanttEntityCreateChange = {
+  readonly [C in DocumentCollection]: {
+    readonly after: DomainRecordByCollection[C];
+    readonly collection: C;
+    readonly id: DomainRecordByCollection[C]['id'];
+    readonly kind: 'create';
+  };
+}[DocumentCollection];
+
+export type GanttEntityUpdateChange = {
+  readonly [C in DocumentCollection]: {
+    readonly after: DomainRecordByCollection[C];
+    readonly before: DomainRecordByCollection[C];
+    readonly collection: C;
+    readonly id: DomainRecordByCollection[C]['id'];
+    readonly kind: 'update';
+  };
+}[DocumentCollection];
+
+export type GanttEntityDeleteChange = {
+  readonly [C in DocumentCollection]: {
+    readonly before: DomainRecordByCollection[C];
+    readonly collection: C;
+    readonly id: DomainRecordByCollection[C]['id'];
+    readonly kind: 'delete';
+  };
+}[DocumentCollection];
+
+export type GanttEntityChange =
+  | GanttEntityCreateChange
+  | GanttEntityDeleteChange
+  | GanttEntityUpdateChange;
+
 export interface GanttDocumentChange {
   readonly affected: readonly EntityReference[];
   readonly baseRevision?: number | string;
   readonly command: GanttCommand;
   readonly diagnostics: readonly Diagnostic[];
   readonly document: GanttDocument;
+  readonly entityChanges: readonly GanttEntityChange[];
   readonly inversePatches: readonly GanttPatch[];
   readonly operation: 'dispatch' | 'redo' | 'undo';
   readonly originalCommand: GanttCommand;

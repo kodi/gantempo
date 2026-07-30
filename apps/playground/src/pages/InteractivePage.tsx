@@ -14,6 +14,7 @@ import {
   type TimeRange,
 } from '@gantempo/gantt';
 import { useMemo, useReducer, useRef, type ReactElement } from 'react';
+import { createExampleApiWrite, type ExampleApiWrite } from '../example-persistence';
 
 const DAY = 24 * 60 * 60 * 1000;
 const RANGE_START = Date.UTC(2026, 6, 29);
@@ -69,60 +70,14 @@ const API_DOCUMENT = {
   ],
 } satisfies unknown;
 
-interface ExampleApiWrite {
-  readonly batch: {
-    readonly commandCount: number;
-    readonly kind: 'command' | 'transaction';
-  };
-  readonly baseRevision: number | string | null;
-  readonly operationId: string;
-  readonly operation: GanttDocumentChange['operation'];
-  readonly patches: GanttDocumentChange['patches'];
-  readonly proposalId: string;
-  readonly source: GanttDocumentChange['source'];
-}
-
-type ExampleApiLogEntry =
-  | {
-      readonly operationId: string;
-      readonly operation: GanttDocumentChange['operation'];
-      readonly patchCount: number;
-      readonly phase: 'candidate';
-      readonly proposalId: string;
-      readonly source: GanttDocumentChange['source'];
-    }
-  | {
-      readonly phase: 'api-write';
-      readonly request: ExampleApiWrite;
-    }
-  | {
-      readonly operationId: string | null;
-      readonly operation: GanttCommandCommittedEvent['operation'];
-      readonly phase: 'committed';
-      readonly proposalId: string;
-      readonly source: GanttCommandCommittedEvent['source'];
-    }
-  | {
-      readonly diagnostics: readonly {
-        readonly code: string;
-        readonly message: string;
-      }[];
-      readonly operationId: string | null;
-      readonly operation: GanttCommandRejectedEvent['operation'];
-      readonly phase: 'rejected';
-      readonly proposalId: string;
-      readonly source: GanttCommandRejectedEvent['source'];
-    };
-
 interface InteractiveState {
-  readonly apiLog: readonly ExampleApiLogEntry[];
+  readonly apiLog: readonly ExampleApiWrite[];
   readonly canRedo: boolean;
   readonly canUndo: boolean;
   readonly document: GanttDocument;
   readonly focusedTask?: GanttTaskTarget;
   readonly nextOperation: number;
   readonly nextSerial: number;
-  readonly operationByProposal: Readonly<Record<string, string>>;
   readonly range: TimeRange;
   readonly status: string;
 }
@@ -208,68 +163,26 @@ function commandsForItems(firstSerial: number, count: number): readonly GanttCom
   }).flat();
 }
 
-function operationIdFor(state: InteractiveState, proposalId: string): string | null {
-  return state.operationByProposal[proposalId] ?? null;
-}
-
 function interactiveReducer(state: InteractiveState, action: InteractiveAction): InteractiveState {
   switch (action.type) {
     case 'runtime-change': {
       const operationId = `example-operation-${String(state.nextOperation).padStart(3, '0')}`;
-      const commandCount =
-        action.change.command.type === 'transaction' ? action.change.command.commands.length : 1;
       const addedTasks = action.change.patches.filter(
         (patch) => patch.target.collection === 'tasks' && patch.op === 'add',
       ).length;
-      const request: ExampleApiWrite = {
-        baseRevision: action.change.baseRevision ?? null,
-        batch: {
-          commandCount,
-          kind: action.change.command.type === 'transaction' ? 'transaction' : 'command',
-        },
-        operation: action.change.operation,
-        operationId,
-        patches: action.change.patches,
-        proposalId: action.change.proposalId,
-        source: action.change.source,
-      };
+      const request = createExampleApiWrite(action.change, operationId);
       return {
         ...state,
-        apiLog: [
-          ...state.apiLog,
-          {
-            operation: action.change.operation,
-            operationId,
-            patchCount: action.change.patches.length,
-            phase: 'candidate',
-            proposalId: action.change.proposalId,
-            source: action.change.source,
-          },
-          { phase: 'api-write', request },
-        ],
+        apiLog: [...state.apiLog, request],
         document: action.change.document,
         nextOperation: state.nextOperation + 1,
         nextSerial: state.nextSerial + addedTasks,
-        operationByProposal: {
-          ...state.operationByProposal,
-          [action.change.proposalId]: operationId,
-        },
-        status: `Candidate ${action.change.proposalId} was adopted by the application store.`,
+        status: 'The change was adopted locally and queued for persistence.',
       };
     }
     case 'committed':
       return {
         ...state,
-        apiLog: [
-          ...state.apiLog,
-          {
-            operation: action.event.operation,
-            operationId: operationIdFor(state, action.event.proposalId),
-            phase: 'committed',
-            proposalId: action.event.proposalId,
-            source: action.event.source,
-          },
-        ],
         canRedo: action.canRedo,
         canUndo: action.canUndo,
         status: `${action.event.source.kind === 'history' ? 'History' : 'Command'} committed locally.`,
@@ -277,17 +190,6 @@ function interactiveReducer(state: InteractiveState, action: InteractiveAction):
     case 'rejected':
       return {
         ...state,
-        apiLog: [
-          ...state.apiLog,
-          {
-            diagnostics: action.event.diagnostics.map(({ code, message }) => ({ code, message })),
-            operation: action.event.operation,
-            operationId: operationIdFor(state, action.event.proposalId),
-            phase: 'rejected',
-            proposalId: action.event.proposalId,
-            source: action.event.source,
-          },
-        ],
         canRedo: action.canRedo,
         canUndo: action.canUndo,
         status: action.event.diagnostics[0]?.message ?? 'The chart interaction was rejected.',
@@ -302,7 +204,7 @@ function interactiveReducer(state: InteractiveState, action: InteractiveAction):
     case 'status':
       return { ...state, status: action.status };
     case 'clear-log':
-      return { ...state, apiLog: [], operationByProposal: {} };
+      return { ...state, apiLog: [] };
   }
 }
 
@@ -314,7 +216,6 @@ function createInitialState(): InteractiveState {
     document: loadApiDocument(),
     nextOperation: 1,
     nextSerial: 4,
-    operationByProposal: {},
     range: { start: RANGE_START, end: RANGE_END },
     status: 'The API-shaped document was parsed and the controlled store is ready.',
   };
@@ -584,9 +485,9 @@ export function InteractivePage(): ReactElement {
           <div>
             <h2 id="api-log-title">Persistence boundary</h2>
             <p>
-              This network-free example derives an API write from the same immutable candidate the
-              controlled store adopts. Retry, rollback, server revision, ID reconciliation, and
-              conflict handling belong to a later application adapter.
+              Each accepted hook call becomes one row-oriented API request with explicit
+              create/update/delete changes. Internal proposals, pointer details, lifecycle phases,
+              and patches stay out of this primary log.
             </p>
           </div>
           <button onClick={() => dispatch({ type: 'clear-log' })} type="button">
@@ -606,7 +507,7 @@ export function InteractivePage(): ReactElement {
         Drag task bodies or edges, or use arrows to navigate and Space to select. Press M to move,
         S/E to resize, N to create, Delete to remove, Enter to commit or activate, Escape to cancel,
         and the platform undo/redo shortcuts for history. Persisted cross-lane movement becomes one
-        transaction and therefore one API batch.
+        request containing both the task and placement changes.
       </p>
     </div>
   );

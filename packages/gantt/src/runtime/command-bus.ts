@@ -11,6 +11,7 @@ import {
   undoGanttRuntimeHistory,
   type GanttRuntimeHistoryState,
 } from './runtime-history';
+import { createGanttEntityChanges } from './entity-changes';
 import { cloneInteractionTarget } from './session';
 import type {
   CreateGanttCommandBusOptions,
@@ -570,6 +571,7 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
       command,
       diagnostics,
       document,
+      entityChanges: createGanttEntityChanges(baseDocument, document, patches),
       inversePatches,
       operation,
       originalCommand,

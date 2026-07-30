@@ -165,6 +165,29 @@ post-M4 work.
 
 ## Current Focus
 
+### Post-M4 persistence entity-change projection
+
+**Status:** `[x]` Complete and verified
+
+The
+[persistence entity-change projection plan](plans/2026-07-31-persistence-entity-change-projection-plan.md)
+addresses a user-discovered integration gap in the controlled `/interactive` example:
+the primary JSON showed runtime proposal, pointer, patch, and lifecycle mechanics
+instead of directly identifying the changed row and its old/new values.
+
+The accepted
+[persistence entity-change decision](decisions/2026-07-31-persistence-entity-change-projection.md)
+adds an immutable create/update/delete row projection to the existing
+patch-authoritative document-change envelope. The playground will retain only
+application-owned operation identity, base revision, and concise business changes in
+its primary persistence log.
+
+The final correction passes 60 test files / 294 tests, full formatting/lint/types,
+package and production playground builds, and live desktop/narrow drag,
+accessibility, overflow, and console checks. Full task create/delete DTOs retain
+schedule `mode`, while the short date-only form is limited to same-mode updates. The
+item-properties appendix is again the next action.
+
 ### Post-M4 timeline navigation interactions
 
 **Status:** `[x]` Complete and verified
@@ -605,6 +628,47 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — Persistence entity-change projection started
+
+- Recorded the user-reported controlled-consumer gap: a same-lane task drag logged
+  candidate/API-write/committed protocol entries but did not directly show the old
+  and new dates.
+- Accepted an additive row-oriented `entityChanges` projection while preserving
+  commands, patches, inverses, lifecycle ordering, and controlled acknowledgement.
+- Created the focused implementation plan and selected public type/runtime coverage,
+  the concise playground adapter, README updates, full CI, and live desktop/narrow
+  verification as the ordered path.
+- Recorded that Markdown-only targets are excluded by both `vp check` and `vp fmt`;
+  documentation uses diff/link/terminology checks, while the full source-aware check
+  remains in CI.
+- Slice 1 contract synchronization passed diff, link-target, and focused terminology
+  checks; implementation of the public projection is active.
+- The first focused projection run exposed and corrected a test-only cascade-order
+  assumption; runtime output already matched the established task-first deletion
+  patch order.
+- The public hook projection and concise playground adapter are implemented: repeated
+  transaction patches coalesce by row, and task movement now reports ISO before/update
+  dates without lifecycle telemetry.
+- Chrome DevTools could not attach because its dedicated profile was already locked;
+  live verification uses the built-in Browser fallback without terminating the
+  existing browser.
+- Focused projection/example coverage now passes four files and 25 tests; full
+  formatting/lint/types and the production playground build pass.
+- Live desktop drag and 1,440 × 900 / 560 × 900 checks prove the single
+  `task.schedule.updated` ISO-date request, labelled accessible log, no page overflow,
+  and zero console warnings/errors. The fallback has no separate failed-request
+  ledger, so that check is not claimed.
+- Final CI passed 60 test files / 293 tests, formatting across 147 files, lint/types
+  across 136 files, and the package build. The final playground build transformed
+  1,914 modules, and diff checks passed.
+- Final review found one adapter omission outside the verified move path: full task
+  create/delete rows dropped schedule `mode`. The short date-only projection is now
+  limited to same-mode updates, and focused create-payload coverage passes.
+- Repeated final CI passed 60 test files / 294 tests, formatting across 147 files,
+  lint/types across 136 files, and the package build. The production playground again
+  transformed 1,914 modules, final diff checks passed, and the correction is complete.
+- Appendix Slice A1 is again the next action.
 
 ### 2026-07-30 — Default-surface modernization started
 

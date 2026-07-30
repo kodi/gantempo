@@ -115,7 +115,18 @@ describe('Gantt command bus', () => {
     expect(change.command).toEqual(change.originalCommand);
     expect(change.patches).toHaveLength(1);
     expect(change.inversePatches).toHaveLength(1);
+    expect(change.entityChanges).toEqual([
+      {
+        after: change.document.tasks[0],
+        before: createPatchTestDocument().tasks[0],
+        collection: 'tasks',
+        id: 'task-1',
+        kind: 'update',
+      },
+    ]);
     expect(Object.isFrozen(change)).toBe(true);
+    expect(Object.isFrozen(change.entityChanges)).toBe(true);
+    expect(Object.isFrozen(change.entityChanges[0])).toBe(true);
     expect(Object.isFrozen(change.originalCommand)).toBe(true);
     expect(Object.isFrozen(change.source)).toBe(true);
   });
