@@ -167,9 +167,168 @@ describe('buildChartScene', () => {
     expect(scene.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
       'reference.placement-lane',
       'reference.placement-task',
-      'render.missing-task-schedule',
-      'render.invalid-task-interval',
-      'render.non-finite-task-time',
+      'layout.missing-schedule',
+      'layout.invalid-interval',
+      'layout.non-finite-interval',
+    ]);
+  });
+
+  it('composes project, resource, and custom views through one primitive shape', () => {
+    const document: GanttDocument = {
+      schemaVersion: 1,
+      tasks: [
+        {
+          id: 'task-a',
+          kind: 'task',
+          segments: [
+            {
+              id: 'segment-a',
+              schedule: {
+                mode: 'instant',
+                start: START + 2 * DAY,
+                end: START + 3 * DAY,
+              },
+            },
+          ],
+          title: 'Task A',
+          schedule: { mode: 'instant', start: START + DAY, end: START + 4 * DAY },
+        },
+      ],
+      resources: [{ id: 'resource-a', title: 'Ada' }],
+      lanes: [{ id: 'lane-a', title: 'Persisted' }],
+      assignments: [{ id: 'assignment-a', taskId: 'task-a', resourceId: 'resource-a' }],
+      placements: [{ id: 'placement-a', taskId: 'task-a', laneId: 'lane-a' }],
+      dependencies: [],
+    };
+
+    const project = buildChartScene({
+      document,
+      view: { kind: 'project' },
+      range: RANGE,
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+    });
+    const resource = buildChartScene({
+      document,
+      view: { kind: 'resource' },
+      range: RANGE,
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+    });
+    const custom = buildChartScene({
+      document,
+      view: {
+        kind: 'custom',
+        id: 'segments',
+        lanes: [{ key: 'segment-lane', title: 'Segments' }],
+        placements: [
+          {
+            key: 'segment-placement',
+            laneKey: 'segment-lane',
+            taskId: 'task-a',
+            segmentId: 'segment-a',
+          },
+        ],
+      },
+      range: RANGE,
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+    });
+
+    expect(project.lanes[0]).toMatchObject({
+      source: { kind: 'project-task', taskId: 'task-a' },
+    });
+    expect(project.lanes[0]?.laneId).toBeUndefined();
+    expect(resource.lanes[0]).toMatchObject({
+      resourceId: 'resource-a',
+      source: { kind: 'resource', resourceId: 'resource-a' },
+    });
+    expect(resource.taskBars[0]).toMatchObject({
+      assignmentId: 'assignment-a',
+      resourceId: 'resource-a',
+      source: {
+        kind: 'resource-assignment',
+        assignmentId: 'assignment-a',
+        resourceId: 'resource-a',
+      },
+    });
+    expect(custom.taskBars[0]).toMatchObject({
+      segmentId: 'segment-a',
+      start: START + 2 * DAY,
+      end: START + 3 * DAY,
+    });
+  });
+
+  it('uses stacked variable-height geometry and supports partial vertical queries', () => {
+    const document = documentWith(
+      ['a', 'b', 'c'].map((id) => ({
+        id,
+        kind: 'task' as const,
+        segments: [],
+        title: id.toUpperCase(),
+        schedule: { mode: 'instant' as const, start: START, end: START + 2 * DAY },
+      })),
+      [
+        { id: 'placement-a', laneId: 'dense', taskId: 'a' },
+        { id: 'placement-b', laneId: 'dense', taskId: 'b' },
+        { id: 'placement-c', laneId: 'visible', taskId: 'c' },
+      ],
+      [
+        { id: 'dense', title: 'Dense', height: 60 },
+        { id: 'visible', title: 'Visible', height: 80 },
+      ],
+    );
+
+    const complete = build(document);
+    const partial = buildChartScene({
+      document,
+      range: RANGE,
+      viewport: { verticalStart: 88, verticalExtent: 80 },
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+    });
+
+    expect(complete.lanes.map(({ y, height }) => ({ y, height }))).toEqual([
+      { y: 0, height: 88 },
+      { y: 88, height: 80 },
+    ]);
+    expect(complete.taskBars.map(({ taskId, y }) => ({ taskId, y }))).toEqual([
+      { taskId: 'a', y: 17 },
+      { taskId: 'b', y: 47 },
+      { taskId: 'c', y: 105 },
+    ]);
+    expect(partial.bounds.timelineHeight).toBe(168);
+    expect(partial.lanes.map((lane) => lane.laneId)).toEqual(['visible']);
+    expect(partial.taskBars.map((task) => task.taskId)).toEqual(['c']);
+  });
+
+  it('rejects ambiguous custom topology with a usable empty scene', () => {
+    const scene = buildChartScene({
+      document: documentWith([], [], []),
+      view: {
+        kind: 'custom',
+        id: 'duplicate',
+        lanes: [
+          { key: 'same', title: 'One' },
+          { key: 'same', title: 'Two' },
+        ],
+        placements: [],
+      },
+      range: RANGE,
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+    });
+
+    expect(scene.lanes).toEqual([]);
+    expect(scene.taskBars).toEqual([]);
+    expect(scene.emptyState).toBeDefined();
+    expect(scene.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      'view.duplicate-lane-key',
     ]);
   });
 

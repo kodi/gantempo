@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 6 performance baseline complete
+**Status:** `[-]` In progress; Slice 7 semantic scene complete
 
 **Target outcome**
 
@@ -145,8 +145,8 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Compose the existing semantic scene over the verified view, interval, layout, and
-viewport kernels in Slice 7 of the
+Integrate the accepted read-only view selector and variable-height scene through
+React, CSS, and the real playground in Slice 8 of the
 [M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
 ## Later Milestone Outcomes
@@ -231,6 +231,24 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 7 viewport-backed semantic scene
+
+- Replaced fixed-row document lookup in `buildChartScene` with composition over the
+  verified view, interval, stack, viewport, scale, tick, and primitive boundaries.
+- Added stable view identity/provenance and optional canonical source IDs to semantic
+  lanes/bars while preserving default persisted identities.
+- Added direct all-view, segment, stack, variable-height, partial-viewport, rejected
+  topology, and M0 parity coverage.
+- Focused pure/scene verification passed 9 files and 36 tests; model/time/render
+  regression passed 9 files and 54 tests; `vp check` passed 80 formatted and 69
+  lint/type-checked files.
+- Browser verification was not applicable because default valid document
+  markup/geometry and playground sources were unchanged; React/CSS integration is
+  Slice 8.
+- The per-slice `mise run ci` checkpoint passed 28 test files and 120 tests plus the
+  four-artifact package build.
+- Selected read-only React/playground integration as Slice 8.
 
 ### 2026-07-30 — M3 Slice 6 pure-kernel performance baseline
 

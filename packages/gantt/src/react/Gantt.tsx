@@ -114,7 +114,7 @@ export function Gantt({
                   className="gt-gantt__lane"
                   data-lane-id={lane.laneId}
                   data-gt-part="lane"
-                  key={lane.laneId}
+                  key={lane.viewKey}
                 >
                   <span aria-hidden="true" className="gt-gantt__lane-marker">
                     ·
@@ -139,7 +139,7 @@ export function Gantt({
                   {scene.lanes.map((lane, index) => (
                     <line
                       className="gt-gantt__row-separator"
-                      key={lane.laneId}
+                      key={lane.viewKey}
                       x1="0"
                       x2="100%"
                       y1={percent((index + 1) / scene.lanes.length)}
@@ -162,7 +162,7 @@ export function Gantt({
                       data-lane-id={task.laneId}
                       data-placement-id={task.placementId}
                       data-task-id={task.taskId}
-                      key={task.placementId}
+                      key={task.viewKey}
                       role="img"
                     >
                       <title>{accessibleName}</title>

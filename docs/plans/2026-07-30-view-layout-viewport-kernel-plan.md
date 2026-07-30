@@ -811,7 +811,7 @@ exact accepted command and output rather than silently substituting a smaller fi
 
 ### Slice 7: Compose viewport-backed scene primitives
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1391,6 +1391,32 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - The required per-slice `mise run ci` checkpoint passed 28 ordinary test files and
   117 tests, all static checks, and the four-artifact package build.
 
+### 2026-07-30 — Slice 7 viewport-backed semantic scene
+
+- Replaced the scene builder's document lookup, fixed-row math, and full placement
+  scan with composition over validation, view resolution, interval resolution, stack
+  layout, viewport construction/query, time scale/ticks, and primitive translation.
+- Lane/task primitives now carry stable view keys, immutable source provenance, and
+  optional canonical lane, resource, assignment, placement, and segment IDs. Default
+  document identity attributes remain available.
+- The compatibility call remains document view plus full vertical content. Optional
+  private scene viewport input proves partial vertical visibility while bounds retain
+  complete content height.
+- Added direct project/resource/custom, explicit-segment, dense-stack,
+  variable-height, partial-viewport, and rejected-topology scene coverage. Existing
+  clipping, tick, empty, diagnostic-isolation, and input-immutability coverage remains
+  green.
+- Focused view/layout/viewport/render verification passed 9 files and 36 tests. The
+  model/time/render regression command passed 9 files and 54 tests.
+- `vp check` passed 80 formatted and 69 lint/type-checked files after formatting the
+  rewritten scene and primitive sources. `git diff --check` passed.
+- Browser verification is not applicable to this slice: the default valid document
+  markup and geometry remain unchanged, the React view selector and variable-height
+  DOM/CSS consumption are deliberately Slice 8, and no playground source changed.
+- The required per-slice `mise run ci` checkpoint passed 28 test files and 120 tests,
+  all static checks, and four package artifacts (126.60 kB JavaScript, 270.62 kB source
+  map, 3.75 kB CSS, and 17.23 kB declarations).
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
@@ -1399,7 +1425,7 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - [x] Slice 4: Deterministic overlap stacks and variable lane geometry
 - [x] Slice 5: Immutable two-dimensional viewport index and query
 - [x] Slice 6: Performance fixture and M3 viewport baseline
-- [ ] Slice 7: Compose viewport-backed scene primitives
+- [x] Slice 7: Compose viewport-backed scene primitives
 - [ ] Slice 8: Read-only React and playground integration
 - [ ] Slice 9: Intentional facade, documentation, and M3 completion evidence
 - [ ] Final automated gate
@@ -1407,9 +1433,9 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 7 by refactoring `buildChartScene` into composition over view resolution,
-interval resolution, stack layout, viewport construction/query, and primitive
-translation. Preserve the document-view M0 baseline while adding stable view
-keys/provenance, variable heights, stacked bars, partial vertical visibility, and all
-view kinds in direct scene tests. Run both focused scene/pure-kernel and M0 regression
-suites plus the required per-slice `mise run ci`.
+Start Slice 8 by adding the accepted optional `GanttProps.view`, view/provenance DOM
+attributes, variable-height lane/timeline/separator rendering, and real playground
+document/project/resource/custom/segment/stack cases. Preserve accessibility and
+disabled controls, build the playground, then run the required connected Chrome
+DevTools matrix at both routes and all three viewport sizes before the per-slice
+`mise run ci`.

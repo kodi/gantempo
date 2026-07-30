@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
+import type { GanttViewDefinition, ViewLaneSource, ViewPlacementSource } from '../view/types';
 
 export interface ChartLayoutMetrics {
   readonly headerHeight: number;
@@ -7,6 +8,9 @@ export interface ChartLayoutMetrics {
   readonly barHeight: number;
   readonly laneColumnWidth: number;
   readonly labelPadding: number;
+  readonly lanePaddingTop: number;
+  readonly lanePaddingBottom: number;
+  readonly stackGap: number;
 }
 
 export const DEFAULT_CHART_LAYOUT_METRICS: ChartLayoutMetrics = Object.freeze({
@@ -15,6 +19,9 @@ export const DEFAULT_CHART_LAYOUT_METRICS: ChartLayoutMetrics = Object.freeze({
   barHeight: 24,
   laneColumnWidth: 160,
   labelPadding: 8,
+  lanePaddingTop: 17,
+  lanePaddingBottom: 17,
+  stackGap: 6,
 });
 
 export interface ChartBoundsPrimitive {
@@ -36,16 +43,25 @@ export interface GridLinePrimitive {
 }
 
 export interface LaneRowPrimitive {
-  readonly laneId: EntityId;
+  readonly viewKey: string;
+  readonly laneId?: EntityId;
+  readonly resourceId?: EntityId;
+  readonly source: ViewLaneSource;
   readonly title: string;
   readonly y: number;
   readonly height: number;
 }
 
 export interface TaskBarPrimitive {
-  readonly placementId: EntityId;
+  readonly viewKey: string;
+  readonly laneViewKey: string;
+  readonly placementId?: EntityId;
   readonly taskId: EntityId;
-  readonly laneId: EntityId;
+  readonly laneId?: EntityId;
+  readonly resourceId?: EntityId;
+  readonly assignmentId?: EntityId;
+  readonly segmentId?: EntityId;
+  readonly source: ViewPlacementSource;
   readonly title: string;
   readonly start: EpochMilliseconds;
   readonly end: EpochMilliseconds;
@@ -75,7 +91,12 @@ export interface ChartScene {
 
 export interface BuildChartSceneOptions {
   readonly document: GanttDocument;
+  readonly view?: GanttViewDefinition;
   readonly range: TimeRange;
+  readonly viewport?: {
+    readonly verticalStart: number;
+    readonly verticalExtent: number;
+  };
   readonly tickAnchor: EpochMilliseconds;
   readonly tickInterval: number;
   readonly timeZone: string;
