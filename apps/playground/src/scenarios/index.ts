@@ -1,4 +1,4 @@
-import type { EntityId, GanttDocument, TimeRange } from '@gantempo/gantt';
+import type { EntityId, GanttDocument, GanttViewDefinition, TimeRange } from '@gantempo/gantt';
 
 export type ScenarioTheme = 'dark' | 'high-contrast' | 'light';
 export type ScenarioDensity = 'comfortable' | 'compact';
@@ -11,6 +11,7 @@ export interface PlaygroundScenario {
   readonly theme: ScenarioTheme;
   readonly density: ScenarioDensity;
   readonly document: GanttDocument;
+  readonly view?: GanttViewDefinition;
   readonly range: TimeRange;
   readonly tickAnchor: number;
   readonly tickInterval: number;
@@ -106,11 +107,168 @@ const mainTaskVariants: Readonly<Record<EntityId, ScenarioTaskTone>> = {
   launch: 'success',
 };
 
+const customPhaseView: GanttViewDefinition = {
+  kind: 'custom',
+  id: 'delivery-phases',
+  lanes: [
+    { key: 'shape', title: 'Shape the work', minimumHeight: 68 },
+    { key: 'ship', title: 'Ship the work', minimumHeight: 76 },
+  ],
+  placements: [
+    { key: 'requirements', laneKey: 'shape', taskId: 'requirements' },
+    { key: 'wireframes', laneKey: 'shape', taskId: 'wireframes' },
+    { key: 'review', laneKey: 'shape', taskId: 'review' },
+    { key: 'build', laneKey: 'ship', taskId: 'build' },
+    { key: 'qa', laneKey: 'ship', taskId: 'qa' },
+    { key: 'launch', laneKey: 'ship', taskId: 'launch' },
+  ],
+};
+
+const resourceDocument: GanttDocument = {
+  schemaVersion: 1,
+  lanes: [],
+  placements: [],
+  dependencies: [],
+  resources: [
+    { id: 'alex', title: 'Alex Morgan' },
+    { id: 'sam', title: 'Sam Rivera' },
+    { id: 'taylor', title: 'Taylor Kim' },
+  ],
+  tasks: [
+    {
+      id: 'alex-a',
+      kind: 'task',
+      segments: [],
+      title: 'Research',
+      schedule: {
+        mode: 'instant',
+        start: Date.UTC(2026, 6, 31),
+        end: Date.UTC(2026, 7, 10),
+      },
+    },
+    {
+      id: 'alex-b',
+      kind: 'task',
+      segments: [],
+      title: 'Review',
+      schedule: {
+        mode: 'instant',
+        start: Date.UTC(2026, 7, 5),
+        end: Date.UTC(2026, 7, 20),
+      },
+    },
+    {
+      id: 'sam-a',
+      kind: 'task',
+      segments: [],
+      title: 'Prototype',
+      schedule: {
+        mode: 'instant',
+        start: Date.UTC(2026, 7, 6),
+        end: Date.UTC(2026, 7, 19),
+      },
+    },
+    {
+      id: 'taylor-a',
+      kind: 'task',
+      segments: [],
+      title: 'Handoff',
+      schedule: {
+        mode: 'instant',
+        start: Date.UTC(2026, 7, 18),
+        end: Date.UTC(2026, 7, 26),
+      },
+    },
+  ],
+  assignments: [
+    { id: 'assign-alex-a', taskId: 'alex-a', resourceId: 'alex' },
+    { id: 'assign-alex-b', taskId: 'alex-b', resourceId: 'alex' },
+    { id: 'assign-sam-a', taskId: 'sam-a', resourceId: 'sam' },
+    { id: 'assign-taylor-a', taskId: 'taylor-a', resourceId: 'taylor' },
+  ],
+};
+
+const segmentDocument: GanttDocument = {
+  ...EMPTY_RELATIONSHIPS,
+  schemaVersion: 1,
+  lanes: [],
+  placements: [],
+  tasks: [
+    {
+      id: 'campaign',
+      kind: 'task',
+      title: 'Campaign',
+      schedule: {
+        mode: 'instant',
+        start: Date.UTC(2026, 7, 1),
+        end: Date.UTC(2026, 7, 21),
+      },
+      segments: [
+        {
+          id: 'campaign-shape',
+          schedule: {
+            mode: 'instant',
+            start: Date.UTC(2026, 7, 1),
+            end: Date.UTC(2026, 7, 9),
+          },
+        },
+        {
+          id: 'campaign-ship',
+          schedule: {
+            mode: 'instant',
+            start: Date.UTC(2026, 7, 13),
+            end: Date.UTC(2026, 7, 21),
+          },
+        },
+      ],
+    },
+    {
+      id: 'campaign-review',
+      kind: 'task',
+      title: 'Cross-segment review',
+      schedule: {
+        mode: 'instant',
+        start: Date.UTC(2026, 7, 6),
+        end: Date.UTC(2026, 7, 16),
+      },
+      segments: [],
+    },
+  ],
+};
+
+const segmentView: GanttViewDefinition = {
+  kind: 'custom',
+  id: 'segment-proof',
+  lanes: [
+    { key: 'campaign', title: 'Campaign segments', minimumHeight: 96 },
+    { key: 'reserved', title: 'Reserved space', minimumHeight: 64 },
+  ],
+  placements: [
+    {
+      key: 'shape',
+      laneKey: 'campaign',
+      taskId: 'campaign',
+      segmentId: 'campaign-shape',
+    },
+    {
+      key: 'ship',
+      laneKey: 'campaign',
+      taskId: 'campaign',
+      segmentId: 'campaign-ship',
+    },
+    {
+      key: 'review',
+      laneKey: 'campaign',
+      taskId: 'campaign-review',
+    },
+  ],
+};
+
 export const mainScenario: PlaygroundScenario = {
   ...TIME_AXIS,
   id: 'main-project',
   title: 'Website launch plan',
-  description: 'The primary project view used for everyday development.',
+  description: 'Persisted lanes and placements in the default document view.',
   theme: 'light',
   density: 'comfortable',
   document: mainDocument,
@@ -121,90 +279,47 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
   {
     ...mainScenario,
     id: 'compact-project',
-    title: 'Compact project',
-    description: 'The main data at a tighter row density.',
+    title: 'Flat project view',
+    description: 'One task-backed lane per canonical task in compact density.',
     density: 'compact',
+    view: { kind: 'project' },
   },
   {
     ...mainScenario,
-    id: 'dark-project',
-    title: 'Dark theme',
-    description: 'The primary project with dark surface tokens.',
+    id: 'dark-custom',
+    title: 'Custom phase grouping',
+    description: 'Application-defined data-only lanes on dark theme tokens.',
     theme: 'dark',
+    view: customPhaseView,
   },
   {
     ...TIME_AXIS,
     id: 'resource-overlap',
     title: 'Resource overlap',
-    description: 'Multiple scheduled tasks sharing the same lane.',
+    description: 'Assignment-derived resource lanes with genuine stacked overlap.',
     theme: 'light',
     density: 'comfortable',
-    document: {
-      ...EMPTY_RELATIONSHIPS,
-      schemaVersion: 1,
-      lanes: [
-        { id: 'alex', title: 'Alex Morgan' },
-        { id: 'sam', title: 'Sam Rivera' },
-        { id: 'taylor', title: 'Taylor Kim' },
-      ],
-      tasks: [
-        {
-          id: 'alex-a',
-          kind: 'task',
-          segments: [],
-          title: 'Research',
-          schedule: {
-            mode: 'instant',
-            start: Date.UTC(2026, 6, 31),
-            end: Date.UTC(2026, 7, 10),
-          },
-        },
-        {
-          id: 'alex-b',
-          kind: 'task',
-          segments: [],
-          title: 'Review',
-          schedule: {
-            mode: 'instant',
-            start: Date.UTC(2026, 7, 13),
-            end: Date.UTC(2026, 7, 20),
-          },
-        },
-        {
-          id: 'sam-a',
-          kind: 'task',
-          segments: [],
-          title: 'Prototype',
-          schedule: {
-            mode: 'instant',
-            start: Date.UTC(2026, 7, 6),
-            end: Date.UTC(2026, 7, 19),
-          },
-        },
-        {
-          id: 'taylor-a',
-          kind: 'task',
-          segments: [],
-          title: 'Handoff',
-          schedule: {
-            mode: 'instant',
-            start: Date.UTC(2026, 7, 18),
-            end: Date.UTC(2026, 7, 26),
-          },
-        },
-      ],
-      placements: [
-        { id: 'place-alex-a', laneId: 'alex', taskId: 'alex-a' },
-        { id: 'place-alex-b', laneId: 'alex', taskId: 'alex-b' },
-        { id: 'place-sam-a', laneId: 'sam', taskId: 'sam-a' },
-        { id: 'place-taylor-a', laneId: 'taylor', taskId: 'taylor-a' },
-      ],
-    },
+    document: resourceDocument,
+    view: { kind: 'resource' },
     taskVariants: {
       'alex-a': 'accent',
       'alex-b': 'warning',
       'sam-a': 'success',
       'taylor-a': 'neutral',
+    },
+  },
+  {
+    ...TIME_AXIS,
+    id: 'segment-variable-height',
+    title: 'Explicit segments',
+    description: 'Segment-backed placements and variable minimum lane heights.',
+    theme: 'high-contrast',
+    density: 'comfortable',
+    document: segmentDocument,
+    view: segmentView,
+    taskVariants: {
+      campaign: 'accent',
+      'campaign-review': 'warning',
     },
   },
   {

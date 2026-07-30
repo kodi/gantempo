@@ -83,12 +83,77 @@ describe('Gantt', () => {
     expect(markup).toContain('data-lane-id="lane-design"');
     expect(markup).toContain('data-task-id="task-review"');
     expect(markup).toContain('data-placement-id="placement-review"');
+    expect(markup).toContain('data-view-key="gt:v1:');
     expect(markup).toContain('data-clipped-start="true"');
     expect(markup).toContain('<svg aria-label="Scheduled tasks" role="group">');
     expect(markup).toContain('aria-hidden="true" data-gt-part="grid"');
     expect(markup).toContain('Review, Jul 28, 2026, 12:00 AM to Jul 31, 2026, 12:00 AM');
     expect(markup).toContain('<foreignObject');
     expect(markup).toContain('class="gt-gantt__task-label"');
+  });
+
+  it('renders derived resource and explicit segment provenance through the public view prop', () => {
+    const document: GanttDocument = {
+      schemaVersion: 1,
+      resources: [{ id: 'resource-a', title: 'Ada' }],
+      assignments: [{ id: 'assignment-a', taskId: 'task-a', resourceId: 'resource-a' }],
+      lanes: [],
+      placements: [],
+      dependencies: [],
+      tasks: [
+        {
+          id: 'task-a',
+          kind: 'task',
+          title: 'Task A',
+          schedule: { mode: 'instant', start: START, end: START + 3 * DAY },
+          segments: [
+            {
+              id: 'segment-a',
+              schedule: { mode: 'instant', start: START + DAY, end: START + 2 * DAY },
+            },
+          ],
+        },
+      ],
+    };
+    const resourceMarkup = renderToStaticMarkup(
+      <Gantt
+        document={document}
+        range={{ start: START, end: START + 7 * DAY }}
+        tickAnchor={START}
+        tickInterval={DAY}
+        timeZone="UTC"
+        view={{ kind: 'resource' }}
+      />,
+    );
+    const segmentMarkup = renderToStaticMarkup(
+      <Gantt
+        document={document}
+        range={{ start: START, end: START + 7 * DAY }}
+        tickAnchor={START}
+        tickInterval={DAY}
+        timeZone="UTC"
+        view={{
+          kind: 'custom',
+          id: 'segment-view',
+          lanes: [{ key: 'lane', title: 'Segment lane', minimumHeight: 90 }],
+          placements: [
+            {
+              key: 'segment',
+              laneKey: 'lane',
+              taskId: 'task-a',
+              segmentId: 'segment-a',
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(resourceMarkup).toContain('data-resource-id="resource-a"');
+    expect(resourceMarkup).toContain('data-assignment-id="assignment-a"');
+    expect(resourceMarkup).not.toContain('data-placement-id=');
+    expect(segmentMarkup).toContain('data-segment-id="segment-a"');
+    expect(segmentMarkup).toContain('--gt-lane-height-ratio:1.5517241379310345');
+    expect(segmentMarkup).toContain('Task A, Jul 30, 2026, 12:00 AM to Jul 31, 2026, 12:00 AM');
   });
 
   it('renders a useful empty state without an unlabeled SVG', () => {

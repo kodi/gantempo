@@ -71,7 +71,7 @@
     display: flex;
     align-items: center;
     min-width: 0;
-    height: var(--gt-row-height);
+    height: calc(var(--gt-row-height) * var(--gt-lane-height-ratio));
     gap: 7px;
     padding-inline: 14px;
     border-bottom: 1px solid var(--gt-color-grid);
@@ -95,7 +95,7 @@
   :where(.gt-gantt__timeline) {
     position: relative;
     min-width: 0;
-    height: calc(var(--gt-lane-count) * var(--gt-row-height));
+    height: calc(var(--gt-timeline-height-ratio) * var(--gt-row-height));
     overflow: hidden;
     background: var(--gt-color-surface-muted);
   }

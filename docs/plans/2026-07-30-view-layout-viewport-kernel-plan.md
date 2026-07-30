@@ -866,7 +866,7 @@ output also changes; record applicability accurately.
 
 ### Slice 8: Read-only React and playground integration
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1417,6 +1417,66 @@ None of these questions authorizes implementation before Slice 1 is complete.
   all static checks, and four package artifacts (126.60 kB JavaScript, 270.62 kB source
   map, 3.75 kB CSS, and 17.23 kB declarations).
 
+### 2026-07-30 — Slice 8 React, playground, and browser integration
+
+- Added optional public `GanttProps.view` with document default and exported only the
+  data-only document/project/resource/custom definition and custom descriptor types
+  needed to supply it.
+- React now renders lane/timeline heights from scene ratios so comfortable, matrix,
+  and compact CSS row tokens scale variable lane geometry consistently. Separators use
+  actual lane boundaries.
+- Added stable view/lane-view attributes plus optional canonical lane, resource,
+  assignment, placement, and segment attributes. Accessible task names retain full
+  task title and interval.
+- The playground now proves default persisted document view on `/` plus flat project,
+  dark custom grouping, assignment-derived resource overlap, explicit segments,
+  variable minimum heights, high contrast, compact density, intended clipping, and
+  empty state on `/matrix`.
+- Focused React/render verification passed 2 files and 15 tests. The standalone
+  playground production build transformed 45 modules and emitted 0.85 kB HTML,
+  9.48 kB CSS, and 226.01 kB JavaScript.
+- `vp check` passed all 80 formatting files and 69 lint/type-checked files;
+  `git diff --check` passed.
+- Chrome DevTools MCP `list_pages` succeeded, and only the existing local Gantempo
+  page was selected. Its window was maximized, so `resize_page` could not set content
+  size; the same MCP's explicit desktop viewport emulation was used for the required
+  1440 × 900, 900 × 900, and 560 × 900 checks.
+- `/` passed at all three viewports:
+  - no horizontal page overflow, zero diagnostics, four persisted lanes, six task
+    images, one intentional clipped-end bar, and two disabled controls;
+  - summed lane, timeline, and SVG heights matched exactly at 296 px in comfortable
+    density;
+  - all ten lane/task nodes retained view keys, all four canonical lane IDs and six
+    placement IDs remained present, and task names were unique.
+- `/matrix` passed at all three viewports:
+  - the five scenarios use two columns at 1440 and one at 900/560, with no horizontal
+    overflow and zero diagnostics throughout;
+  - lane-list/timeline/SVG height differences were zero except one harmless 0.008 px
+    subpixel rounding difference in the custom case;
+  - project rendered 6 lanes/6 bars; custom 2/6; resource 3/4; segments 2/3; empty
+    0/0;
+  - the resource lane grew to 72.82 px versus 48 px peers, and its two Alex bars used
+    distinct vertical tracks 24.82 px apart;
+  - explicit segment attributes appeared twice, assignment attributes four times,
+    intended clipped-end behavior remained in project/custom, and light, dark, and
+    high-contrast token values resolved as configured;
+  - the 560 px screenshot showed readable single-column cards, clipped long labels
+    with bars contained inside the timeline, and three responsive tick labels.
+- Accessibility snapshots exposed named chart regions, complete lane labels, complete
+  task names/dates as image names, hidden decorative grid content, useful empty-state
+  text, and disabled Today/more-options controls. The first snapshot revealed
+  redundant identical image descriptions from `aria-label` plus SVG `<title>`;
+  removing the redundant title retained the complete name and eliminated duplicate
+  descriptions.
+- The first network inspection also found the playground-owned missing
+  `/favicon.ico`; an inline SVG favicon removed that 404. The final matrix reload had
+  45 successful app/extension requests and no failures. Final console output had no
+  application warning or error; remaining CSP/deprecation/listener/liveness entries
+  were injected by browser extensions alongside Vite connection debug output.
+- The required per-slice `mise run ci` checkpoint passed 28 test files and 121 tests,
+  all static checks, and four package artifacts (127.19 kB JavaScript, 272.02 kB source
+  map, 3.80 kB CSS, and 18.33 kB declarations).
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
@@ -1426,16 +1486,15 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - [x] Slice 5: Immutable two-dimensional viewport index and query
 - [x] Slice 6: Performance fixture and M3 viewport baseline
 - [x] Slice 7: Compose viewport-backed scene primitives
-- [ ] Slice 8: Read-only React and playground integration
+- [x] Slice 8: Read-only React and playground integration
 - [ ] Slice 9: Intentional facade, documentation, and M3 completion evidence
 - [ ] Final automated gate
 - [ ] Final browser gate
 
 ## Next Slice
 
-Start Slice 8 by adding the accepted optional `GanttProps.view`, view/provenance DOM
-attributes, variable-height lane/timeline/separator rendering, and real playground
-document/project/resource/custom/segment/stack cases. Preserve accessibility and
-disabled controls, build the playground, then run the required connected Chrome
-DevTools matrix at both routes and all three viewport sizes before the per-slice
-`mise run ci`.
+Start Slice 9 by tightening root-facade tests, documenting the read-only view contract
+and limitations in `README.md`, inspecting packed declarations/JavaScript/source
+map/CSS and dependencies, rerunning the full ordinary/benchmark/playground gates, and
+synchronizing final architecture/decision/plan/roadmap evidence. Mark M3 complete only
+after that final evidence and select M4 planning as the next action.

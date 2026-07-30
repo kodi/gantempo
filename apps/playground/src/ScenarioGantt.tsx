@@ -54,6 +54,7 @@ export function ScenarioGantt({ scenario, size }: ScenarioGanttProps): ReactElem
         tickAnchor={scenario.tickAnchor}
         tickInterval={scenario.tickInterval}
         timeZone={scenario.timeZone}
+        {...(scenario.view === undefined ? {} : { view: scenario.view })}
       />
     </div>
   );

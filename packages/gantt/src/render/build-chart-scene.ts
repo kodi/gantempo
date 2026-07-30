@@ -113,6 +113,7 @@ export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
       bounds: Object.freeze({
         headerHeight: metrics.headerHeight,
         laneColumnWidth: metrics.laneColumnWidth,
+        defaultLaneHeight: metrics.rowHeight,
         timelineHeight: 0,
         totalHeight: metrics.headerHeight,
       }),
@@ -184,6 +185,7 @@ export function buildChartScene(options: BuildChartSceneOptions): ChartScene {
     bounds: Object.freeze({
       headerHeight: metrics.headerHeight,
       laneColumnWidth: metrics.laneColumnWidth,
+      defaultLaneHeight: metrics.rowHeight,
       timelineHeight: layout.totalHeight,
       totalHeight: metrics.headerHeight + layout.totalHeight,
     }),

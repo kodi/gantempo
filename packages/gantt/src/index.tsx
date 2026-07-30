@@ -77,3 +77,12 @@ export type {
   TaskSegment,
   TimeRange,
 } from './model/types';
+export type {
+  CustomViewDefinition,
+  CustomViewLane,
+  CustomViewPlacement,
+  DocumentViewDefinition,
+  GanttViewDefinition,
+  ProjectViewDefinition,
+  ResourceViewDefinition,
+} from './view/types';

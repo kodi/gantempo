@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 7 semantic scene complete
+**Status:** `[-]` In progress; Slice 8 React/browser integration complete
 
 **Target outcome**
 
@@ -145,8 +145,8 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Integrate the accepted read-only view selector and variable-height scene through
-React, CSS, and the real playground in Slice 8 of the
+Complete the intentional facade, README, packed-artifact inspection, and final
+ordinary/benchmark/playground evidence in Slice 9 of the
 [M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
 ## Later Milestone Outcomes
@@ -231,6 +231,30 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 8 React and playground integration
+
+- Added optional public data-only view selection, stable view/provenance DOM
+  attributes, and variable-height React/CSS lane/timeline/separator rendering while
+  preserving the document default.
+- Expanded the real playground to persisted document, flat project, dark custom,
+  stacked resource, explicit segment/variable-height, compact, high-contrast, clipped,
+  and empty paths.
+- Focused verification passed 2 files and 15 tests; `vp check` passed 80 formatted and
+  69 lint/type-checked files; the production playground transformed 45 modules.
+- Chrome DevTools inspection passed `/` and `/matrix` at 1440 × 900, 900 × 900, and
+  560 × 900 with zero diagnostics, no horizontal overflow, aligned lane/timeline/SVG
+  geometry, correct responsive columns/themes/provenance/clipping/stacks, complete
+  accessible chart/task names, and disabled controls.
+- Fixed two live browser findings: removed redundant SVG task descriptions while
+  preserving `aria-label`, and added an inline favicon to eliminate the only
+  playground-owned 404. Final network requests all succeeded; remaining console
+  warnings/issues were browser-extension injected rather than application output.
+- The maximized Chrome window rejected direct content resize, so the required sizes
+  used Chrome DevTools viewport emulation with the same selected local page.
+- The per-slice `mise run ci` checkpoint passed 28 test files and 121 tests plus the
+  four-artifact package build.
+- Selected intentional facade/docs/packed/final evidence as Slice 9.
 
 ### 2026-07-30 — M3 Slice 7 viewport-backed semantic scene
 

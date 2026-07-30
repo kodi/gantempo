@@ -4,6 +4,7 @@ import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { buildChartScene } from '../render/build-chart-scene';
 import type { TaskBarPrimitive } from '../render/primitives';
+import type { GanttViewDefinition } from '../view/types';
 import '../styles.css';
 
 export interface GanttProps {
@@ -12,6 +13,7 @@ export interface GanttProps {
   readonly timeZone: string;
   readonly tickAnchor: EpochMilliseconds;
   readonly tickInterval: number;
+  readonly view?: GanttViewDefinition;
   readonly className?: string;
   readonly label?: string;
   readonly locale?: string;
@@ -21,11 +23,21 @@ export interface GanttProps {
 
 interface GanttRootStyle extends CSSProperties {
   readonly '--gt-lane-column-width': string;
-  readonly '--gt-lane-count': number;
+  readonly '--gt-timeline-height-ratio': number;
 }
+
+type GanttLaneStyle = CSSProperties & {
+  readonly '--gt-lane-height-ratio': number;
+};
 
 function percent(value: number): string {
   return `${value * 100}%`;
+}
+
+function laneStyle(height: number, defaultHeight: number): GanttLaneStyle {
+  return {
+    '--gt-lane-height-ratio': height / defaultHeight,
+  } as GanttLaneStyle;
 }
 
 function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeFormat): string {
@@ -38,6 +50,7 @@ export function Gantt({
   timeZone,
   tickAnchor,
   tickInterval,
+  view,
   className,
   label = 'Gantt chart',
   locale = 'en-US',
@@ -53,8 +66,9 @@ export function Gantt({
         tickInterval,
         timeZone,
         locale,
+        ...(view === undefined ? {} : { view }),
       }),
-    [document, locale, range, tickAnchor, tickInterval, timeZone],
+    [document, locale, range, tickAnchor, tickInterval, timeZone, view],
   );
   const dateFormatter = useMemo(
     () =>
@@ -72,7 +86,7 @@ export function Gantt({
   const classes = ['gt-gantt', className].filter(Boolean).join(' ');
   const style: GanttRootStyle = {
     '--gt-lane-column-width': `${scene.bounds.laneColumnWidth}px`,
-    '--gt-lane-count': scene.lanes.length,
+    '--gt-timeline-height-ratio': scene.bounds.timelineHeight / scene.bounds.defaultLaneHeight,
   };
 
   return (
@@ -114,7 +128,10 @@ export function Gantt({
                   className="gt-gantt__lane"
                   data-lane-id={lane.laneId}
                   data-gt-part="lane"
+                  data-resource-id={lane.resourceId}
+                  data-view-key={lane.viewKey}
                   key={lane.viewKey}
+                  style={laneStyle(lane.height, scene.bounds.defaultLaneHeight)}
                 >
                   <span aria-hidden="true" className="gt-gantt__lane-marker">
                     ·
@@ -136,14 +153,14 @@ export function Gantt({
                       y2="100%"
                     />
                   ))}
-                  {scene.lanes.map((lane, index) => (
+                  {scene.lanes.map((lane) => (
                     <line
                       className="gt-gantt__row-separator"
                       key={lane.viewKey}
                       x1="0"
                       x2="100%"
-                      y1={percent((index + 1) / scene.lanes.length)}
-                      y2={percent((index + 1) / scene.lanes.length)}
+                      y1={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
+                      y2={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
                     />
                   ))}
                 </g>
@@ -159,13 +176,17 @@ export function Gantt({
                       data-clipped-start={task.clippedStart || undefined}
                       data-gt-part="task"
                       data-gt-variant={variant}
+                      data-assignment-id={task.assignmentId}
                       data-lane-id={task.laneId}
+                      data-lane-view-key={task.laneViewKey}
                       data-placement-id={task.placementId}
+                      data-resource-id={task.resourceId}
+                      data-segment-id={task.segmentId}
                       data-task-id={task.taskId}
+                      data-view-key={task.viewKey}
                       key={task.viewKey}
                       role="img"
                     >
-                      <title>{accessibleName}</title>
                       <rect
                         className="gt-gantt__task-bar"
                         height={percent(task.height / scene.bounds.timelineHeight)}

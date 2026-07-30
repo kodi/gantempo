@@ -27,6 +27,7 @@ export const DEFAULT_CHART_LAYOUT_METRICS: ChartLayoutMetrics = Object.freeze({
 export interface ChartBoundsPrimitive {
   readonly headerHeight: number;
   readonly laneColumnWidth: number;
+  readonly defaultLaneHeight: number;
   readonly timelineHeight: number;
   readonly totalHeight: number;
 }
