@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: In progress; Slice 3 complete, Slice 4 next
+Status: In progress; Slice 4 complete, Slice 5 next
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -535,7 +535,7 @@ Verification:
 
 ### Slice 4: Connect wheel and trackpad navigation
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Make ordinary wheel/trackpad input move the appropriate viewport axis.
 
@@ -573,6 +573,39 @@ Verification:
 - `git diff --check`.
 
 Dependencies: Slice 3.
+
+Completed in this slice:
+
+- added one scoped non-passive wheel listener to each chart surface;
+- normalized pixel, line, and page delta modes through the pure Slice 3 helper;
+- mapped unmodified horizontal, native vertical, accepted diagonal, and
+  `Shift`-vertical fallback policy into the shared runtime operation;
+- preserved `Ctrl`/`Meta` browser zoom, zero/non-finite input, native vertical-only
+  scrolling, missing range acknowledgement, form controls, and detached instances
+  without preventing default;
+- manually preserved the vertical component after accepted horizontal diagonal input
+  and retained instance-local range coalescing;
+- contained accepted overscroll on the complete chart surface without adding
+  horizontal DOM overflow.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/Gantt.wheel.dom.test.tsx packages/gantt/src/react/runtime.test.ts packages/gantt/src/interaction/viewport-navigation.test.ts packages/gantt/src/react/Gantt.dom.test.tsx`
+  passed 4 files / 37 tests;
+- focused wheel cases covered horizontal, vertical, diagonal, shifted, `Ctrl`,
+  `Meta`, zero, line, page, missing callback, form exclusion, cleanup, and two
+  instances with callback/default assertions;
+- Chrome DevTools `list_pages` was attempted first but its configured profile was
+  locked by another process; the repository-approved in-app Browser fallback opened
+  only `http://localhost:5173/interactive`;
+- live horizontal scroll input moved ticks from `Jul 29`–`Aug 26` to
+  `Aug 12`–`Sep 02` on the controlled consumer, kept the URL stable, retained zero
+  page overflow, and produced no console warnings/errors;
+- live geometry measured a roughly 942 × 232 timeline with `overflow-x: hidden` and
+  `overscroll-behavior: contain` on both chart and body; the fixture had equal
+  vertical content/extent, so diagonal vertical movement remains automated evidence;
+- `vp check`, `git diff --check`, and `mise run ci` passed on the completed Slice 4
+  tree.
 
 ### Slice 5: Add direct mouse grab panning without breaking editing
 
@@ -1016,6 +1049,26 @@ during implementation.
 - Focused tests passed 6 files / 38 tests; `vp check`, `git diff --check`, and
   `mise run ci` passed on the completed slice.
 
+### 2026-07-30 Slice 4 wheel and trackpad adapter
+
+- Each chart owns one non-passive listener on its chart subtree. The listener
+  prevents default only after the horizontal controlled-range operation accepts the
+  input.
+- Vertical-only input remains native. Accepted diagonal input applies its vertical
+  component through the runtime before cancellation; if controlled session ownership
+  cannot accept that component, the DOM scroll offset is preserved directly.
+- `Ctrl`/`Meta`, zero/non-finite deltas, missing `onRangeChange`, form controls,
+  unmount, and sibling instances pass through or isolate as contracted.
+- Chrome DevTools could not attach because its configured profile was already locked.
+  The in-app Browser fallback exercised actual horizontal scroll input on
+  `/interactive`: ticks advanced, URL and zero-overflow state held, overscroll
+  containment was computed on chart/body, and console logs remained clean.
+- The live fixture had no vertical overflow, and its modifier input surface did not
+  expose a distinct shifted-wheel result. Diagonal vertical and Shift fallback
+  claims therefore remain backed by focused `WheelEvent` automation in this slice.
+- Focused tests passed 4 files / 37 tests; `vp check`, `git diff --check`, and
+  `mise run ci` passed on the completed slice.
+
 ## Deviations
 
 ### 2026-07-30 — Base-M4 “scrolling” evidence did not include ordinary time panning
@@ -1054,10 +1107,12 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 4 by adding a scoped non-passive wheel adapter in
-`packages/gantt/src/react/Gantt.tsx` that normalizes `deltaMode`, maps unmodified and
-shifted axes into `runtime.navigateViewport`, preserves accepted diagonal vertical
-movement, and passes through `Ctrl`/`Meta`, zero/non-finite, overlay/form-control, and
-unacknowledgeable horizontal input. Add DOM callback/default/cleanup/two-instance
-coverage and overscroll styling, then verify the focused wheel/runtime suites, live
-Chrome geometry/console state, `vp check`, `git diff --check`, and `mise run ci`.
+Start Slice 5 by adding an explicit mouse-only pan gesture state beside the existing
+edit gesture in `packages/gantt/src/react/runtime.ts` and thin header/body pointer
+adapters in `packages/gantt/src/react/Gantt.tsx`. Preserve primary task edit, mapped
+empty creation, pen/touch, secondary/context-menu, activation threshold, and editor
+behavior; add primary header, conditional primary empty-body, and unconditional
+middle-body pan with capture/cancel/lost-capture/unmount isolation plus
+instance-scoped cursor state. Verify the conflict matrix, zero command/history
+effects, live desktop/narrow mouse drag, `vp check`, `git diff --check`, and
+`mise run ci`.

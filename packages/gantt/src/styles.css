@@ -23,6 +23,7 @@
   :where(.gt-gantt__table) {
     display: grid;
     grid-template-columns: minmax(105px, var(--gt-lane-column-width)) minmax(0, 1fr);
+    overscroll-behavior: contain;
   }
 
   :where(.gt-gantt__corner, .gt-gantt__time-header) {

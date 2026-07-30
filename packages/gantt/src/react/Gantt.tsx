@@ -22,6 +22,10 @@ import {
 import { createPortal } from 'react-dom';
 
 import type { GanttCommand } from '../commands/types';
+import {
+  normalizeNavigationDelta,
+  type NavigationDeltaUnit,
+} from '../interaction/viewport-navigation';
 import type { TaskBarPrimitive } from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import {
@@ -99,6 +103,26 @@ const THEME_PROPERTIES = [
 
 const DEVELOPMENT =
   (import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } }).env?.DEV === true;
+
+const WHEEL_LINE_SIZE = 16;
+const MEANINGFUL_WHEEL_DELTA = 0.5;
+
+function wheelDeltaUnit(deltaMode: number): NavigationDeltaUnit {
+  return deltaMode === WheelEvent.DOM_DELTA_LINE
+    ? 'line'
+    : deltaMode === WheelEvent.DOM_DELTA_PAGE
+      ? 'page'
+      : 'pixel';
+}
+
+function excludesChartWheel(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(
+      'input, textarea, select, button, a[href], [contenteditable="true"], [data-gt-part="overlay-host"]',
+    ) !== null
+  );
+}
 
 function resolveOverlayTarget(
   container: GanttOverlayContainer | undefined,
@@ -559,6 +583,7 @@ function GanttTask({
 
 function GanttSurface({
   bodyRef,
+  chartRef,
   className,
   classNames,
   columns,
@@ -576,6 +601,7 @@ function GanttSurface({
   timelineRef,
 }: {
   readonly bodyRef: React.RefObject<HTMLDivElement | null>;
+  readonly chartRef: React.RefObject<HTMLDivElement | null>;
   readonly className?: string | undefined;
   readonly classNames?: GanttProps['classNames'];
   readonly columns?: GanttProps['columns'];
@@ -1655,6 +1681,7 @@ function GanttSurface({
           resolveClassName(classNames?.chart, rootClassState),
         )}
         data-gt-part="chart"
+        ref={chartRef}
       >
         <div
           aria-hidden="true"
@@ -1867,6 +1894,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
   );
   const scene = useSyncExternalStore(subscribe, getScene, getScene);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<HTMLDivElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const {
     className,
@@ -1961,11 +1989,63 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
       runtime.clearMeasurement();
     };
   }, [runtime, scene.emptyState]);
+  useEffect(() => {
+    const body = bodyRef.current;
+    const chart = chartRef.current;
+    const timeline = timelineRef.current;
+    if (body === null || chart === null || timeline === null) {
+      return;
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || excludesChartWheel(event.target)) {
+        return;
+      }
+      const unit = wheelDeltaUnit(event.deltaMode);
+      const horizontalDelta = normalizeNavigationDelta(event.deltaX, unit, {
+        lineSize: WHEEL_LINE_SIZE,
+        pageSize: timeline.clientWidth,
+      });
+      const verticalDelta = normalizeNavigationDelta(event.deltaY, unit, {
+        lineSize: WHEEL_LINE_SIZE,
+        pageSize: body.clientHeight,
+      });
+      const hasHorizontal = Math.abs(horizontalDelta) >= MEANINGFUL_WHEEL_DELTA;
+      const shiftedVertical = event.shiftKey && !hasHorizontal ? verticalDelta : 0;
+      const acceptedHorizontal = hasHorizontal ? horizontalDelta : shiftedVertical;
+      if (acceptedHorizontal === 0) {
+        return;
+      }
+      const horizontal = runtime.navigateViewport({
+        horizontalDelta: acceptedHorizontal,
+        viewportHeight: body.clientHeight,
+        viewportWidth: timeline.clientWidth,
+      });
+      if (!horizontal.horizontal) {
+        return;
+      }
+      const acceptedVertical = shiftedVertical === 0 ? verticalDelta : 0;
+      if (acceptedVertical !== 0) {
+        const vertical = runtime.navigateViewport({
+          verticalDelta: acceptedVertical,
+          viewportHeight: body.clientHeight,
+          viewportWidth: timeline.clientWidth,
+        });
+        if (!vertical.vertical) {
+          const maxScrollTop = Math.max(0, body.scrollHeight - body.clientHeight);
+          body.scrollTop = Math.max(0, Math.min(maxScrollTop, body.scrollTop + acceptedVertical));
+        }
+      }
+      event.preventDefault();
+    };
+    chart.addEventListener('wheel', onWheel, { passive: false });
+    return () => chart.removeEventListener('wheel', onWheel);
+  }, [runtime, scene.emptyState]);
 
   return (
     <GanttRuntimeProvider runtime={runtime}>
       <GanttSurface
         bodyRef={bodyRef}
+        chartRef={chartRef}
         className={className}
         classNames={classNames}
         columns={columns}

@@ -167,7 +167,7 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Navigation math/proposals complete; Slice 4 next
+**Status:** `[-]` Wheel/trackpad navigation complete; Slice 5 next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
@@ -195,8 +195,11 @@ viewport-only public/render/hit-test data, and proved catalog/layout reuse acros
 ordinary range and scroll changes. Slice 3 added pure delta/time/page math, one
 instance-owned controlled range proposal controller, a combined runtime viewport
 operation, and shared edge-auto-pan/imperative range orchestration. No public API
-expanded and no wheel/pointer binding changed yet. Slice 4 will connect the scoped
-wheel/trackpad DOM adapter.
+expanded. Slice 4 connected a scoped non-passive wheel/trackpad adapter with
+deterministic axes/modifiers/units, diagonal vertical preservation, browser-zoom and
+missing-callback pass-through, cleanup/isolation, overscroll containment, automated
+DOM coverage, and live horizontal input evidence. Slice 5 will add conflict-safe
+mouse grab panning.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -362,6 +365,15 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed timeline-navigation Slice 4. Each chart now owns a scoped
+  non-passive wheel listener that claims only acknowledged horizontal time
+  navigation, retains native vertical-only scrolling, preserves accepted diagonal
+  vertical movement, normalizes line/page units, supports the Shift fallback, and
+  passes browser zoom, missing callbacks, form controls, cleanup, and sibling
+  instances. Focused tests passed 4 files / 37 tests. Chrome DevTools was profile
+  locked, so the approved in-app Browser fallback exercised horizontal scroll on
+  `/interactive`: ticks advanced, zero page overflow and containment held, and the
+  console stayed clean. Complete CI passed; mouse grab panning is Slice 5.
 - 2026-07-30: Completed timeline-navigation Slice 3. Browser-free navigation helpers
   now normalize delta units, preserve finite range duration, and clamp direct/page
   vertical movement. One React-free proposal controller coalesces continuous
