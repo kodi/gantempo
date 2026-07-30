@@ -469,20 +469,79 @@ Interceptors can:
 
 ### 8.3 Patch format
 
-Reducers return:
+The core uses one versioned ID-keyed domain patch format. Existing entities are
+located by collection plus stable ID; add patches carry an insertion index only to
+preserve canonical collection order. A replacement contains one complete canonical
+record, including a task's owned segments.
 
 ```ts
+export type DocumentCollection =
+  | "tasks"
+  | "resources"
+  | "lanes"
+  | "assignments"
+  | "placements"
+  | "dependencies";
+
+export interface EntityReference {
+  readonly collection: DocumentCollection;
+  readonly id: EntityId;
+}
+
+export type DomainRecord =
+  | TaskRecord
+  | ResourceRecord
+  | LaneRecord
+  | AssignmentRecord
+  | PlacementRecord
+  | DependencyRecord;
+
+export type GanttPatch =
+  | {
+      readonly patchVersion: 1;
+      readonly op: "add";
+      readonly target: EntityReference;
+      readonly index: number;
+      readonly value: DomainRecord;
+    }
+  | {
+      readonly patchVersion: 1;
+      readonly op: "replace";
+      readonly target: EntityReference;
+      readonly value: DomainRecord;
+    }
+  | {
+      readonly patchVersion: 1;
+      readonly op: "remove";
+      readonly target: EntityReference;
+    };
+
 export interface CommandResult {
-  document: GanttDocument;
-  patches: GanttPatch[];
-  inversePatches: GanttPatch[];
-  affectedIds: EntityId[];
-  diagnostics: Diagnostic[];
+  readonly document: GanttDocument;
+  readonly patches: readonly GanttPatch[];
+  readonly inversePatches: readonly GanttPatch[];
+  readonly affected: readonly EntityReference[];
+  readonly diagnostics: readonly Diagnostic[];
 }
 ```
 
-Patches make undo/redo, optimistic persistence, audit trails, and future collaboration
-possible without coupling the library to a specific state manager.
+Reducers emit forward and ready-to-apply inverse patches directly; they do not diff
+whole documents after mutation. Patch batches apply atomically and are strictly
+validated on their final candidate document. Rejected commands retain the original
+document and return empty patch, inverse, and affected arrays.
+
+The entity family is part of the affected identity because IDs may repeat across
+families. Local commands preserve the document revision; persistence adapters own
+base revisions, operation IDs, server revisions, retries, and conflict handling.
+
+RFC 6902 JSON Patch is not a second core representation because array-index paths do
+not provide stable entity identity. An external persistence adapter may translate a
+committed domain patch batch when a backend requires JSON Patch.
+
+These semantics are fixed by the
+[change-kernel contract](decisions/2026-07-30-change-kernel-contract.md). Patches make
+undo/redo, optimistic persistence, audit trails, and future collaboration possible
+without coupling the library to a specific state manager.
 
 ### 8.4 Events
 
@@ -1201,8 +1260,7 @@ records:
 4. The threshold at which the
    [M1 internal codec decision](decisions/2026-07-30-document-codec-contract.md)
    should be revisited in favor of a runtime schema dependency.
-5. The exact patch representation: domain patches, JSON Patch, or both.
-6. Whether the public Pro package is one bundle or several separately purchasable
+5. Whether the public Pro package is one bundle or several separately purchasable
    capabilities.
-7. The first supported project-planning interchange format.
-8. Whether resource leveling is included in the initial Pro scheduler.
+6. The first supported project-planning interchange format.
+7. Whether resource leveling is included in the initial Pro scheduler.

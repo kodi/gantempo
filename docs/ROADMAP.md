@@ -68,7 +68,7 @@ Detailed completion evidence is recorded in
 | --- | --- | --- | --- | --- |
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
-| M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[ ]` Next | Not yet created |
+| M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[-]` In progress | [Active plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | Not yet created |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
@@ -81,10 +81,10 @@ Detailed completion evidence is recorded in
 M0 read-only vertical slice [done]
   |
   v
-M1 document kernel
+M1 document kernel [done]
   |
   v
-M2 change kernel
+M2 change kernel [in progress]
   |
   v
 M3 view/layout/viewport kernel
@@ -102,72 +102,64 @@ M6 advanced scheduling/resources
 M7 hardening/release
 ```
 
-The completed M0 vertical slice proves the renderer direction. The immediate task is
-to return to the skipped architecture Slice 1 foundations before adding interaction
-or broadening the public React API.
+The completed M0 vertical slice proves the renderer direction, and M1 supplies the
+canonical document boundary. M2 is finishing architecture Slice 1 with the pure
+change path before interaction or a broader public React API begins.
 
 ## Current Focus
 
-### M1: Document kernel
+### M2: Change kernel
 
-**Status:** `[x]` Done and verified
+**Status:** `[-]` In progress
 
 **Target outcome**
 
-Create a framework-independent canonical document boundary that accepts external data,
-reports actionable diagnostics, preserves domain separation, and produces stable data
-for commands, queries, layout, persistence, workers, and SSR.
+Create a framework-independent mutation boundary in which typed commands strictly
+validate their intent, reduce to deterministic domain patches and ready-to-apply
+inverse patches, commit transactions atomically, and drive bounded local undo/redo.
 
 **Minimum capabilities**
 
-- a general diagnostic contract below model and renderer layers;
-- canonical records for tasks, lanes, placements, resources, assignments, and
-  dependencies;
-- distinct wire/input and normalized document contracts;
-- schema-version validation and migration boundaries;
-- ID and date normalization;
-- referential-integrity validation;
-- stable document indexes;
-- deterministic JSON serialization and round trips;
-- adaptation of the existing scene pipeline to consume normalized or resolved data
-  without widening the public scene API.
+- one versioned ID-keyed domain patch representation;
+- collection-qualified affected entity references;
+- strict non-repairing command and final-document validation;
+- typed add/update/set/move/delete commands spanning all six M1 domains;
+- exact forward and inverse patch generation;
+- deterministic relationship-aware task deletion and assignment cleanup;
+- ordered nested transactions with all-or-nothing rejection;
+- immutable bounded local history;
+- seeded patch-inversion and history property tests;
+- a deliberately small React-free package surface.
 
 **Exit condition**
 
-A React-free test can parse a representative document containing tasks, resources,
-lanes, assignments, placements, and dependencies; normalize and validate it; build
-stable indexes; serialize it; parse it again; and prove that no domain meaning or
-identity was lost. Invalid input returns structured diagnostics without silently
-discarding unrelated valid data. The existing read-only playground remains unchanged
-and all repository gates pass.
+A React-free test can apply typed commands and transactions across tasks, resources,
+lanes, assignments, placements, and dependencies; prove that emitted patches reproduce
+the returned document; apply inverse patches to restore byte-identical stable JSON;
+and undo and redo committed transactions as one bounded history step. Invalid commands,
+patches, or transaction children return structured diagnostics and retain the original
+document without partial changes. The existing codec, scene, React component, and
+playground remain unchanged and all repository gates pass.
 
-**Completion evidence**
+**Planning and contract evidence**
 
-- The public codec documentation, exact automated output, round-trip proof, package
-  artifacts, HTTP checks, and responsive browser matrix are recorded in the
-  [completed M1 plan](plans/2026-07-30-document-kernel-foundation-plan.md).
-- `mise run ci` passed 10 test files and 57 tests plus clean format/lint/types and the
-  package build.
-- The main and matrix playground routes passed connected visual, layout,
-  accessibility-tree, identity, diagnostic, console, and asset checks at
-  `1440 x 900`, `900 x 900`, and `560 x 900`.
+- The [active M2 plan](plans/2026-07-30-change-kernel-plan.md) orders patch,
+  command, deletion, transaction, history, facade, and final-evidence slices.
+- The accepted
+  [change-kernel contract](decisions/2026-07-30-change-kernel-contract.md) selects one
+  versioned ID-keyed domain patch format, rejects a dual JSON Patch core, defines
+  strict command validation and atomic transactions, and keeps revision ownership
+  outside the local engine.
+- M1 permits cross-family ID reuse, so the original raw affected-ID sketch is replaced
+  by deterministic collection-qualified entity references.
+- No M2 runtime, test, package, or browser behavior is complete from planning alone.
 
 **Next action**
 
-Create a detailed M2 change-kernel plan before implementation. It should resolve the
-patch representation and divide command validation, deterministic patch/inverse
-generation, atomic transactions, and local history into verified slices.
+Implement Slice 2's atomic domain patch interpreter and seeded inversion properties
+before adding command reducers.
 
 ## Later Milestone Outcomes
-
-### M2: Change kernel
-
-- Define the typed command lifecycle and validation boundary.
-- Choose and record the patch representation.
-- Produce patches, inverse patches, affected IDs, and structured diagnostics.
-- Make transactions atomic and deterministic.
-- Provide local undo/redo with patch-inversion property tests.
-- Keep the entire engine independent of React and the DOM.
 
 ### M3: View, layout, and viewport kernel
 
@@ -229,17 +221,39 @@ generation, atomic transactions, and local history into verified slices.
 
 Decisions remain open until a focused prototype or decision record resolves them.
 The document wire-format decisions resolved for M1 are recorded in the
-[document codec contract](decisions/2026-07-30-document-codec-contract.md).
+[document codec contract](decisions/2026-07-30-document-codec-contract.md). The M2
+patch, affected-reference, strict-validation, transaction, revision, and local-history
+decisions are recorded in the
+[change-kernel contract](decisions/2026-07-30-change-kernel-contract.md).
 
-1. ID-keyed domain patches, JSON Patch, or an adapter supporting both.
-2. The threshold for splitting internal modules into workspace packages.
-3. The measured threshold for revisiting the M1 internal codec in favor of a runtime
+1. The threshold for splitting internal modules into workspace packages.
+2. The measured threshold for revisiting the M1 internal codec in favor of a runtime
    schema dependency.
 
 Decision records should live under `docs/decisions/` when their consequences cross
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 plan and change-kernel contract
+
+- Created and activated the
+  [M2 implementation plan](plans/2026-07-30-change-kernel-plan.md), splitting the
+  milestone into patch, command, deletion, transaction, history, facade, and
+  final-evidence slices.
+- Accepted the
+  [change-kernel contract](decisions/2026-07-30-change-kernel-contract.md): one
+  versioned ID-keyed domain patch format, ready-to-apply inverse patches, strict
+  non-repairing command validation, ordered atomic transactions, revision-preserving
+  local changes, and bounded immutable history.
+- Replaced the architecture sketch's raw affected-ID list with collection-qualified
+  entity references because M1 permits the same ID in multiple entity families.
+- Moved M2 to in progress and selected the atomic patch interpreter plus seeded
+  inversion properties as the next runtime slice.
+- Slice 1 verification passed with `git diff --check`, linked-file existence checks,
+  and a focused architecture/decision/plan/roadmap consistency read.
+- This planning slice changes documentation only; no M2 runtime, dependency, test,
+  package, or browser behavior is yet verified.
 
 ### 2026-07-30 — M1 Slice 7 milestone completion
 
