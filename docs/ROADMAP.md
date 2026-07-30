@@ -102,7 +102,8 @@ The base M4 interaction runtime and public API is complete:
 - pointer, pen, touch, keyboard, toolbar, menu, editor, history, and imperative
   actions use the same semantic commands and lifecycle;
 - occurrence-aware selection, focus, measured viewport, hit testing, snapping,
-  previews, scrolling, and accessible treegrid behavior are verified;
+  previews, native vertical scrolling, drag-edge auto-pan, and accessible treegrid
+  behavior are verified;
 - typed content/surface slots, class hooks, columns, tooltip, context menu, and the
   instant-task editor compose without exposing private runtime or renderer state;
 - controlled and runtime-owned playground consumers prove API-shaped loading,
@@ -158,10 +159,35 @@ M7 hardening/release
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
-bounded item-properties, semantic-color, and progress appendix is next; M5 remains
-queued after that additive post-M4 work.
+timeline navigation interaction correction is next, followed by the bounded
+item-properties, semantic-color, and progress appendix; M5 remains queued after that
+additive post-M4 work.
 
 ## Current Focus
+
+### Post-M4 timeline navigation interactions
+
+**Status:** `[-]` Planning baseline complete; Slice 1 next
+
+The
+[timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
+corrects a user-discovered base interaction gap before the queued item-properties
+appendix. The chart currently supports native vertical scrolling, drag-edge auto-pan,
+and imperative range requests, but ordinary wheel/trackpad or grab gestures do not
+move the horizontal time range.
+
+The selected plan adds a viewport-independent occurrence catalog before input
+adapters so panning cannot discard offscreen selection/focus. It then adds controlled
+range-pan orchestration, trackpad/wheel navigation, conflict-safe mouse grab panning,
+keyboard/focus parity, self-demonstrating playground consumers, and full automated
+and live gates. A required top-level `/navigation` example will contain 144
+deterministic scheduled events across 36 lanes and an 18-month UTC period, initially
+shown through a 12-week range. Zoom, pinch, default-range ownership, touch panning,
+and M5 project navigation policy remain out of scope.
+
+Slice 1 will freeze the durable axis/modifier/pointer, controlled-range,
+occurrence-lifetime, browser-zoom, and accessibility contract in a focused decision
+record and architecture update before runtime implementation.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -175,7 +201,7 @@ page's static theme label into a light/dark/high-contrast selector. The work sta
 inside the verified M4 session boundary and existing playground theme tokens; no
 public contract changes. Focused tests, the complete 52-file/251-test CI gate,
 package/playground builds, and live Chrome checks at 1,440 × 900 and 560 × 900 pass.
-Appendix Slice A1 is again the next action.
+The timeline navigation correction is now the next action; Appendix Slice A1 follows.
 
 ### Post-M4 default-surface modernization
 
@@ -190,8 +216,8 @@ focus, and overlay contracts remain unchanged.
 The menu and editor now pass focused and full CI, package/playground builds, and live
 Chrome gates at 1,440 × 900 and 560 × 900. Menu collision safety, responsive
 bottom-sheet layout, focus, Escape restoration, modal isolation, console, network,
-and accessibility-tree behavior are recorded in the completed plan. Appendix Slice
-A1 is again the next action.
+and accessibility-tree behavior are recorded in the completed plan. The timeline
+navigation correction is now the next action; Appendix Slice A1 follows.
 
 ### Post-M4 overlay-boundary hardening
 
@@ -211,8 +237,8 @@ background-isolation, and exact restoration behavior. Focused and full tests,
 format/lint/types, package/playground builds, packed declarations, and desktop/narrow
 Chrome gates pass. Detailed evidence is in the completed plan.
 
-Appendix Slice A1 of the item-properties, semantic-color, and progress plan is again
-the next action.
+The timeline navigation correction is now the next action; Appendix Slice A1 of the
+item-properties, semantic-color, and progress plan follows.
 
 ### Cross-cutting M1/M2 document-kernel hardening
 
@@ -231,7 +257,7 @@ across 49 files.
 
 ### M4 appendix: Item properties, semantic color, and progress
 
-**Status:** `[ ]` Planned; base M4 complete and Appendix Slice A1 next
+**Status:** `[ ]` Planned; base M4 complete, queued after timeline navigation
 
 **Target outcome**
 
@@ -249,7 +275,8 @@ command, event, accessibility, customization, and package boundaries.
 
 **Next action**
 
-Execute Appendix Slice A1 of the
+After the timeline navigation interaction correction is complete, execute Appendix
+Slice A1 of the
 [item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md).
 Freeze the canonical appearance/description/progress contract and exact command,
 editor, rendering, codec, and package implications before implementation. M5 detailed
@@ -257,11 +284,11 @@ planning follows the verified appendix.
 
 **Queued M4 appendix**
 
-The prerequisite has now closed. The
+The base-M4 prerequisite has closed. The
 [item properties, semantic color, and progress appendix](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
-is the selected next plan and adds task/lane semantic variants, coordinated progress
-rendering/editing, and a bounded standard properties surface without reopening the
-completed base-M4 contract.
+remains queued after the higher-priority timeline navigation correction and adds
+task/lane semantic variants, coordinated progress rendering/editing, and a bounded
+standard properties surface without reopening the completed base-M4 contract.
 
 **Adjacent proof complete**
 
@@ -326,6 +353,21 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Expanded the active timeline-navigation plan with a required top-level
+  `Navigation` menu item and `/navigation` page. The deterministic consumer fixture
+  will contain exactly 144 scheduled task events across 36 lanes over an 18-month UTC
+  period, start with a 12-week visible range, include before/inside/after, overlap,
+  and clipping cases, and display current-range plus dataset metadata. Slice 7 and
+  the final responsive/live gates own this example; Slice 1 remains next and no
+  implementation status changed.
+- 2026-07-30: Reproduced and planned the missing ordinary timeline-navigation
+  interaction on the selected local `/interactive` page. The chart has native
+  vertical overflow ownership and controlled range callbacks but no wheel/trackpad
+  or grab-pan adapter; its horizontal timeline has no DOM scroll width. The active
+  plan first separates full resolved occurrences from viewport-filtered primitives,
+  then adds controlled pan orchestration, trackpad/wheel, mouse, keyboard/focus,
+  playground, and final live gates. Slice 1 decision/architecture work is next; the
+  item-properties appendix remains queued afterward.
 - 2026-07-30: Started the bounded playground focus/theme refinement after Chrome
   reproduced the square SVG focus outline and retained active task on empty timeline
   clicks at `/`. The active plan keeps visible keyboard focus, clears both runtime
@@ -425,6 +467,10 @@ viewport-query, benchmark, and read-only React-facade decisions are recorded in 
 The M4 ownership, acknowledgement, event, interaction-target, viewport, accessibility,
 and minimum customization decisions are recorded in the
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+The post-M4 timeline navigation axis/modifier/pointer, controlled-range,
+occurrence-lifetime, browser-zoom, and accessibility contract is queued as Slice 1 of
+the
+[timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md).
 The post-M4 document/root/custom-container portal default, overlay lifecycle,
 collision, modal-isolation, shadow-root, SSR, and iframe decisions are recorded in
 the [overlay boundary contract](decisions/2026-07-30-overlay-boundary-contract.md).
