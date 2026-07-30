@@ -476,9 +476,11 @@ propose
   -> reduce
   -> schedule/derive affected records
   -> produce patches
-  -> commit
-  -> after-command events
-  -> persistence adapter
+  -> produce an immutable document-change candidate
+  -> deliver the candidate to controlled/uncontrolled ownership
+  -> adopt in uncontrolled mode or acknowledge through the controlled document prop
+  -> commandCommitted or commandRejected
+  -> application persistence hook or persistence adapter
 ```
 
 Interceptors can:
@@ -487,6 +489,18 @@ Interceptors can:
 - reject it with a typed reason;
 - modify it;
 - replace it with a transaction.
+
+Reducer acceptance and authoritative runtime commitment are distinct in controlled
+mode. `onDocumentChange` delivers the accepted candidate and its immutable change
+envelope. A controlled consumer acknowledges it by updating local React or external
+store state; it must not wait for an HTTP request. `commandCommitted` fires only after
+uncontrolled adoption or controlled prop acknowledgement. A later server revision is
+an external authoritative document update, not the first acknowledgement of the local
+candidate.
+
+Before-command interceptors express command policy and validation. Persistence I/O
+runs after candidate delivery and must not be implemented as an interceptor that
+blocks local controlled acknowledgement.
 
 ### 8.3 Patch format
 
@@ -569,7 +583,8 @@ without coupling the library to a specific state manager.
 Expose two event levels:
 
 - semantic events such as `taskClick`, `selectionChange`, and `viewportChange`;
-- command events such as `beforeCommand`, `commandCommitted`, and `commandRejected`.
+- command events such as `beforeCommand`, document-change candidate delivery,
+  `commandCommitted`, and `commandRejected`.
 
 Do not create separate mutation pathways for toolbar, context-menu, keyboard, and API
 operations. They must dispatch the same commands.
@@ -587,13 +602,18 @@ those differences inside a generic row move.
 <Gantt
   document={document}
   onDocumentChange={(nextDocument, change) => {
-    setDocument(nextDocument);
-    persist(change.patches);
+    setDocument(nextDocument); // acknowledge locally without waiting for the server
+    persistenceQueue.enqueue(change);
   }}
   view={{ type: "resource", laneIds }}
   timeZone="Europe/Belgrade"
 />
 ```
+
+The change envelope includes a local proposal ID, base revision, original and final
+commands, source, patches, inverse patches, and affected references. The proposal ID
+correlates runtime callbacks and controlled acknowledgement; it is not the backend's
+retry-safe operation ID.
 
 ### 9.2 Uncontrolled usage
 
@@ -1035,6 +1055,15 @@ Required behaviors:
 - batched transactions;
 - cancellation;
 - rollback using inverse patches.
+
+The interaction runtime freezes the persistence-ready change envelope but does not
+make storage part of document ownership. Controlled applications load and normalize
+API data outside React, acknowledge accepted candidates in local state immediately,
+and enqueue the envelope for asynchronous persistence. The persistence layer supplies
+retry-safe operation IDs and applies later server revisions as external controlled
+document updates. Uncontrolled mode can observe committed patches, but controlled mode
+is the recommended authoritative-backend integration until an adapter owns rollback,
+conflict handling, and ID reconciliation.
 
 The first release should provide examples for REST, GraphQL, Redux, Zustand, and direct
 React state. State-manager-specific packages are unnecessary unless examples prove

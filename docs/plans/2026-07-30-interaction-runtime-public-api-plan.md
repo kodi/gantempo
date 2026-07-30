@@ -49,6 +49,12 @@ At M4 completion:
   the M3 absolute geometry and rebuild only the affected derivation stages;
 - the React facade exposes intentional event props, controlled/uncontrolled props,
   selector access for rendered slots, and a narrow imperative handle;
+- every reducer-accepted document candidate exposes one immutable, persistence-ready
+  change envelope with a local proposal ID, base revision, original and final
+  commands, source, patches, inverse patches, and affected references;
+- controlled applications acknowledge document candidates through local state before
+  asynchronous persistence, while later server revisions remain authoritative
+  external document updates rather than command acknowledgements;
 - the default DOM/SVG renderer exposes stable interaction state attributes, visible
   focus, keyboard-operable task targets, a live region, and equivalent core pointer,
   touch, and keyboard workflows;
@@ -58,6 +64,9 @@ At M4 completion:
 - uncontrolled and controlled playground consumers demonstrate create, select, move,
   resize, cross-lane placement, edit, delete, undo, and redo through the public
   package facade;
+- the controlled playground demonstrates the backend seam with a read-only debug
+  textarea that records API-shaped change/event payloads without performing network
+  I/O or claiming persistence-adapter behavior;
 - fixed-seed interaction/invalidation evidence, focused integration tests, full CI,
   package inspection, production playground builds, SSR regression, and the required
   Chrome DevTools matrix pass before M4 is marked complete.
@@ -124,12 +133,21 @@ The command bus always reduces against the latest authoritative base document.
   bounded history when non-empty, published to subscribers, and then reported to
   callbacks.
 - In controlled mode, a committed outcome is sent through `onDocumentChange`; the
-  prop remains the rendered authority.
+  prop remains the rendered authority. The outcome is a reducer-accepted candidate,
+  not an authoritative runtime commit until the prop acknowledges it.
 - At most one controlled document proposal may await acknowledgement. A second
   mutation against the same stale prop rejects with a stable runtime diagnostic
   rather than losing or reordering a change.
+- Each candidate receives an opaque, instance-local `proposalId`. This ID correlates
+  the callback, controlled acknowledgement, lifecycle events, and debug tooling; it
+  is not a retry-safe backend operation ID.
 - When the next controlled document equals the proposed candidate at the stable M1
-  serialization boundary, the history entry is acknowledged.
+  serialization boundary, before any server-revision replacement, the history entry
+  is acknowledged.
+- Controlled consumers must adopt an accepted candidate in local React or external
+  store state without awaiting HTTP persistence. A later server response that adds a
+  revision is a new authoritative external document input, not the first
+  acknowledgement of the candidate.
 - A divergent external replacement cancels the pending proposal and clears only
   history branches that cannot be replayed safely. It never overwrites the external
   document.
@@ -152,8 +170,12 @@ propose command + source + interaction target
   -> allow | reject | replace | replace with transaction
   -> reject if captured controlled base became stale
   -> call applyGanttCommand exactly once
-  -> adopt uncontrolled result or propose controlled result
-  -> publish commandCommitted or commandRejected
+  -> produce rejected result or immutable document-change candidate
+  -> call onDocumentChange with the candidate
+  -> adopt immediately in uncontrolled mode
+     or await matching controlled document prop
+  -> publish commandCommitted only after adoption/acknowledgement
+     or commandRejected when the proposal cannot commit
   -> announce user-visible result when the source was interactive
 ```
 
@@ -162,6 +184,12 @@ restart the same interceptor chain. Rejection uses structured diagnostics. Abort
 gestures, unmount, stale controlled props, thrown interceptors, and invalid replacement
 values all settle the returned promise; none may leave an indefinitely pending
 dispatch.
+
+`onDocumentChange` is the single candidate-delivery hook in both ownership modes.
+`commandCommitted` is an observation of authoritative local adoption, not a second
+request to change the document. Persistence may observe the immutable change envelope,
+but persistence I/O is never a before-command interceptor and never delays controlled
+local acknowledgement.
 
 Semantic events such as task activation, selection change, focus change, and viewport
 change report interaction meaning but never carry an alternate document mutation
@@ -323,6 +351,45 @@ not need to reimplement hit testing, focus, keyboard, or command dispatch. Full 
 manifest work, portable canvas appearance, dependency UI, arbitrary editor tabs, and
 advanced column/tree features remain later work under `docs/UI_THEMING.md` and M5–M7.
 
+### 12. Freeze a persistence-ready seam without making M4 own storage
+
+M4 does not implement the architecture's persistence adapter, but its public change
+contract must be sufficient for direct React state, external stores, and
+application-owned persistence queues:
+
+```ts
+interface GanttDocumentChange {
+  readonly proposalId: string;
+  readonly document: GanttDocument;
+  readonly baseRevision?: string | number;
+  readonly originalCommand: GanttCommand;
+  readonly command: GanttCommand;
+  readonly source: GanttCommandSource;
+  readonly patches: readonly GanttPatch[];
+  readonly inversePatches: readonly GanttPatch[];
+  readonly affected: readonly EntityReference[];
+}
+```
+
+Exact naming remains a Slice 1 decision, but these semantics are required:
+
+- the envelope is immutable, data-only, and JSON-compatible, including the canonical
+  document snapshot already accepted by the public model;
+- one reducer-accepted transaction produces one envelope and one history entry;
+- a controlled consumer first adopts `document` locally, then enqueues `patches` with
+  `baseRevision` for persistence;
+- an application persistence queue supplies its own retry-safe operation ID and
+  serializes or batches writes according to backend policy;
+- a later server revision is applied as an external controlled document replacement;
+- interceptors handle command policy and validation, not storage I/O;
+- M4 surfaces enough data for an application to log, save, or diagnose a change, but
+  it does not claim automatic rollback, conflict resolution, retries, temporary-ID
+  reconciliation, or server acknowledgement.
+
+Until a persistence adapter owns those later behaviors, controlled mode is the
+recommended backend-connected path. Uncontrolled mode may observe committed patches,
+but it is not the authoritative-server synchronization path.
+
 ## Scope
 
 ### In scope
@@ -336,6 +403,8 @@ advanced column/tree features remain later work under `docs/UI_THEMING.md` and M
 - Controlled proposal acknowledgement and stale-base rejection.
 - Async before-command interception with allow/reject/replace/transaction outcomes.
 - Ordered command lifecycle events and semantic interaction/session events.
+- An immutable persistence-ready document-change envelope with local proposal
+  correlation and explicit candidate-versus-commit event phases.
 - Runtime integration with bounded M2 history and controlled undo/redo proposals.
 - Pure instant `task.move` and `task.resize` commands plus focused property coverage.
 - Stable selection and logical focus across view occurrences.
@@ -356,7 +425,8 @@ advanced column/tree features remain later work under `docs/UI_THEMING.md` and M
   sizing.
 - A minimal typed slot/class/column/tooltip/context-menu/basic-editor contract.
 - Intentional package exports, README/API examples, controlled and uncontrolled
-  playground routes, SSR regression, and browser evidence.
+  playground routes, an API-shaped debug event/change log, SSR regression, and
+  browser evidence.
 - Plan, roadmap, architecture, and decision synchronization when implementation
   evidence changes a durable contract.
 
@@ -373,6 +443,8 @@ advanced column/tree features remain later work under `docs/UI_THEMING.md` and M
 - Overlap policies other than M3 `stack`.
 - Optimistic persistence adapters, rollback orchestration, server revisions,
   operation IDs, collaboration, retries, and conflict resolution.
+  M4 still exposes the candidate/change envelope needed by application-owned state
+  and persistence code; it does not own the corresponding I/O lifecycle.
 - Persistent history, audit logs, history serialization, coalescing, or collaborative
   rebasing.
 - Query adapters and partial-data loading.
@@ -533,8 +605,16 @@ type GanttSessionOwnership =
 ```
 
 `onDocumentChange` observes a committed candidate and its original command, final
-intercepted command, source, patches, inverses, affected references, diagnostics, and
-base document identity/revision metadata. It does not receive a mutable event object.
+intercepted command, source, local proposal ID, patches, inverses, affected references,
+diagnostics, and base document identity/revision metadata. It does not receive a
+mutable event object. “Committed candidate” means accepted by the pure reducer;
+`commandCommitted` remains reserved for uncontrolled adoption or controlled prop
+acknowledgement.
+
+Controlled consumers acknowledge the candidate by synchronously scheduling their
+local React or external-store update. Persistence starts from the same envelope but
+does not gate that acknowledgement. Server revisions arrive later as external
+controlled document input.
 
 High-frequency measured dimensions are derived and read-only. Committed viewport
 intent contains only application-meaningful values; it does not require consumers to
@@ -701,6 +781,9 @@ APIs and invalidate behavior tests.
 - Fix the controlled/uncontrolled document and session prop union.
 - Fix controlled proposal acknowledgement, one-pending-proposal behavior, stale-base
   rejection, and external replacement history behavior.
+- Fix the opaque local `proposalId`, persistence-ready change envelope, and separation
+  between local controlled acknowledgement, authoritative commit notification, and
+  later server-revision replacement.
 - Fix interceptor input/output, replacement bounds, ordering, exception, abort, and
   unmount semantics.
 - Fix command and semantic event ordering and payload immutability.
@@ -865,10 +948,13 @@ implementing async/stale/history behavior.
 - Adopt and publish uncontrolled outcomes with M2 bounded history.
 - Propose controlled candidates, acknowledge matching props, and reject divergent or
   stale bases as fixed in Slice 1.
+- Deliver one immutable document-change envelope for every reducer-accepted candidate
+  and preserve its proposal ID through controlled acknowledgement.
 - Implement controlled/uncontrolled undo and redo through M2 patch/history operations,
   including acknowledgement in controlled mode.
-- Publish immutable `commandCommitted` and `commandRejected` payloads in accepted
-  order.
+- Publish immutable `commandCommitted` only after uncontrolled adoption or controlled
+  prop acknowledgement, and publish `commandRejected` when reduction or proposal
+  commitment fails.
 - Keep semantic session events separate and make callback failure behavior explicit.
 - Add queue, stale, replacement, transaction, no-op, rejection, callback-throw,
   unmount/abort, history-capacity, external-replacement, undo, and redo tests.
@@ -1250,10 +1336,27 @@ combined automated/browser/package gates verify the milestone outcome.
 - Demonstrate select, focus, create, move, resize, persisted cross-lane move, edit,
   delete, undo, redo, async allow/reject/replace interception, imperative focus/scroll,
   and one typed slot/column customization.
+- Treat the controlled page state as the local application store: adopt each
+  `onDocumentChange` candidate immediately, then derive an example API request from
+  the same immutable envelope.
+- Add an accessible read-only debug textarea labeled `Example API change log`. Append
+  deterministic JSON entries for candidate, committed, and rejected lifecycle events
+  plus the API-shaped write payload containing an example operation ID, proposal ID,
+  base revision, command source, and patches. Do not include DOM events, mutable
+  runtime objects, or an unnecessary full-document payload in the example request.
+- Make transactions visible as one API-shaped batch entry so add-plus-placement and
+  other cross-domain gestures demonstrate atomic persistence intent.
+- Keep the debug example network-free and clearly label retry, rollback, server
+  revision, ID reconciliation, and conflict handling as later adapter concerns.
+- Demonstrate initial API-shaped loading through the canonical parse boundary and
+  document how the same controlled contract maps to direct React state and one
+  external-store-style consumer.
 - Demonstrate an unsupported derived/custom gesture with a useful disabled reason and
   an application mapper that makes one explicit transaction.
-- Add README/API examples for controlled, uncontrolled, interception, events,
-  imperative handle, session ownership, slots, and the instant/all-day boundary.
+- Add README/API examples for controlled, uncontrolled, direct React/external-store
+  ownership, API loading, persistence-ready change envelopes, interception, lifecycle
+  events, imperative handle, session ownership, slots, and the instant/all-day
+  boundary.
 - Add focused root-facade compile/runtime tests and inspect packed declarations and
   bundles for private-type leakage.
 - Run the fixed-seed runtime/cache/hit-test benchmark and record reproducible metadata,
@@ -1269,6 +1372,8 @@ combined automated/browser/package gates verify the milestone outcome.
 
 - Controlled and uncontrolled public examples that perform the M4 CRUD workflow
   through one command bus.
+- An inspectable API-shaped change/event log proving candidate, acknowledgement,
+  transaction, and commit ordering without claiming a persistence adapter.
 - An intentional package facade with no runtime/cache/index leakage.
 - Verified M4 completion evidence and an actionable M5 handoff.
 
@@ -1307,6 +1412,8 @@ combined automated/browser/package gates verify the milestone outcome.
 - Interceptor ordering, replacement, rejection, stale bases, abort, exceptions, and
   queue settlement.
 - Controlled/uncontrolled history, no-op behavior, divergence, undo, and redo.
+- Proposal ID stability, candidate-versus-commit event order, immediate controlled
+  local acknowledgement, and later server-revision replacement.
 - Cache dependency analysis, cold/cached parity, work counters, and safe fallbacks.
 - Viewport overscan, measurement state, scroll scheduling, and focus retention.
 - Hit-test indexed/brute-force parity, touch expansion, snap rules, neighbor
@@ -1320,6 +1427,8 @@ combined automated/browser/package gates verify the milestone outcome.
 - Pointer mouse/pen/touch workflows and cancellation.
 - Keyboard CRUD, focus, roving tab order, and live announcements.
 - Async interception and controlled acknowledgement during UI gestures.
+- API-shaped debug event/change logging, transaction batching, and omission of
+  runtime-only/DOM values from persistence payloads.
 - Virtualized variable-height alignment and imperative scrolling/focus.
 - Slots, class hooks, columns, tooltip, menu, editor, portals, and focus return.
 - SSR without browser globals and deterministic pre-measurement output.
@@ -1413,28 +1522,25 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 2. Should M4 add `defaultRange` beside the existing controlled `range`, or keep
    horizontal range controlled in both document modes until M5? Prototype imperative
    scroll and edge-pan behavior before fixing this.
-3. What exact acknowledgement metadata should accompany a controlled proposal so an
-   application can correlate it without introducing server operation/revision
-   semantics owned by later persistence work?
-4. Should controlled history compare acknowledgement only by stable serialization or
-   also allow a consumer-supplied correlation token? Prefer stable serialization for
-   M4 unless a real controlled example proves ambiguity.
-5. What is the smallest accessible DOM/SVG structure that represents multiple task
+3. What is the smallest accessible DOM/SVG structure that represents multiple task
    occurrences per lane without falsely claiming spreadsheet cell semantics?
-6. Which keyboard chord set avoids browser/assistive-technology conflicts while
+4. Which keyboard chord set avoids browser/assistive-technology conflicts while
    preserving discoverable move versus resize operations?
-7. Which default interactions can be unambiguously generated for document, project,
+5. Which default interactions can be unambiguously generated for document, project,
    resource, and custom views, and where must a typed command mapper be required?
-8. Does the current package test environment justify `jsdom`, Testing Library,
+6. Does the current package test environment justify `jsdom`, Testing Library,
    `user-event`, and an automated accessibility checker, or can a smaller DOM harness
    cover the same contract?
-9. Which slot/class/column contracts are truly required for the M4 CRUD example, and
+7. Which slot/class/column contracts are truly required for the M4 CRUD example, and
    which should stay deferred until M5 or broader UI-theming implementation?
 
 ## Risks and Mitigations
 
 - **Controlled lost updates:** allow one unacknowledged proposal and reject stale
   follow-ups; cover acknowledgement and divergence exhaustively.
+- **Server latency mistaken for controlled acknowledgement:** require immediate local
+  adoption, keep proposal IDs separate from backend operation IDs, and model later
+  server revisions as external replacements.
 - **Async interceptor races:** capture the base, serialize dispatch, settle on every
   exit, and reject rather than replay after authoritative input changes.
 - **Runtime becomes a second reducer:** forbid direct document mutation and require
@@ -1490,11 +1596,40 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - No implementation, runtime test, package, benchmark, or browser verification was
   performed by this planning pass.
 
+### 2026-07-30 — State and backend-hook refinement
+
+- Clarified that M4 must distinguish reducer-accepted candidates from authoritative
+  commits, keep controlled local acknowledgement independent from server persistence,
+  and prove the boundary with an API-shaped interactive log.
+- Added the required local proposal ID and immutable change-envelope semantics without
+  moving persistence-adapter I/O, retries, rollback, revision reconciliation,
+  temporary-ID mapping, or conflicts into M4.
+- Expanded Slice 11 with API-shaped loading, direct React/external-store ownership
+  guidance, transaction batch logging, and an accessible read-only debug textarea.
+- Synchronized the durable lifecycle and persistence boundary in
+  `docs/ARCHITECTURE.md` and the active status/change log in `docs/ROADMAP.md`.
+- Documentation verification passed:
+  - `vp check` reported all 82 files formatted and no warning, lint, or type error
+    across 71 checked files;
+  - `git diff --check` passed;
+  - focused terminology and linked-file checks passed.
+- No runtime, playground, network, package, test, benchmark, or browser implementation
+  claim was made by this refinement.
+
 ## Deviations
 
-None discovered during planning. Record every future deviation here before changing
-scope or implementation direction, and add the required compact roadmap change-log
-entry in the same change set.
+### 2026-07-30 — Persistence-ready event boundary clarification
+
+- The initial plan used `commandCommitted` immediately after proposing a controlled
+  result, which made candidate acceptance, prop acknowledgement, and remote
+  persistence appear to be one phase.
+- The refined plan reserves `commandCommitted` for authoritative local
+  adoption/acknowledgement, adds an opaque local proposal ID and immutable
+  persistence-ready change envelope, and requires controlled consumers to update
+  local state before asynchronous persistence.
+- Slice 11 now owns a network-free, API-shaped debug textarea and direct
+  React/external-store examples. Persistence adapters, server operation IDs, retries,
+  rollback, revision reconciliation, and conflicts remain outside M4.
 
 ## Progress
 
@@ -1516,6 +1651,8 @@ entry in the same change set.
 ## Next Slice
 
 Start Slice 1. Add and link the interaction-runtime/public-API decision record, resolve
-the nine open questions with focused type/DOM prototypes where necessary, and freeze
-ownership, acknowledgement, interception, target, viewport, imperative, accessibility,
-and customization contracts before editing production runtime or React behavior.
+the seven open questions with focused type/DOM prototypes where necessary, and freeze
+ownership, local proposal correlation, candidate-versus-commit acknowledgement,
+persistence-ready change-envelope, interception, target, viewport, imperative,
+accessibility, and customization contracts before editing production runtime or React
+behavior.

@@ -149,7 +149,9 @@ interaction-runtime/public-API plan is ready; its contract slice is next.
 
 Give controlled and uncontrolled applications the same command path as pointer,
 touch, keyboard, toolbar, and imperative interaction while keeping document, session,
-and derived state separate.
+and derived state separate. Expose one immutable persistence-ready change envelope
+while keeping local controlled acknowledgement independent from asynchronous backend
+persistence.
 
 **Verified prerequisites**
 
@@ -164,9 +166,10 @@ and derived state separate.
 Execute Slice 1 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 Freeze controlled/uncontrolled document and session ownership, controlled proposal
-acknowledgement, command interception/events, target identity, viewport intent,
-imperative handles, accessibility, and the minimum customization surface in a linked
-decision record before editing production runtime or React behavior.
+acknowledgement, candidate-versus-commit event phases, the persistence-ready change
+envelope, command interception, target identity, viewport intent, imperative handles,
+accessibility, and the minimum customization surface in a linked decision record
+before editing production runtime or React behavior.
 
 **Adjacent proof complete**
 
@@ -252,6 +255,24 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 state and backend-hook boundary refined
+
+- Clarified that a reducer-accepted controlled candidate is not `commandCommitted`
+  until the authoritative prop acknowledges it.
+- Added an opaque local proposal ID and immutable persistence-ready change envelope
+  while keeping backend operation IDs, retries, rollback, server revision
+  reconciliation, temporary-ID mapping, and conflicts outside M4.
+- Required controlled consumers to acknowledge candidates in local React or external
+  store state before asynchronous persistence.
+- Expanded final M4 consumer evidence with API-shaped loading and a network-free,
+  read-only debug textarea that records candidate/commit/rejection events and example
+  patch request payloads, including atomic transaction batches.
+- Kept Slice 1 as the next action and made no runtime or playground implementation
+  claim in this documentation-only refinement.
+- `vp check` passed all 82 formatted files and 71 lint/type-checked files;
+  `git diff --check` and focused lifecycle/envelope/example terminology checks also
+  passed.
 
 ### 2026-07-30 — M4 interaction-runtime implementation plan ready
 
