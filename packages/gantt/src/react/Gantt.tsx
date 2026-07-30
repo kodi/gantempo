@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type CSSProperties,
   type ForwardRefExoticComponent,
+  type PointerEvent as ReactPointerEvent,
   type ReactElement,
   type RefAttributes,
 } from 'react';
@@ -20,7 +21,7 @@ import {
   type GanttReactRuntime,
   type GanttReactRuntimeSnapshot,
 } from './runtime';
-import type { GanttHandle, GanttProps } from './types';
+import type { GanttHandle, GanttInteractionState, GanttProps } from './types';
 import '../styles.css';
 
 export type { GanttHandle, GanttProps } from './types';
@@ -53,10 +54,14 @@ function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeForm
 }
 
 function targetStateEqual(
-  previous: readonly [boolean, boolean],
-  next: readonly [boolean, boolean],
+  previous: readonly [boolean, boolean, boolean, boolean, boolean, boolean, boolean],
+  next: readonly [boolean, boolean, boolean, boolean, boolean, boolean, boolean],
 ): boolean {
-  return previous[0] === next[0] && previous[1] === next[1];
+  return previous.every((value, index) => value === next[index]);
+}
+
+function targetsInteraction(interaction: GanttInteractionState, viewKey: string): boolean {
+  return 'target' in interaction && interaction.target?.viewKey === viewKey;
 }
 
 function GanttTask({
@@ -72,15 +77,22 @@ function GanttTask({
   readonly timelineHeight: number;
   readonly variant?: string | undefined;
 }): ReactElement {
-  const [selected, focused] = useGanttSelector(
-    (snapshot) =>
-      [
+  const [selected, focused, pressing, dragging, resizing, pending, rejected] = useGanttSelector(
+    (snapshot) => {
+      const targeted = targetsInteraction(snapshot.interaction, task.viewKey);
+      return [
         snapshot.session.selection.some(
           (target) => target.kind === 'task' && target.viewKey === task.viewKey,
         ),
         snapshot.session.focused?.kind === 'task' &&
           snapshot.session.focused.viewKey === task.viewKey,
-      ] as const,
+        targeted && snapshot.interaction.status === 'pressing',
+        targeted && snapshot.interaction.status === 'dragging',
+        targeted && snapshot.interaction.status === 'resizing',
+        targeted && snapshot.interaction.status === 'pending',
+        targeted && snapshot.interaction.status === 'rejected',
+      ] as const;
+    },
     targetStateEqual,
   );
   const accessibleName = taskAccessibleName(task, dateFormatter);
@@ -91,7 +103,12 @@ function GanttTask({
       data-clipped-end={task.clippedEnd || undefined}
       data-clipped-start={task.clippedStart || undefined}
       data-disabled={disabled || undefined}
+      data-dragging={dragging || undefined}
       data-focused={focused || undefined}
+      data-pending={pending || undefined}
+      data-pressing={pressing || undefined}
+      data-rejected={rejected || undefined}
+      data-resizing={resizing || undefined}
       data-gt-part="task"
       data-gt-variant={variant}
       data-lane-id={task.laneId}
@@ -132,6 +149,7 @@ function GanttSurface({
   dateFormatter,
   disabled,
   label,
+  runtime,
   scene,
   taskVariants,
   timelineRef,
@@ -141,11 +159,122 @@ function GanttSurface({
   readonly dateFormatter: Intl.DateTimeFormat;
   readonly disabled: boolean;
   readonly label: string;
+  readonly runtime: GanttReactRuntime;
   readonly scene: GanttReactRuntimeSnapshot['scene'];
   readonly taskVariants?: GanttProps['taskVariants'];
   readonly timelineRef: React.RefObject<HTMLDivElement | null>;
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
+  const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (body !== null && body.scrollTop !== verticalStart) {
+      body.scrollTop = verticalStart;
+    }
+  }, [bodyRef, verticalStart]);
+
+  const geometry = useCallback(() => {
+    const body = bodyRef.current;
+    const timeline = timelineRef.current;
+    if (body === null || timeline === null) {
+      return undefined;
+    }
+    const bodyRect = body.getBoundingClientRect();
+    const timelineRect = timeline.getBoundingClientRect();
+    const height = body.clientHeight || bodyRect.height;
+    if (timelineRect.width <= 0 || height <= 0) {
+      return undefined;
+    }
+    return {
+      height,
+      verticalStart: body.scrollTop,
+      width: timelineRect.width,
+      x: timelineRect.left,
+      y: bodyRect.top,
+    };
+  }, [bodyRef, timelineRef]);
+  const candidateViewKey = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target;
+    return target instanceof Element
+      ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
+      : undefined;
+  }, []);
+  const pointerType = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    return event.pointerType === 'touch' || event.pointerType === 'pen'
+      ? event.pointerType
+      : 'mouse';
+  }, []);
+  const pointerInput = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const bounds = geometry();
+      if (bounds === undefined) {
+        return undefined;
+      }
+      const candidate = candidateViewKey(event);
+      return {
+        ...(candidate === undefined ? {} : { candidateViewKey: candidate }),
+        geometry: bounds,
+        point: { x: event.clientX, y: event.clientY },
+        pointerId: event.pointerId,
+      };
+    },
+    [candidateViewKey, geometry],
+  );
+  const onPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (disabled || event.button !== 0 || event.isPrimary === false) {
+        return;
+      }
+      const input = pointerInput(event);
+      if (
+        input === undefined ||
+        !runtime.pointerDown({ ...input, pointerType: pointerType(event) })
+      ) {
+        return;
+      }
+      event.preventDefault();
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic adapters can lack a browser-managed active pointer.
+      }
+    },
+    [disabled, pointerInput, pointerType, runtime],
+  );
+  const onPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const input = pointerInput(event);
+      if (input !== undefined && runtime.pointerMove(input)) {
+        event.preventDefault();
+      }
+    },
+    [pointerInput, runtime],
+  );
+  const onPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (disabled) {
+        return;
+      }
+      event.preventDefault();
+      try {
+        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Capture can already be released by the browser before pointerup dispatch.
+      }
+      void runtime.pointerUp(event.pointerId);
+    },
+    [disabled, runtime],
+  );
+  const onPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (runtime.pointerCancel(event.pointerId)) {
+        event.preventDefault();
+      }
+    },
+    [runtime],
+  );
   const classes = ['gt-gantt', className].filter(Boolean).join(' ');
   const style: GanttRootStyle = {
     '--gt-lane-column-width': `${scene.bounds.laneColumnWidth}px`,
@@ -162,7 +291,13 @@ function GanttSurface({
       data-disabled={disabled || undefined}
       data-gantempo=""
       data-gt-part="root"
-      data-pending={interaction.status === 'document-proposal-pending' || undefined}
+      data-interaction-active={
+        ['pressing', 'dragging', 'resizing', 'creating', 'pending'].includes(interaction.status) ||
+        undefined
+      }
+      data-interaction-state={interaction.status}
+      data-pending={interaction.status === 'pending' || undefined}
+      data-rejected={interaction.status === 'rejected' || undefined}
       role="region"
       style={style}
     >
@@ -209,7 +344,17 @@ function GanttSurface({
                 ))}
               </div>
 
-              <div className="gt-gantt__timeline" data-gt-part="timeline" ref={timelineRef}>
+              <div
+                className="gt-gantt__timeline"
+                data-gt-part="timeline"
+                onDragStart={(event) => event.preventDefault()}
+                onLostPointerCapture={onPointerCancel}
+                onPointerCancel={onPointerCancel}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                ref={timelineRef}
+              >
                 <svg aria-label="Scheduled tasks" role="group">
                   <g aria-hidden="true" data-gt-part="grid">
                     {scene.gridLines.map((line) => (
@@ -244,6 +389,20 @@ function GanttSurface({
                     />
                   ))}
                 </svg>
+                {'preview' in interaction && interaction.preview !== undefined ? (
+                  <div
+                    aria-hidden="true"
+                    className="gt-gantt__interaction-preview"
+                    data-gt-part="interaction-preview"
+                    data-preview-kind={interaction.preview.kind}
+                    style={{
+                      height: interaction.preview.height,
+                      left: interaction.preview.x,
+                      top: interaction.preview.y,
+                      width: interaction.preview.width,
+                    }}
+                  />
+                ) : null}
               </div>
             </div>
           </div>
@@ -255,7 +414,11 @@ function GanttSurface({
         className="gt-gantt__live-region"
         data-gt-part="live-region"
       >
-        {interaction.status === 'document-proposal-pending' ? 'Chart update pending.' : ''}
+        {'announcement' in interaction
+          ? interaction.announcement
+          : interaction.status === 'pending'
+            ? 'Chart update pending.'
+            : ''}
       </div>
     </div>
   );
@@ -319,16 +482,35 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         focused?.kind === 'task'
           ? current.scene.taskBars.find((task) => task.viewKey === focused.viewKey)
           : undefined;
+      const preview =
+        'preview' in current.selector.interaction
+          ? current.selector.interaction.preview
+          : undefined;
+      const retainedStart =
+        focusedTask === undefined && preview === undefined
+          ? undefined
+          : Math.max(
+              0,
+              Math.min(focusedTask?.y ?? Infinity, preview?.y ?? Infinity) -
+                (preview === undefined ? 0 : current.scene.bounds.defaultLaneHeight * 2),
+            );
+      const retainedEnd =
+        focusedTask === undefined && preview === undefined
+          ? undefined
+          : Math.max(
+              focusedTask === undefined ? -Infinity : focusedTask.y + focusedTask.height,
+              preview === undefined ? -Infinity : preview.y + preview.height,
+            ) + (preview === undefined ? 0 : current.scene.bounds.defaultLaneHeight * 2);
       runtime.measure({
         clientHeight: body.clientHeight,
         clientWidth: timeline.clientWidth,
         verticalStart: body.scrollTop,
-        ...(focusedTask === undefined
+        ...(retainedStart === undefined || retainedEnd === undefined
           ? {}
           : {
               retainedRange: {
-                start: focusedTask.y,
-                end: focusedTask.y + focusedTask.height,
+                start: retainedStart,
+                end: retainedEnd,
               },
             }),
       });
@@ -353,6 +535,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         dateFormatter={dateFormatter}
         disabled={disabled}
         label={label}
+        runtime={runtime}
         scene={scene}
         taskVariants={taskVariants}
         timelineRef={timelineRef}

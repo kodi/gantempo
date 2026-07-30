@@ -139,14 +139,14 @@ architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layo
 viewport, and read-only rendering foundations. M4 is in progress: its public contract,
 semantic task-command foundation, React-free ownership store, async command/history
 lifecycle, staged derivation, measured viewport model, renderer-independent
-interaction intent, and the runtime-backed React facade are complete; direct
-manipulation is next.
+interaction intent, runtime-backed React facade, and pointer/pen/touch direct
+manipulation are complete; keyboard and accessibility parity are next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–7 complete, Slice 8 next
+**Status:** `[-]` In progress; Slices 1–8 complete, Slice 9 next
 
 **Target outcome**
 
@@ -166,7 +166,7 @@ persistence.
 
 **Next action**
 
-Execute Slice 8 of the
+Execute Slice 9 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
@@ -174,8 +174,9 @@ pure instant-only `task.move`/`task.resize` foundation, React-free ownership sto
 async command/history lifecycle, private derived pipeline, affected-reference
 invalidation/work observations, measured vertical viewport/overscan publication,
 renderer-independent hit testing, navigation, gesture intent, command mapping,
-previews, and the per-instance React facade are verified. Connect pointer, pen, and
-touch event adapters to those paths without adding a second mutation authority.
+previews, the per-instance React facade, and pointer/pen/touch workflows are verified.
+Add keyboard, focus, and assistive-technology parity over the same occurrence and
+command paths without introducing a parallel interaction model.
 
 **Queued M4 appendix**
 
@@ -272,6 +273,39 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 pointer, pen, and touch workflows complete
+
+- Connected delegated Pointer Events to the private hit-test/gesture/preview mapper
+  and the existing command bus, with occurrence selection/focus, capture and loss,
+  multi-pointer rejection, async pending/rejected states, edge auto-pan, mapped
+  creation, and reduced-motion/forced-colors presentation under focused test.
+- Updated the controlled playground seam to acknowledge chart-originated candidates
+  so the live `/interactive` route can prove direct manipulation without adding an
+  alternate document mutation path.
+- Corrected a Slice 7 event-order deviation: controlled session actions now use only
+  `onSessionChange` as the proposal callback; selection/focus/viewport observations
+  wait for authoritative prop adoption. The active plan records the exact finding.
+- The first live Chrome mouse drag exposed and fixed a synchronous controlled-ack
+  race: a resolving pointer dispatch now retains pending UI only while the store still
+  holds the matching proposal, so an already-observed commit cannot be overwritten by
+  stale continuation state.
+- Focused tests cover 14 DOM interaction cases including mouse/pen/touch variants;
+  the final full gate passed 46 files/221 tests. `vp check` passed all 115 formatted
+  and 104 lint/type-checked files, `vp pack` built four artifacts, declaration
+  inspection retained private runtime/scene/hit-test internals, and the production
+  playground transformed 55 modules.
+- `mise run ci` passed the complete check, 46-test-file/221-test, and four-artifact
+  package build gates.
+- Chrome DevTools passed `/`, `/matrix`, and `/interactive` at 1440 × 900 and
+  560 × 900 with intact layouts, complete labeled chart/task/status/live-region
+  snapshots, no page-level horizontal overflow, no failed local request, and no
+  application-owned console error or warning.
+- Live desktop mouse movement committed the expected controlled task move. Touch
+  emulation traversed pressing/dragging/preview/idle, committed the same command path,
+  and created a mapped second task in an empty lane with one polite completion
+  announcement.
+- Selected keyboard, focus, and assistive-technology parity as Slice 9.
 
 ### 2026-07-30 — M4 React runtime facade complete
 

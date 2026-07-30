@@ -1,10 +1,23 @@
 import type { EntityReference } from '../commands/types';
+import { mapInteractionIntent } from '../interaction/command-mapping';
+import { IDLE_INTERACTION_GESTURE, reduceInteractionGesture } from '../interaction/gesture';
+import { createInteractionHitTestIndex } from '../interaction/hit-test';
+import type {
+  InteractionGestureOptions,
+  InteractionGestureState,
+  InteractionPoint,
+  InteractionPointerType,
+  InteractionPreviewPrimitive,
+} from '../interaction/types';
 import type { Diagnostic } from '../model/diagnostics';
 import type { EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences } from '../model/validate';
 import { createChartScenePipeline } from '../render/scene-pipeline';
 import type { ChartScene, TaskBarPrimitive } from '../render/primitives';
-import { createGanttCommandBus } from '../runtime/command-bus';
+import {
+  createGanttCommandBus,
+  createGanttCommandCancellationController,
+} from '../runtime/command-bus';
 import { sessionEqual } from '../runtime/session';
 import { createGanttRuntimeStore } from '../runtime/store';
 import type {
@@ -20,6 +33,8 @@ import type {
 } from '../runtime/types';
 import type {
   GanttHandle,
+  GanttInteractionPreview,
+  GanttInteractionState,
   GanttProps,
   GanttScrollOptions,
   GanttSelectorSnapshot,
@@ -41,9 +56,36 @@ export interface GanttReactRuntime {
   getHandle(): GanttHandle;
   getSnapshot(): GanttReactRuntimeSnapshot;
   measure(measurement: GanttViewportMeasurement): void;
+  pointerCancel(pointerId: number): boolean;
+  pointerDown(input: GanttPointerInput): boolean;
+  pointerMove(input: GanttPointerMoveInput): boolean;
+  pointerUp(pointerId: number): Promise<void>;
   reconcile(props: GanttProps): void;
   subscribe(subscriber: () => void): () => void;
   updateCallbacks(props: GanttProps): void;
+}
+
+export interface GanttPointerGeometry {
+  readonly height: number;
+  readonly verticalStart: number;
+  readonly width: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface GanttPointerInput {
+  readonly candidateViewKey?: string;
+  readonly geometry: GanttPointerGeometry;
+  readonly point: InteractionPoint;
+  readonly pointerId: number;
+  readonly pointerType: InteractionPointerType;
+}
+
+export interface GanttPointerMoveInput {
+  readonly candidateViewKey?: string;
+  readonly geometry: GanttPointerGeometry;
+  readonly point: InteractionPoint;
+  readonly pointerId: number;
 }
 
 interface DisplayInputs {
@@ -161,12 +203,13 @@ function createSelectorSnapshot(
   store: GanttRuntimeSnapshot,
   display: DisplayInputs,
   visible: readonly GanttVisibleOccurrence[],
+  interaction: GanttInteractionState,
 ): GanttSelectorSnapshot {
   return Object.freeze({
     canRedo: store.history.canRedo,
     canUndo: store.history.canUndo,
     document: store.document,
-    interaction: store.interaction,
+    interaction,
     occurrences: visible,
     range: display.range,
     session: store.session,
@@ -213,6 +256,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let rebuildPending = false;
   let semanticSource: GanttSemanticEvent['source'] = 'runtime';
   let lastDocument: GanttDocument | undefined;
+  let gesture: InteractionGestureState = IDLE_INTERACTION_GESTURE;
+  let gestureGeometry: GanttPointerGeometry | undefined;
+  let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
   const pipeline = createChartScenePipeline();
   const store: GanttRuntimeStore = createGanttRuntimeStore({
@@ -239,9 +285,29 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     canProposeControlledDocument: () => callbacks.onDocumentChange !== undefined,
     ...(initialProps.interceptors === undefined ? {} : { interceptors: initialProps.interceptors }),
     onCommandCommitted(event) {
+      if (event.source.kind === 'pointer') {
+        const action = 'preview' in interaction ? interaction.preview?.kind : undefined;
+        const label = action ?? 'interaction';
+        setInteraction(
+          Object.freeze({
+            announcement: `${label[0]!.toUpperCase()}${label.slice(1)} committed.`,
+            status: 'idle',
+          }),
+        );
+      }
       callbacks.onCommandCommitted?.(event);
     },
     onCommandRejected(event) {
+      if (event.source.kind === 'pointer') {
+        const target = 'target' in interaction ? interaction.target : undefined;
+        setInteraction(
+          Object.freeze({
+            announcement: event.diagnostics[0]?.message ?? 'Interaction rejected.',
+            ...(target === undefined ? {} : { target }),
+            status: 'rejected',
+          }),
+        );
+      }
       callbacks.onCommandRejected?.(event);
     },
     onDocumentChange(change) {
@@ -255,6 +321,39 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   });
 
   let snapshot!: GanttReactRuntimeSnapshot;
+
+  function composedInteraction(storeSnapshot = store.getSnapshot()): GanttInteractionState {
+    if (storeSnapshot.interaction.status !== 'document-proposal-pending') {
+      return interaction;
+    }
+    const pointerType = 'pointerType' in interaction ? interaction.pointerType : undefined;
+    const preview = 'preview' in interaction ? interaction.preview : undefined;
+    const target = 'target' in interaction ? interaction.target : undefined;
+    return Object.freeze({
+      ...(pointerType === undefined ? {} : { pointerType }),
+      ...(preview === undefined ? {} : { preview }),
+      proposalId: storeSnapshot.interaction.proposalId,
+      status: 'pending',
+      ...(target === undefined ? {} : { target }),
+    });
+  }
+
+  function setInteraction(next: GanttInteractionState): void {
+    interaction = next;
+    if (disposed || snapshot === undefined) {
+      return;
+    }
+    publish(
+      Object.freeze({
+        scene: snapshot.scene,
+        selector: Object.freeze({
+          ...snapshot.selector,
+          interaction: composedInteraction(),
+        }),
+        version: snapshot.version + 1,
+      }),
+    );
+  }
 
   function emitCallback(
     name: GanttRuntimeErrorEvent['callback'],
@@ -307,30 +406,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   function emitControlledSessionProposal(
     previous: GanttSessionState,
     next: GanttSessionState,
+    source: GanttSemanticEvent['source'],
   ): void {
     if (!active || callbacks.onSessionChange === undefined || sessionEqual(previous, next)) {
       return;
     }
-    const event = Object.freeze({ source: 'imperative' as const });
+    const event = Object.freeze({ source });
     emitCallback('onSessionChange', () => callbacks.onSessionChange?.(next, event));
-    if (!selectionEqual(previous.selection, next.selection)) {
-      emitCallback('onSelectionChange', () => callbacks.onSelectionChange?.(next.selection, event));
-    }
-    if (targetIdentity(previous.focused) !== targetIdentity(next.focused)) {
-      emitCallback('onFocusChange', () => callbacks.onFocusChange?.(next.focused, event));
-    }
-    if (previous.viewport.verticalStart !== next.viewport.verticalStart) {
-      emitCallback('onViewportChange', () =>
-        callbacks.onViewportChange?.(
-          Object.freeze({
-            measured: snapshot.selector.viewport,
-            range: snapshot.selector.range,
-            session: next.viewport,
-          }),
-          event,
-        ),
-      );
-    }
   }
 
   function publish(next: GanttReactRuntimeSnapshot): void {
@@ -384,7 +466,12 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     const reconciledStore = store.getSnapshot();
     return Object.freeze({
       scene,
-      selector: createSelectorSnapshot(reconciledStore, display, sceneOccurrences.visible),
+      selector: createSelectorSnapshot(
+        reconciledStore,
+        display,
+        sceneOccurrences.visible,
+        composedInteraction(reconciledStore),
+      ),
       version: (snapshot?.version ?? -1) + 1,
     });
   }
@@ -411,15 +498,18 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   const unsubscribeStore = store.subscribe(rebuild);
   rebuild();
 
-  function updateSession(next: GanttSessionState): boolean {
+  function updateSession(
+    next: GanttSessionState,
+    source: GanttSemanticEvent['source'] = 'imperative',
+  ): boolean {
     if (sessionControlled) {
       if (callbacks.onSessionChange === undefined) {
         return false;
       }
-      emitControlledSessionProposal(store.getSnapshot().session, next);
+      emitControlledSessionProposal(store.getSnapshot().session, next, source);
       return true;
     }
-    semanticSource = 'imperative';
+    semanticSource = source;
     try {
       store.updateUncontrolledSession(next);
     } finally {
@@ -447,6 +537,119 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           ? task.y + task.height - extent
           : task.y + task.height / 2 - extent / 2;
     return Math.max(0, Math.min(start, Math.max(0, snapshot.scene.bounds.timelineHeight - extent)));
+  }
+
+  function interactionOptions(geometry: GanttPointerGeometry): InteractionGestureOptions {
+    if (
+      !Number.isFinite(geometry.x) ||
+      !Number.isFinite(geometry.y) ||
+      !Number.isFinite(geometry.width) ||
+      !Number.isFinite(geometry.height) ||
+      !Number.isFinite(geometry.verticalStart) ||
+      geometry.width <= 0 ||
+      geometry.height <= 0 ||
+      geometry.verticalStart < 0
+    ) {
+      throw new RangeError('Pointer interaction geometry must be finite and visible.');
+    }
+    const snap = callbacks.interactionSnap ?? {
+      anchor: display.tickAnchor,
+      step: display.tickInterval,
+    };
+    return {
+      ...(callbacks.interactionCreationDuration === undefined
+        ? {}
+        : { creationDuration: callbacks.interactionCreationDuration }),
+      index: createInteractionHitTestIndex(snapshot.scene, {
+        height: geometry.height,
+        verticalStart: geometry.verticalStart,
+        width: geometry.width,
+        x: geometry.x,
+        y: geometry.y,
+      }),
+      snap: Object.freeze({ anchor: snap.anchor, step: snap.step }),
+    };
+  }
+
+  function publicPreview(
+    preview: InteractionPreviewPrimitive,
+    geometry: GanttPointerGeometry,
+  ): GanttInteractionPreview {
+    return Object.freeze({
+      description: preview.description,
+      destination: preview.destination,
+      end: preview.end,
+      height: preview.height,
+      kind: preview.kind,
+      ...(preview.source === undefined ? {} : { source: preview.source }),
+      start: preview.start,
+      width: preview.width,
+      x: preview.x - geometry.x,
+      y: preview.y - geometry.y + geometry.verticalStart,
+    });
+  }
+
+  function hitTarget(
+    state: Extract<InteractionGestureState, { readonly status: 'pressed' }>,
+  ): GanttInteractionTarget {
+    return state.hit.kind === 'timeline-position' ? state.hit.lane.target : state.hit.task.target;
+  }
+
+  function selectPointerTarget(target: GanttTaskTarget): void {
+    const session = store.getSnapshot().session;
+    updateSession(
+      Object.freeze({
+        focused: target,
+        selection: Object.freeze([target]),
+        viewport: session.viewport,
+      }),
+      'runtime',
+    );
+  }
+
+  function autoPan(input: GanttPointerMoveInput, options: InteractionGestureOptions): void {
+    if (gesture.status !== 'active') {
+      return;
+    }
+    const edge = Math.min(40, input.geometry.height / 3, input.geometry.width / 3);
+    const relativeY = input.point.y - input.geometry.y;
+    const verticalDirection =
+      relativeY < edge ? -1 : relativeY > input.geometry.height - edge ? 1 : 0;
+    if (verticalDirection !== 0) {
+      const session = store.getSnapshot().session;
+      const strength =
+        verticalDirection < 0
+          ? (edge - Math.max(0, relativeY)) / edge
+          : (edge - Math.max(0, input.geometry.height - relativeY)) / edge;
+      const delta =
+        verticalDirection *
+        Math.max(4, Math.round(snapshot.scene.bounds.defaultLaneHeight * 0.35 * strength));
+      const maxStart = Math.max(0, snapshot.scene.bounds.timelineHeight - input.geometry.height);
+      const verticalStart = Math.max(0, Math.min(maxStart, session.viewport.verticalStart + delta));
+      if (verticalStart !== session.viewport.verticalStart) {
+        updateSession(
+          Object.freeze({
+            ...(session.focused === undefined ? {} : { focused: session.focused }),
+            selection: session.selection,
+            viewport: Object.freeze({ verticalStart }),
+          }),
+          'runtime',
+        );
+      }
+    }
+
+    const relativeX = input.point.x - input.geometry.x;
+    const horizontalDirection =
+      relativeX < edge ? -1 : relativeX > input.geometry.width - edge ? 1 : 0;
+    if (horizontalDirection !== 0 && callbacks.onRangeChange !== undefined) {
+      const shift = horizontalDirection * options.snap.step;
+      const range = Object.freeze({
+        end: display.range.end + shift,
+        start: display.range.start + shift,
+      });
+      const event = Object.freeze({ source: 'runtime' as const });
+      emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
+    }
   }
 
   const handleValue: GanttHandle = {
@@ -553,6 +756,208 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
     measure(measurement) {
       store.scheduleViewportMeasurement(measurement);
+    },
+
+    pointerCancel(pointerId) {
+      if (
+        (gesture.status !== 'pressed' && gesture.status !== 'active') ||
+        gesture.pointerId !== pointerId
+      ) {
+        return false;
+      }
+      gesture = reduceInteractionGesture(
+        gesture,
+        { type: 'cancel' },
+        interactionOptions(gestureGeometry!),
+      );
+      gesture = IDLE_INTERACTION_GESTURE;
+      gestureGeometry = undefined;
+      setInteraction(
+        Object.freeze({
+          announcement: 'Interaction cancelled.',
+          status: 'idle',
+        }),
+      );
+      return true;
+    },
+
+    pointerDown(input) {
+      if (
+        disposed ||
+        gesture.status === 'pressed' ||
+        gesture.status === 'active' ||
+        composedInteraction().status === 'pending'
+      ) {
+        return false;
+      }
+      const next = reduceInteractionGesture(
+        IDLE_INTERACTION_GESTURE,
+        {
+          ...(input.candidateViewKey === undefined
+            ? {}
+            : { candidateViewKey: input.candidateViewKey }),
+          point: input.point,
+          pointerId: input.pointerId,
+          pointerType: input.pointerType,
+          type: 'press',
+        },
+        interactionOptions(input.geometry),
+      );
+      if (next.status !== 'pressed') {
+        return false;
+      }
+      gesture = next;
+      gestureGeometry = input.geometry;
+      const target = hitTarget(next);
+      if (target.kind === 'task') {
+        selectPointerTarget(target);
+      }
+      setInteraction(
+        Object.freeze({
+          ...(next.hit.kind === 'task-edge' ? { edge: next.hit.edge } : {}),
+          pointerType: next.pointerType,
+          status: 'pressing',
+          target,
+        }),
+      );
+      return true;
+    },
+
+    pointerMove(input) {
+      if (
+        (gesture.status !== 'pressed' && gesture.status !== 'active') ||
+        gesture.pointerId !== input.pointerId
+      ) {
+        return false;
+      }
+      const options = interactionOptions(input.geometry);
+      const next = reduceInteractionGesture(
+        gesture,
+        {
+          ...(input.candidateViewKey === undefined
+            ? {}
+            : { candidateViewKey: input.candidateViewKey }),
+          point: input.point,
+          pointerId: input.pointerId,
+          type: 'move',
+        },
+        options,
+      );
+      gesture = next;
+      gestureGeometry = input.geometry;
+      if (next.status !== 'active') {
+        return false;
+      }
+      const target =
+        next.origin.kind === 'timeline-position'
+          ? next.origin.lane.target
+          : next.origin.task.target;
+      setInteraction(
+        Object.freeze({
+          pointerType: next.pointerType,
+          preview: publicPreview(next.preview, input.geometry),
+          status:
+            next.intent.kind === 'move'
+              ? 'dragging'
+              : next.intent.kind === 'resize'
+                ? 'resizing'
+                : 'creating',
+          target,
+        }),
+      );
+      autoPan(input, options);
+      return true;
+    },
+
+    async pointerUp(pointerId) {
+      if (
+        (gesture.status !== 'pressed' && gesture.status !== 'active') ||
+        gesture.pointerId !== pointerId ||
+        gestureGeometry === undefined
+      ) {
+        return;
+      }
+      const previous = gesture;
+      const geometry = gestureGeometry;
+      const released = reduceInteractionGesture(
+        gesture,
+        { pointerId, type: 'release' },
+        interactionOptions(geometry),
+      );
+      gesture = IDLE_INTERACTION_GESTURE;
+      gestureGeometry = undefined;
+      if (previous.status === 'pressed') {
+        if (previous.hit.kind === 'task-body' || previous.hit.kind === 'task-edge') {
+          const target = previous.hit.task.target;
+          const event = Object.freeze({ source: 'runtime' as const });
+          setInteraction(
+            Object.freeze({
+              announcement: `${previous.hit.task.primitive.title} activated.`,
+              status: 'idle',
+            }),
+          );
+          emitCallback('onTaskActivate', () => callbacks.onTaskActivate?.(target, event));
+        } else {
+          setInteraction(Object.freeze({ status: 'idle' }));
+        }
+        return;
+      }
+      if (released.status !== 'committed') {
+        setInteraction(Object.freeze({ status: 'idle' }));
+        return;
+      }
+      const target =
+        released.intent.kind === 'create' ? released.intent.destination : released.intent.source;
+      const preview = publicPreview(released.preview, geometry);
+      setInteraction(
+        Object.freeze({
+          pointerType: previous.pointerType,
+          preview,
+          status: 'pending',
+          target,
+        }),
+      );
+      const mapping = mapInteractionIntent(released.intent, {
+        document: store.getSnapshot().document,
+        ...(callbacks.interactionMappers === undefined
+          ? {}
+          : { mappers: callbacks.interactionMappers }),
+      });
+      if (mapping.status === 'rejected') {
+        setInteraction(
+          Object.freeze({
+            announcement: mapping.diagnostic.message,
+            status: 'rejected',
+            target,
+          }),
+        );
+        return;
+      }
+      const cancellation = createGanttCommandCancellationController();
+      const result = await bus.dispatch(mapping.command, {
+        cancellation: cancellation.signal,
+        source: Object.freeze({
+          kind: 'pointer',
+          pointerType: previous.pointerType,
+        }),
+        target,
+      });
+      if (disposed) {
+        cancellation.abort();
+        return;
+      }
+      const pendingDocument = store.getSnapshot().ownership.pendingDocument;
+      if (result.status === 'proposed' && pendingDocument?.proposalId === result.proposalId) {
+        setInteraction(
+          Object.freeze({
+            pointerType: previous.pointerType,
+            preview,
+            proposalId: result.proposalId,
+            status: 'pending',
+            target,
+          }),
+        );
+      }
     },
 
     reconcile(props) {

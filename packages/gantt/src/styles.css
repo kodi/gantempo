@@ -100,6 +100,7 @@
     height: 100%;
     overflow: hidden;
     background: var(--gt-color-surface-muted);
+    touch-action: none;
   }
 
   :where(.gt-gantt__body-scroll) {
@@ -134,6 +135,55 @@
 
   :where(.gt-gantt__task-bar) {
     fill: var(--gt-color-task);
+    transition:
+      opacity 120ms ease,
+      filter 120ms ease;
+  }
+
+  :where(.gt-gantt [data-gt-part='task'][data-pressing='true'] .gt-gantt__task-bar) {
+    filter: brightness(0.94);
+    opacity: 0.84;
+  }
+
+  :where(
+    .gt-gantt [data-gt-part='task'][data-dragging='true'] .gt-gantt__task-bar,
+    .gt-gantt [data-gt-part='task'][data-resizing='true'] .gt-gantt__task-bar
+  ) {
+    opacity: 0.42;
+  }
+
+  :where(.gt-gantt [data-gt-part='task'][data-pending='true'] .gt-gantt__task-bar) {
+    opacity: 0.56;
+  }
+
+  :where(.gt-gantt [data-gt-part='task'][data-rejected='true'] .gt-gantt__task-bar) {
+    stroke: #b42318;
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  :where(.gt-gantt__interaction-preview) {
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
+    border: 2px solid var(--gt-color-focus);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--gt-color-task) 42%, transparent);
+    box-shadow: 0 4px 14px rgb(0 0 0 / 14%);
+    pointer-events: none;
+    transition:
+      left 80ms linear,
+      top 80ms linear,
+      width 80ms linear;
+  }
+
+  :where(.gt-gantt__interaction-preview[data-preview-kind='create']) {
+    border-style: dashed;
+  }
+
+  :where(.gt-gantt[data-interaction-active='true']) {
+    cursor: grabbing;
+    user-select: none;
   }
 
   :where(.gt-gantt__task-label) {
@@ -192,5 +242,23 @@
     clip-path: inset(50%);
     border: 0;
     white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where(.gt-gantt__task-bar, .gt-gantt__interaction-preview) {
+      transition: none;
+    }
+
+    :where(.gt-gantt__body-scroll) {
+      scroll-behavior: auto;
+    }
+  }
+
+  @media (forced-colors: active) {
+    :where(.gt-gantt__interaction-preview) {
+      border-color: Highlight;
+      background: Canvas;
+      box-shadow: none;
+    }
   }
 }

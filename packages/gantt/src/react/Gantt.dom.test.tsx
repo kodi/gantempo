@@ -6,6 +6,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import type { GanttDocument } from '../model/types';
+import type { GanttCommandInterception } from '../runtime/types';
 import { Gantt } from './Gantt';
 import type { GanttHandle, GanttProps } from './types';
 
@@ -30,6 +31,18 @@ function documentFixture(title = 'Task A'): GanttDocument {
     assignments: [],
     placements: [{ id: 'placement-a', taskId: 'task-a', laneId: 'lane-a' }],
     dependencies: [],
+  };
+}
+
+function multiLaneDocument(laneCount = 2): GanttDocument {
+  const lanes = Array.from({ length: laneCount }, (_, index) => ({
+    id: `lane-${index}`,
+    title: `Lane ${index}`,
+  }));
+  return {
+    ...documentFixture(),
+    lanes,
+    placements: [{ id: 'placement-a', taskId: 'task-a', laneId: lanes[0]!.id }],
   };
 }
 
@@ -59,6 +72,87 @@ async function render(element: ReactNode): Promise<{
     root.render(element);
   });
   return { container: host, root };
+}
+
+function installPointerGeometry(
+  host: HTMLDivElement,
+  options: { readonly height?: number; readonly width?: number } = {},
+): {
+  readonly body: HTMLDivElement;
+  readonly captured: number[];
+  readonly timeline: HTMLDivElement;
+} {
+  const body = host.querySelector<HTMLDivElement>('[data-gt-part="viewport"]')!;
+  const timeline = host.querySelector<HTMLDivElement>('[data-gt-part="timeline"]')!;
+  const width = options.width ?? 700;
+  const height = options.height ?? Math.min(116, body.scrollHeight || 116);
+  Object.defineProperties(body, {
+    clientHeight: { configurable: true, value: height },
+    clientWidth: { configurable: true, value: width + 160 },
+  });
+  Object.defineProperty(timeline, 'clientWidth', { configurable: true, value: width });
+  body.getBoundingClientRect = () =>
+    ({
+      bottom: height,
+      height,
+      left: 0,
+      right: width + 160,
+      top: 0,
+      width: width + 160,
+      x: 0,
+      y: 0,
+      toJSON() {},
+    }) as DOMRect;
+  timeline.getBoundingClientRect = () =>
+    ({
+      bottom: height,
+      height,
+      left: 160,
+      right: width + 160,
+      top: 0,
+      width,
+      x: 160,
+      y: 0,
+      toJSON() {},
+    }) as DOMRect;
+  const captured: number[] = [];
+  const captures = new Set<number>();
+  timeline.setPointerCapture = (pointerId) => {
+    captured.push(pointerId);
+    captures.add(pointerId);
+  };
+  timeline.hasPointerCapture = (pointerId) => captures.has(pointerId);
+  timeline.releasePointerCapture = (pointerId) => {
+    captures.delete(pointerId);
+  };
+  return { body, captured, timeline };
+}
+
+function dispatchPointer(
+  target: Element,
+  type: 'lostpointercapture' | 'pointercancel' | 'pointerdown' | 'pointermove' | 'pointerup',
+  input: {
+    readonly button?: number;
+    readonly clientX: number;
+    readonly clientY: number;
+    readonly isPrimary?: boolean;
+    readonly pointerId: number;
+    readonly pointerType: 'mouse' | 'pen' | 'touch';
+  },
+): void {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    button: input.button ?? 0,
+    cancelable: true,
+    clientX: input.clientX,
+    clientY: input.clientY,
+  });
+  Object.defineProperties(event, {
+    isPrimary: { value: input.isPrimary ?? true },
+    pointerId: { value: input.pointerId },
+    pointerType: { value: input.pointerType },
+  });
+  target.dispatchEvent(event);
 }
 
 beforeEach(() => {
@@ -269,5 +363,423 @@ describe('Gantt React facade in a DOM environment', () => {
       globalThis.requestAnimationFrame = originalRequest;
       globalThis.cancelAnimationFrame = originalCancel;
     }
+  });
+
+  it('selects, focuses, captures, and activates a task through delegated mouse events', async () => {
+    const activated: string[] = [];
+    const events: string[] = [];
+    const ref = createRef<GanttHandle>();
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        onFocusChange={() => events.push('focus')}
+        onSelectionChange={() => events.push('selection')}
+        onSessionChange={() => events.push('session')}
+        onTaskActivate={(target) => {
+          activated.push(target.taskId);
+          events.push('activate');
+        }}
+        ref={ref}
+      />,
+    );
+    const { captured, timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+    });
+    expect(captured).toEqual([1]);
+    expect(ref.current?.getSelection()[0]).toMatchObject({ taskId: 'task-a' });
+    expect(task.getAttribute('data-selected')).toBe('true');
+    expect(task.getAttribute('data-pressing')).toBe('true');
+    expect(events).toEqual(['session', 'selection', 'focus']);
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 1,
+        pointerType: 'mouse',
+      });
+    });
+    expect(activated).toEqual(['task-a']);
+    expect(events).toEqual(['session', 'selection', 'focus', 'activate']);
+    expect(mounted.container.querySelector('[data-gt-part="live-region"]')?.textContent).toContain(
+      'Task A activated',
+    );
+  });
+
+  it.each(['mouse', 'pen', 'touch'] as const)(
+    'moves a task through the shared %s pointer command path',
+    async (pointerType) => {
+      const ref = createRef<GanttHandle>();
+      const sources: string[] = [];
+      const mounted = await render(
+        <Gantt
+          {...commonProps()}
+          defaultDocument={documentFixture()}
+          onDocumentChange={(change) => sources.push(change.source.kind)}
+          ref={ref}
+        />,
+      );
+      const { timeline } = installPointerGeometry(mounted.container);
+      const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+      await act(async () => {
+        dispatchPointer(task, 'pointerdown', {
+          clientX: 310,
+          clientY: 29,
+          pointerId: 2,
+          pointerType,
+        });
+        dispatchPointer(timeline, 'pointermove', {
+          clientX: 410,
+          clientY: 29,
+          pointerId: 2,
+          pointerType,
+        });
+      });
+      expect(
+        mounted.container.querySelector('[data-gt-part="interaction-preview"]'),
+      ).not.toBeNull();
+      expect(task.getAttribute('data-dragging')).toBe('true');
+
+      await act(async () => {
+        dispatchPointer(timeline, 'pointerup', {
+          clientX: 410,
+          clientY: 29,
+          pointerId: 2,
+          pointerType,
+        });
+      });
+      expect(ref.current?.getDocument().tasks[0]?.schedule).toMatchObject({
+        start: START + 2 * DAY,
+        end: START + 3 * DAY,
+      });
+      expect(sources).toEqual(['pointer']);
+      expect(mounted.container.querySelector('[data-gt-part="interaction-preview"]')).toBeNull();
+    },
+  );
+
+  it('resizes by an edge, moves a persisted placement, and maps empty-lane creation', async () => {
+    const ref = createRef<GanttHandle>();
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={multiLaneDocument()}
+        interactionMappers={{
+          createTask(intent) {
+            return {
+              command: {
+                commands: [
+                  {
+                    type: 'task.add',
+                    value: {
+                      id: 'created',
+                      title: 'Created',
+                      schedule: { mode: 'instant', start: intent.start, end: intent.end },
+                    },
+                  },
+                  {
+                    type: 'placement.add',
+                    value: {
+                      id: 'created-placement',
+                      laneId: intent.destination.laneId!,
+                      taskId: 'created',
+                    },
+                  },
+                ],
+                type: 'transaction',
+              },
+              status: 'mapped',
+            };
+          },
+        }}
+        ref={ref}
+      />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container, { height: 116 });
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 360,
+        clientY: 29,
+        pointerId: 3,
+        pointerType: 'pen',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 460,
+        clientY: 29,
+        pointerId: 3,
+        pointerType: 'pen',
+      });
+    });
+    expect(task.getAttribute('data-resizing')).toBe('true');
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 460,
+        clientY: 29,
+        pointerId: 3,
+        pointerType: 'pen',
+      });
+    });
+    expect(ref.current?.getDocument().tasks[0]?.schedule).toMatchObject({
+      start: START + DAY,
+      end: START + 3 * DAY,
+    });
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 360,
+        clientY: 29,
+        pointerId: 4,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 360,
+        clientY: 87,
+        pointerId: 4,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 360,
+        clientY: 87,
+        pointerId: 4,
+        pointerType: 'mouse',
+      });
+    });
+    expect(ref.current?.getDocument().placements[0]?.laneId).toBe('lane-1');
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 660,
+        clientY: 29,
+        pointerId: 5,
+        pointerType: 'touch',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 760,
+        clientY: 87,
+        pointerId: 5,
+        pointerType: 'touch',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 760,
+        clientY: 87,
+        pointerId: 5,
+        pointerType: 'touch',
+      });
+    });
+    expect(ref.current?.getDocument().tasks.some((item) => item.id === 'created')).toBe(true);
+    expect(ref.current?.getDocument().placements).toContainEqual(
+      expect.objectContaining({ id: 'created-placement', laneId: 'lane-1' }),
+    );
+  });
+
+  it('rejects secondary pointers, cancels capture loss, and holds async preview pending', async () => {
+    let resolve!: (value: GanttCommandInterception) => void;
+    const interception = new Promise<GanttCommandInterception>((accept) => {
+      resolve = accept;
+    });
+    const ref = createRef<GanttHandle>();
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        interceptors={[() => interception]}
+        ref={ref}
+      />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 6,
+        pointerType: 'touch',
+      });
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        isPrimary: false,
+        pointerId: 7,
+        pointerType: 'touch',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 410,
+        clientY: 29,
+        pointerId: 7,
+        pointerType: 'touch',
+      });
+    });
+    expect(task.getAttribute('data-dragging')).not.toBe('true');
+    await act(async () => {
+      dispatchPointer(timeline, 'pointercancel', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 6,
+        pointerType: 'touch',
+      });
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 10,
+        pointerType: 'pen',
+      });
+      dispatchPointer(timeline, 'lostpointercapture', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 10,
+        pointerType: 'pen',
+      });
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
+
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerdown', {
+        clientX: 660,
+        clientY: 29,
+        pointerId: 11,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 760,
+        clientY: 29,
+        pointerId: 11,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 760,
+        clientY: 29,
+        pointerId: 11,
+        pointerType: 'mouse',
+      });
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('rejected');
+    expect(mounted.container.querySelector('[data-gt-part="live-region"]')?.textContent).toContain(
+      'Task creation requires an application command mapper',
+    );
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 8,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 410,
+        clientY: 29,
+        pointerId: 8,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 410,
+        clientY: 29,
+        pointerId: 8,
+        pointerType: 'mouse',
+      });
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('pending');
+    expect(mounted.container.querySelector('[data-gt-part="interaction-preview"]')).not.toBeNull();
+
+    await act(async () => {
+      resolve({ kind: 'allow' });
+      await interception;
+    });
+    expect(ref.current?.getDocument().tasks[0]?.schedule).toMatchObject({
+      start: START + 2 * DAY,
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
+  });
+
+  it('acknowledges a controlled pointer candidate and requests edge auto-pan', async () => {
+    const ref = createRef<GanttHandle>();
+    let document = multiLaneDocument(8);
+    const ranges: GanttProps['range'][] = [];
+    const props: GanttProps = {
+      ...commonProps(),
+      document,
+      onDocumentChange(change) {
+        document = change.document;
+      },
+      onRangeChange(range) {
+        ranges.push(range);
+      },
+    };
+    const mounted = await render(<Gantt {...props} ref={ref} />);
+    const { timeline } = installPointerGeometry(mounted.container, { height: 100 });
+    const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+
+    await act(async () => {
+      dispatchPointer(task, 'pointerdown', {
+        clientX: 310,
+        clientY: 29,
+        pointerId: 9,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 855,
+        clientY: 99,
+        pointerId: 9,
+        pointerType: 'mouse',
+      });
+    });
+    expect(ref.current?.getSession().viewport.verticalStart).toBeGreaterThan(0);
+    expect(ranges).toHaveLength(1);
+    await act(async () => {
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 855,
+        clientY: 99,
+        pointerId: 9,
+        pointerType: 'mouse',
+      });
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('pending');
+    await act(async () => {
+      mounted.root.render(<Gantt {...props} document={document} ref={ref} />);
+    });
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
   });
 });

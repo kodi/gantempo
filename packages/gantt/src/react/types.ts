@@ -1,6 +1,14 @@
 import type { GanttCommand } from '../commands/types';
 import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
+import type {
+  InteractionCommandMappingResult,
+  InteractionCreateTaskMapperIntent,
+  InteractionMoveOccurrenceMapperIntent,
+  InteractionPointerType,
+  InteractionPreviewPrimitive,
+  InteractionSnapPolicy,
+} from '../interaction/types';
 import type { GanttViewDefinition } from '../view/types';
 import type {
   GanttCommandCommittedEvent,
@@ -35,14 +43,64 @@ export interface GanttVisibleOccurrence {
   readonly target: GanttTaskTarget;
 }
 
+export type GanttCommandMappingResult = InteractionCommandMappingResult;
+export type GanttCreateTaskIntent = InteractionCreateTaskMapperIntent;
+export type GanttMoveOccurrenceIntent = InteractionMoveOccurrenceMapperIntent;
+export type GanttInteractionSnapPolicy = InteractionSnapPolicy;
+
+export interface GanttInteractionCommandMappers {
+  readonly createTask?: (intent: GanttCreateTaskIntent) => GanttCommandMappingResult;
+  readonly moveOccurrence?: (intent: GanttMoveOccurrenceIntent) => GanttCommandMappingResult;
+}
+
+export interface GanttInteractionPreview {
+  readonly description: string;
+  readonly destination: Extract<GanttInteractionTarget, { readonly kind: 'lane' }>;
+  readonly end: EpochMilliseconds;
+  readonly height: number;
+  readonly kind: InteractionPreviewPrimitive['kind'];
+  readonly source?: GanttTaskTarget;
+  readonly start: EpochMilliseconds;
+  readonly width: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+export type GanttInteractionState =
+  | {
+      readonly announcement?: string;
+      readonly status: 'idle';
+    }
+  | {
+      readonly edge?: 'end' | 'start';
+      readonly pointerType: InteractionPointerType;
+      readonly status: 'pressing';
+      readonly target?: GanttInteractionTarget;
+    }
+  | {
+      readonly pointerType: InteractionPointerType;
+      readonly preview: GanttInteractionPreview;
+      readonly status: 'creating' | 'dragging' | 'resizing';
+      readonly target?: GanttInteractionTarget;
+    }
+  | {
+      readonly pointerType?: InteractionPointerType;
+      readonly preview?: GanttInteractionPreview;
+      readonly proposalId?: string;
+      readonly status: 'pending';
+      readonly target?: GanttInteractionTarget;
+    }
+  | {
+      readonly announcement: string;
+      readonly status: 'rejected';
+      readonly target?: GanttInteractionTarget;
+    };
+
 export interface GanttSelectorSnapshot {
   readonly canRedo: boolean;
   readonly canUndo: boolean;
   readonly document: GanttDocument;
-  readonly interaction: {
-    readonly proposalId?: string;
-    readonly status: 'document-proposal-pending' | 'idle';
-  };
+  readonly interaction: GanttInteractionState;
   readonly occurrences: readonly GanttVisibleOccurrence[];
   readonly range: TimeRange;
   readonly session: GanttSessionState;
@@ -67,6 +125,9 @@ interface GanttBaseProps {
   readonly className?: string;
   readonly historyCapacity?: number;
   readonly interceptors?: readonly GanttCommandInterceptor[];
+  readonly interactionCreationDuration?: number;
+  readonly interactionMappers?: GanttInteractionCommandMappers;
+  readonly interactionSnap?: GanttInteractionSnapPolicy;
   readonly label?: string;
   readonly locale?: string;
   readonly onCommandCommitted?: (event: GanttCommandCommittedEvent) => void;

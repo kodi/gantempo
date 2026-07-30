@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–7 complete, Slice 8 next
+Status: Active; Slices 1–8 complete, Slice 9 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -1148,7 +1148,7 @@ remain an adapter instead of becoming a second runtime authority.
 
 ### Slice 8: Implement pointer, pen, and touch workflows
 
-Status: `[-]` In progress
+Status: `[x]` Done
 
 **Goal**
 
@@ -1206,7 +1206,7 @@ enough that browser events can remain thin adapters.
 
 ### Slice 9: Add keyboard, focus, and accessibility parity
 
-Status: `[ ]` Not started
+Status: `[-]` In progress
 
 **Goal**
 
@@ -1919,7 +1919,107 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
     MaxListeners, ObjectMultiplex, and content-script messages were separated as
     environment noise.
 
+### 2026-07-30 — Slice 8 pointer, pen, and touch workflows
+
+- Connected one delegated Pointer Event adapter on the timeline to the private
+  hit-test index, pure gesture reducer, immutable preview, intent mapper, and existing
+  per-instance command bus. Pointer input carries numeric DOM geometry and
+  mouse/pen/touch source metadata without exposing DOM nodes or events through the
+  public runtime facade.
+- Added primary-button/primary-pointer admission, capture and guarded release,
+  movement thresholds, click activation, secondary-pointer rejection,
+  `pointercancel`, capture-loss cancellation, native-drag prevention, and runtime
+  disposal settlement. Selection and logical focus update before task activation,
+  and document changes remain reducer-owned.
+- Added public data-only interaction mapper, snap, preview, and selector-state types.
+  Built-in gestures map task movement, resize, persisted placement movement, and
+  combined transactions; empty-lane creation and ambiguous derived-occurrence moves
+  continue through frozen application mapper inputs.
+- Rendered transformed move/resize/create previews without recomputing canonical
+  layout on each pointer move. Preview retention expands measured overscan, vertical
+  edge motion proposes session scroll, horizontal edge motion requests a controlled
+  range, and pending/rejected outcomes retain or reconcile the preview through the
+  authoritative command lifecycle.
+- Added stable root/task attributes for pressing, dragging, resizing, pending, and
+  rejected state; task and preview reduced-motion treatment; forced-colors preview
+  treatment; and pointer-gesture-only text-selection suppression. The timeline uses
+  `touch-action: none` because Pointer Event gesture negotiation requires that policy
+  at pointer-down time, while visible touch hit expansion remains private geometry.
+- Updated the controlled `/interactive` consumer to acknowledge chart candidates
+  synchronously, supply one-day snapping and mapped task creation, and expose
+  chart-originated commit/rejection status without introducing another mutation path.
+  The separate playground toolbar history reset remains an example-level concern
+  selected for Slice 11's unified consumer proof.
+- Focused jsdom coverage proves mouse, pen, and touch move parity, activation/event
+  order, resize, persisted placement movement, mapped creation, pointer capture,
+  secondary-pointer rejection, cancellation/capture loss, mapper rejection, async
+  pending reconciliation, controlled acknowledgement, and vertical/horizontal
+  auto-pan. A direct runtime regression covers synchronous controlled acknowledgement
+  before the awaiting pointer continuation resumes.
+- Verification passed:
+  - the final full test gate passed 46 files and 221 tests; the interaction DOM suite
+    contains 14 tests including the three pointer-device variants;
+  - `vp check` reported all 115 files formatted and no warning, lint, or type error
+    across 104 checked files;
+  - `vp pack` built the four public artifacts; declaration inspection found the
+    intentional mapper/snap/preview/state types and no public runtime store, scene
+    cache, or hit-test index;
+  - `vp build apps/playground` transformed 55 modules and produced the production
+    HTML, CSS, and JavaScript artifacts;
+  - `git diff --check` passed;
+  - `mise run ci` passed the complete check, 46-test-file/221-test, and four-artifact
+    package build gates.
+- Chrome DevTools verification passed on `/`, `/matrix`, and `/interactive` at
+  1440 × 900 and 560 × 900:
+  - accessibility snapshots exposed the expected labeled chart regions, controls,
+    task names, status, and polite interaction announcements;
+  - screenshots showed intact large and narrow main, five-scenario matrix, and
+    interactive layouts with no page-level horizontal overflow or application alert;
+  - a live desktop mouse drag moved Work item 1 from 29 Jul–2 Aug to 5–9 Aug, returned
+    the root to idle, and announced the controlled commit;
+  - touch emulation traversed pressing → dragging with a visible preview, moved Work
+    item 1 from 29 Jul–2 Aug to 1–5 Aug, then created Work item 2 in an empty lane and
+    announced `Create committed.`;
+  - every local request returned 200 or 304. No application-owned console error or
+    warning appeared; Vite and extension/DevTools CSP, deprecation, MaxListeners,
+    ObjectMultiplex, and content-script messages were recorded as environment noise.
+- Live verification found and fixed the synchronous controlled-ack race recorded
+  below. Focused event-order review also corrected the controlled semantic-observer
+  deviation recorded below; neither change alters the accepted public type or
+  architectural boundary.
+
 ## Deviations
+
+### 2026-07-30 — Synchronous controlled acknowledgement wins the pointer continuation
+
+- The first live Chrome mouse drag showed that a controlled owner can acknowledge a
+  candidate before the awaiting pointer-release continuation resumes. The
+  acknowledgement correctly emitted `commandCommitted` and cleared the preview, but
+  the later `dispatch()` result still had the historical `proposed` status and
+  restored a stale pending preview.
+- Pointer release now retains pending state only when the runtime store still holds
+  the matching `proposalId`. If the controlled prop already acknowledged it, the
+  authoritative commit callback wins and the continuation does not publish stale
+  interaction state.
+- A direct synchronous-ack runtime regression and the repeated live Chrome drag cover
+  this ordering. The fix preserves exact controlled acknowledgement and changes no
+  public type, system boundary, milestone order, or release acceptance criterion.
+
+### 2026-07-30 — Controlled semantic observers wait for session prop adoption
+
+- Slice 7 initially emitted `onFocusChange`, `onSelectionChange`, and
+  `onViewportChange` alongside an imperative controlled `onSessionChange` proposal.
+  Focused Slice 8 event-order inspection found that this contradicted the accepted
+  event contract: the complete controlled session callback is the ownership proposal,
+  while the specific semantic callbacks observe adopted authoritative state.
+- Controlled session actions now emit only `onSessionChange` at proposal time. When
+  the owner supplies the proposed `session` prop, reconciliation publishes
+  `onSessionChange` followed by the changed selection, focus, and viewport observers
+  with `source: "controlled-prop"`. Uncontrolled actions still adopt first and emit
+  the combined and specific observations in one publication.
+- Focused runtime and pointer callback-order tests cover both paths. This correction
+  restores the accepted contract and does not change the public types, system
+  boundary, milestone order, or release acceptance criteria.
 
 ### 2026-07-30 — React final disposal is deferred across the Strict Mode replay
 
@@ -1977,8 +2077,8 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 6: Add renderer-independent hit testing and interaction intent
 - [x] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
       handle
-- [-] Slice 8: Implement pointer, pen, and touch workflows
-- [ ] Slice 9: Add keyboard, focus, and accessibility parity
+- [x] Slice 8: Implement pointer, pen, and touch workflows
+- [-] Slice 9: Add keyboard, focus, and accessibility parity
 - [ ] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
 - [ ] Slice 11: Prove consumers, harden the facade, and close M4
 - [ ] Final automated/package/SSR gate
@@ -1986,6 +2086,6 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 8. Connect pointer, pen, and touch event adapters to the proven hit-test,
-gesture, preview, command-mapping, and per-instance command-bus paths for selection,
-task movement, resize, creation, cancellation, and persisted placement moves.
+Start Slice 9. Add keyboard, focus, and assistive-technology parity over the same
+occurrence navigation, interaction intent, command mapper, preview, and command-bus
+paths proven by pointer, pen, and touch.

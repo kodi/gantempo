@@ -1,6 +1,13 @@
 export { Gantt, type GanttHandle, type GanttProps } from './react/Gantt';
 export { useGanttSelector } from './react/context';
 export type {
+  GanttCommandMappingResult,
+  GanttCreateTaskIntent,
+  GanttInteractionCommandMappers,
+  GanttInteractionPreview,
+  GanttInteractionSnapPolicy,
+  GanttInteractionState,
+  GanttMoveOccurrenceIntent,
   GanttScrollOptions,
   GanttSelector,
   GanttSelectorEquality,

@@ -178,23 +178,33 @@ describe('React runtime adapter', () => {
 
   it('reports controlled session proposals through semantic observation callbacks', () => {
     const events: string[] = [];
-    const runtime = createGanttReactRuntime({
+    let proposal: Parameters<NonNullable<GanttProps['onSessionChange']>>[0] | undefined;
+    const props: GanttProps = {
       ...commonProps(),
       document: documentFixture(),
       session: { selection: [], viewport: { verticalStart: 0 } },
       onFocusChange(_focused, event) {
         events.push(`focus:${event.source}`);
       },
-      onSessionChange(_session, event) {
+      onSessionChange(session, event) {
+        proposal = session;
         events.push(`session:${event.source}`);
       },
-    });
+    };
+    const runtime = createGanttReactRuntime(props);
     runtime.activate();
     const target = runtime.getSnapshot().selector.occurrences[0]!.target;
 
     expect(runtime.getHandle().focusTask(target)).toBe(true);
     expect(runtime.getHandle().getSession().focused).toBeUndefined();
-    expect(events).toEqual(['session:imperative', 'focus:imperative']);
+    expect(events).toEqual(['session:imperative']);
+    runtime.updateCallbacks({ ...props, session: proposal! });
+    runtime.reconcile({ ...props, session: proposal! });
+    expect(events).toEqual([
+      'session:imperative',
+      'session:controlled-prop',
+      'focus:controlled-prop',
+    ]);
     runtime.dispose();
   });
 
@@ -255,6 +265,52 @@ describe('React runtime adapter', () => {
     runtime.updateCallbacks(next);
     runtime.reconcile(next);
     expect(runtime.getSnapshot().scene).toBe(scene);
+    runtime.dispose();
+  });
+
+  it('does not restore pending preview after a synchronous controlled acknowledgement', async () => {
+    let runtime!: ReturnType<typeof createGanttReactRuntime>;
+    let props!: Extract<GanttProps, { readonly document: GanttDocument }>;
+    props = {
+      ...commonProps(),
+      document: documentFixture(),
+      onDocumentChange(change) {
+        props = { ...props, document: change.document };
+        runtime.updateCallbacks(props);
+        runtime.reconcile(props);
+      },
+    };
+    runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    const geometry = {
+      height: 58,
+      verticalStart: 0,
+      width: 700,
+      x: 160,
+      y: 0,
+    };
+
+    expect(
+      runtime.pointerDown({
+        geometry,
+        point: { x: 310, y: 29 },
+        pointerId: 1,
+        pointerType: 'mouse',
+      }),
+    ).toBe(true);
+    expect(
+      runtime.pointerMove({
+        geometry,
+        point: { x: 410, y: 29 },
+        pointerId: 1,
+      }),
+    ).toBe(true);
+    await runtime.pointerUp(1);
+
+    expect(runtime.getSnapshot().selector.interaction).toMatchObject({ status: 'idle' });
+    expect(runtime.getHandle().getDocument().tasks[0]?.schedule).toMatchObject({
+      start: START + 2 * DAY,
+    });
     runtime.dispose();
   });
 });

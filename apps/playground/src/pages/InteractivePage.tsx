@@ -7,7 +7,9 @@ import {
   undoGanttHistory,
   type GanttCommand,
   type GanttDocument,
+  type GanttDocumentChange,
   type GanttHistoryState,
+  type GanttInteractionCommandMappers,
 } from '@gantempo/gantt';
 import { useMemo, useReducer, type ReactElement } from 'react';
 
@@ -43,6 +45,12 @@ type InteractiveAction =
   | { readonly type: 'clear' }
   | { readonly type: 'redo' }
   | { readonly type: 'remove' }
+  | {
+      readonly document: GanttDocument;
+      readonly nextSerial: number;
+      readonly type: 'runtime-change';
+    }
+  | { readonly status: string; readonly type: 'status' }
   | { readonly type: 'undo' };
 
 function commandsForItems(firstSerial: number, count: number): readonly GanttCommand[] {
@@ -166,6 +174,14 @@ function interactiveReducer(state: InteractiveState, action: InteractiveAction):
             status: result.diagnostics[0]?.message ?? 'Redo was rejected.',
           };
     }
+    case 'runtime-change':
+      return {
+        history: createGanttHistory(action.document, 50),
+        nextSerial: action.nextSerial,
+        status: 'Accepted a chart interaction candidate.',
+      };
+    case 'status':
+      return { ...state, status: action.status };
   }
 }
 
@@ -188,6 +204,64 @@ export function InteractivePage(): ReactElement {
     [document.tasks],
   );
   const hasTasks = document.tasks.length > 0;
+  const interactionMappers = useMemo<GanttInteractionCommandMappers>(
+    () => ({
+      createTask(intent) {
+        const serial = state.nextSerial;
+        const taskId = `interactive-task-${serial}`;
+        if (intent.destination.laneId === undefined) {
+          return {
+            diagnostic: {
+              code: 'command.unsupported-target',
+              message: 'The playground creates tasks only in persisted lanes.',
+              path: '/interaction',
+              severity: 'error',
+            },
+            status: 'rejected',
+          };
+        }
+        return {
+          command: {
+            commands: [
+              {
+                type: 'task.add',
+                value: {
+                  id: taskId,
+                  title: `Work item ${serial}`,
+                  schedule: {
+                    end: intent.end,
+                    mode: 'instant',
+                    start: intent.start,
+                  },
+                },
+              },
+              {
+                type: 'placement.add',
+                value: {
+                  id: `interactive-placement-${serial}`,
+                  laneId: intent.destination.laneId,
+                  taskId,
+                },
+              },
+            ],
+            type: 'transaction',
+          },
+          status: 'mapped',
+        };
+      },
+    }),
+    [state.nextSerial],
+  );
+  const adoptRuntimeChange = (change: GanttDocumentChange) => {
+    const addedTasks = change.patches.filter(
+      (patch) => patch.target.collection === 'tasks' && patch.op === 'add',
+    ).length;
+    dispatch({
+      document: change.document,
+      nextSerial: state.nextSerial + addedTasks,
+      type: 'runtime-change',
+    });
+  };
 
   return (
     <div className="page page--interactive">
@@ -196,8 +270,8 @@ export function InteractivePage(): ReactElement {
           <p className="eyebrow">Controlled consumer proof</p>
           <h1>Interactive</h1>
           <p>
-            Build a plan dynamically with the public command and history APIs while the chart
-            remains a read-only rendering surface.
+            Build a plan with public toolbar commands, then move, resize, or create work directly
+            through the chart’s pointer runtime.
           </p>
         </div>
         <div className="page-intro__meta">
@@ -256,7 +330,25 @@ export function InteractivePage(): ReactElement {
         <Gantt
           className="chart-frame__chart"
           document={document}
+          interactionMappers={interactionMappers}
+          interactionSnap={{ anchor: RANGE_START, step: DAY }}
           label="Interactive delivery plan chart"
+          onCommandCommitted={(event) =>
+            dispatch({
+              status:
+                event.source.kind === 'pointer'
+                  ? 'The chart interaction was committed.'
+                  : 'The command was committed.',
+              type: 'status',
+            })
+          }
+          onCommandRejected={(event) =>
+            dispatch({
+              status: event.diagnostics[0]?.message ?? 'The chart interaction was rejected.',
+              type: 'status',
+            })
+          }
+          onDocumentChange={adoptRuntimeChange}
           range={{ start: RANGE_START, end: RANGE_END }}
           taskVariants={taskVariants}
           tickAnchor={RANGE_START}
@@ -266,8 +358,8 @@ export function InteractivePage(): ReactElement {
       </div>
 
       <p className="page-note">
-        This page proves external controlled updates only. Direct chart manipulation, focus,
-        selection, and keyboard interaction belong to the future M4 runtime.
+        Drag task bodies to move them, drag task edges to resize, or drag an empty lane position to
+        create a task. Keyboard parity arrives in the next M4 slice.
       </p>
     </div>
   );

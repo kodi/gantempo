@@ -5,6 +5,8 @@ import {
   Gantt,
   type GanttDocument,
   type GanttHandle,
+  type GanttInteractionCommandMappers,
+  type GanttInteractionState,
   type GanttProps,
   type GanttSelectorSnapshot,
   type GanttSessionState,
@@ -41,13 +43,28 @@ describe('public React runtime facade', () => {
       ...common,
       defaultDocument: document,
       defaultSession: session,
+      interactionMappers: {
+        createTask() {
+          return {
+            diagnostic: {
+              code: 'command.unsupported-target',
+              message: 'Creation is disabled.',
+              severity: 'error',
+            },
+            status: 'rejected',
+          };
+        },
+      } satisfies GanttInteractionCommandMappers,
+      interactionSnap: { anchor: 0, step: 1 },
     } satisfies GanttProps;
     const selector = (snapshot: GanttSelectorSnapshot) => snapshot.occurrences;
+    const interaction: GanttInteractionState = { status: 'idle' };
     const ref = createRef<GanttHandle>();
     const controlledElement = <Gantt {...controlled} ref={ref} />;
     const uncontrolledElement = <Gantt {...uncontrolled} />;
 
     expect(selector).toBeTypeOf('function');
+    expect(interaction.status).toBe('idle');
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
   });
