@@ -1,7 +1,7 @@
 # Architecture: React Gantt and Scheduling Library
 
 Status: Architecture baseline
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 ## 1. Executive summary
 
@@ -135,13 +135,16 @@ flowchart LR
 
 ## 5. Repository and package structure
 
-Use a monorepo. Internal packages preserve architectural boundaries, but the initial
-public installation experience should expose only two primary packages:
+Use one public, mixed-license monorepo. Internal packages preserve architectural
+boundaries, but the initial public installation experience exposes only two primary
+packages:
 
-- `@scope/gantt` for the free edition;
-- `@scope/gantt-pro` for paid capabilities.
+- `@gantempo/gantt`, the MIT Community edition;
+- `@gantempo/gantt-pro`, one commercially licensed bundle of paid capabilities.
 
-The exact scope and product name are intentionally left open.
+Pro is additive: applications keep the Community component, model, document, and state
+ownership, then install and register Pro capabilities. The Pro package is not a fork,
+replacement component, or separately owned copy of the public model.
 
 ```text
 .
@@ -184,6 +187,16 @@ The exact scope and product name are intentionally left open.
 
 Internal packages may be workspace-only initially. They should be separately
 publishable later without requiring a rewrite.
+
+The repository root identifies the mixed-license layout, and each publishable package
+carries its own license file and matching package metadata. Community-owned sources
+must not inherit a commercial restriction, and Pro-owned sources must not accidentally
+inherit an MIT grant from an ambiguous root license. Commercial EULA, redistribution,
+OEM, and source-use terms require qualified legal review before the first Pro release.
+
+The source, package, activation, release, and customer-deployment contracts are fixed
+by the
+[Community and Pro distribution and licensing decision](decisions/2026-07-30-community-pro-distribution-licensing.md).
 
 ## 6. Domain model
 
@@ -860,6 +873,7 @@ result after the pointer is released.
 
 The free package should include:
 
+- the canonical document model, codec, diagnostics, and migrations;
 - React and TypeScript APIs;
 - arbitrary lanes and multiple entries per lane;
 - task tree, summaries, and milestones;
@@ -876,6 +890,10 @@ The free package should include:
 - local undo/redo;
 - themes, localization, RTL, and accessibility;
 - SSR compatibility.
+
+Community must parse, validate, preserve, and serialize general canonical records
+needed by the shared model even when an advanced calculation or view requires Pro.
+Removing Pro never silently discards or rewrites those records.
 
 ### 13.2 Pro edition
 
@@ -925,12 +943,54 @@ Rules:
 - Registration order is deterministic.
 - Conflicting contributions produce a clear initialization error.
 - Free packages never import Pro packages.
+- Pro extends one resolved Community runtime and never bundles a second component,
+  model, codec, command path, or renderer authority.
 - License enforcement occurs at the Pro package boundary, not inside model or renderer
   hot paths.
 - Pro packages support offline activation and do not require runtime network calls.
 - License scope is independent of deployment domain, server, tenant, or end-user count.
 - Activation data must not contain customer project data or deployment identifiers.
 - Free and Pro packages with incompatible versions fail early with an actionable error.
+
+### 13.4 Distribution, activation, and entitlement
+
+Both packages are publicly downloadable from the normal npm registry. The launch
+product does not require a private registry, customer npm login, or download token.
+`@gantempo/gantt-pro` may expose tree-shakeable named capabilities or subpath exports,
+but those are not separately purchased launch products.
+
+Community and Pro are published from the same tagged source state with the same
+semantic version. Pro declares a strict supported Community range and repeats the
+compatibility check during capability initialization before registering anything.
+
+Pro activation uses a signed entitlement verified locally:
+
+- verification material may ship in Pro, but signing material never does;
+- a commercial entitlement identifies its payload version, product or edition,
+  stable license reference, update-entitlement end date, and signature;
+- evaluation uses a separately signed entitlement with an explicit expiry;
+- license values are public application configuration and may appear in browser
+  bundles;
+- validation performs no production call-home;
+- entitlements do not bind to domains, servers, tenants, end users, deployments, or
+  customer project data.
+
+Commercial entitlement applies to Pro package release dates. A package version
+released on or before the update-entitlement date remains licensed and continues to
+build and run after that date. Versions released later require renewal. Renewal buys
+new releases and support; expiry never disables or degrades an already entitled
+deployment.
+
+Missing, malformed, expired-evaluation, wrong-product, post-entitlement-version, or
+incompatible-package activation returns stable diagnostics. Pro may decline
+capability registration or show documented evaluation UI, but Community remains
+usable and the source document remains intact.
+
+Gantempo publishes packages; customers bundle and deploy them through their own
+browser, worker, SSR, or Node build. The launch library neither downloads executable
+Pro code at runtime nor depends on Gantempo infrastructure during application startup
+or use. Future hosted services require separate service contracts rather than
+weakening this offline library guarantee.
 
 ## 14. Persistence and backend integration
 
@@ -1150,9 +1210,19 @@ but the library must not silently discard invalid data.
 ## 22. Versioning and releases
 
 - Use semantic versioning for public packages.
-- Version free and Pro facades together.
+- Version Community and Pro facades together and publish them from the same tagged
+  source state.
+- Test Community alone and Community plus Pro before publishing either artifact.
+- Treat a partial two-package publish as an incomplete release with a documented
+  forward-recovery path.
+- Verify packed package contents, declarations, licenses, installation, activation,
+  compatibility, tree shaking, and SSR behavior rather than trusting workspace builds.
+- Publish public npm artifacts through trusted publishing with short-lived OIDC
+  credentials and provenance when supported.
 - Publish a machine-readable capability manifest.
-- Define a supported version range between free and Pro packages.
+- Declare and enforce a strict supported version range between Community and Pro.
+- Retain or make recoverable entitled package artifacts so perpetual-version rights
+  remain practical after the update window closes.
 - Maintain JSON schema migrations for persisted documents.
 - Keep deprecations for at least one minor-release cycle before removal.
 - Generate API reports in CI to detect accidental public-surface changes.
@@ -1242,6 +1312,15 @@ Before the first stable release:
 - Scheduling results explain date changes and rejected constraints with stable,
   structured codes.
 - Free and Pro capabilities can be installed without changing the React component API.
+- Community-to-Pro upgrade adds activation and capabilities without replacing
+  Community imports or migrating the source document.
+- Community and Pro packed artifacts have the same version and their intended separate
+  licenses.
+- Signed activation accepts exactly the Pro releases covered by the update entitlement
+  without a runtime network request.
+- Previously entitled Pro versions continue to build and run after the update window
+  closes, while later versions require renewal.
+- Missing or rejected Pro activation leaves Community usable and document data intact.
 - A renderer can be replaced without changing scheduling or persistence code.
 - A semantic theme can be shared by DOM/SVG, canvas, portals, and visual export.
 - Tailwind integration works without making Tailwind a library dependency.
@@ -1254,13 +1333,10 @@ Before the first stable release:
 These decisions should be resolved through small prototypes or architecture decision
 records:
 
-1. Final package and product names.
-2. Whether the canvas renderer ships in the first stable release.
-3. The minimum supported TypeScript and browser versions.
-4. The threshold at which the
+1. Whether the canvas renderer ships in the first stable release.
+2. The minimum supported TypeScript and browser versions.
+3. The threshold at which the
    [M1 internal codec decision](decisions/2026-07-30-document-codec-contract.md)
    should be revisited in favor of a runtime schema dependency.
-5. Whether the public Pro package is one bundle or several separately purchasable
-   capabilities.
-6. The first supported project-planning interchange format.
-7. Whether resource leveling is included in the initial Pro scheduler.
+4. The first supported project-planning interchange format.
+5. Whether resource leveling is included in the initial Pro scheduler.

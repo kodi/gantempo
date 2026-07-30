@@ -192,13 +192,18 @@ before adding command reducers.
 - Add resource assignments, capacity, workload, critical path, and baselines.
 - Prove synchronous and worker execution parity.
 - Install advanced behavior through capabilities rather than React conditionals.
+- Follow the accepted package, compatibility, and activation boundaries in the
+  [Community and Pro distribution plan](plans/2026-07-30-community-pro-distribution-licensing-plan.md).
 
 ### M7: Hardening and release
 
 - Add versioned performance benchmarks and regression thresholds.
 - Complete accessibility and compatibility matrices.
 - Add export/import capabilities and public examples.
-- Add API reports, migration guidance, release automation, and license boundaries.
+- Add API reports, migration guidance, synchronized Community/Pro release automation,
+  public npm provenance, and verified license boundaries.
+- Complete the publishing and entitlement-continuity slices in the
+  [Community and Pro distribution plan](plans/2026-07-30-community-pro-distribution-licensing-plan.md).
 
 ## Cross-Milestone Rules
 
@@ -211,6 +216,11 @@ before adding command reducers.
   second consumer proves they should be public or experimental.
 - Do not split workspace packages until the internal boundaries are proven by real
   consumers.
+- Keep Community as the sole component, model, codec, and command authority; Pro is
+  installed additively through capabilities.
+- Release one public Community package and one public Pro package at the same version.
+- Preserve offline, domain-independent, non-destructive commercial entitlement:
+  previously entitled versions keep running when their update window closes.
 - Do not begin interaction work before the document and change kernels are verified.
 - Do not claim performance, accessibility, compatibility, or scheduling behavior
   without evidence at the scope of the claim.
@@ -225,6 +235,9 @@ The document wire-format decisions resolved for M1 are recorded in the
 patch, affected-reference, strict-validation, transaction, revision, and local-history
 decisions are recorded in the
 [change-kernel contract](decisions/2026-07-30-change-kernel-contract.md).
+The repository, package, activation, release, deployment, and update-entitlement
+decisions for Community and Pro are recorded in the
+[Community and Pro distribution and licensing decision](decisions/2026-07-30-community-pro-distribution-licensing.md).
 
 1. The threshold for splitting internal modules into workspace packages.
 2. The measured threshold for revisiting the M1 internal codec in favor of a runtime
@@ -234,6 +247,28 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — Community and Pro distribution contract
+
+- Accepted the
+  [Community and Pro distribution and licensing decision](decisions/2026-07-30-community-pro-distribution-licensing.md):
+  one public mixed-license monorepo, MIT Community plus one additive commercial Pro
+  npm package, synchronized versions, strict compatibility, and signed offline
+  activation.
+- Fixed commercial entitlement to package release dates: entitled versions continue
+  to build and run after the update window closes, while later releases and support
+  require renewal.
+- Rejected launch-time private-registry credentials, production call-home, deployment
+  binding, a replacement Pro component, and separately purchased Pro modules.
+- Added the
+  [cross-milestone implementation plan](plans/2026-07-30-community-pro-distribution-licensing-plan.md)
+  for package licensing, activation, additive Pro packaging, synchronized publishing,
+  and entitlement-continuity evidence.
+- Documentation verification passed `vp check` across 44 formatted and 33
+  lint/type-checked files, `git diff --check`, explicit linked-file existence checks,
+  and focused four-document contract searches.
+- This documentation-only decision does not change M2 status, implementation scope,
+  runtime behavior, package contents, dependencies, or the current next action.
 
 ### 2026-07-30 — M2 plan and change-kernel contract
 

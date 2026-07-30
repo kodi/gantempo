@@ -21,6 +21,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.4",
     "@voidzero-dev/vite-plus-core": "0.2.6",
+    "fast-check": "4.9.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tsdown": "0.22.14",
