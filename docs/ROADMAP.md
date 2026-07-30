@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 4 layout complete
+**Status:** `[-]` In progress; Slice 5 viewport query complete
 
 **Target outcome**
 
@@ -145,8 +145,8 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Build the immutable two-dimensional viewport index and exact repeated query boundary
-in Slice 5 of the
+Add the fixed-seed 10,000-task/2,000-lane pure-kernel performance baseline in Slice 6
+of the
 [M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
 ## Later Milestone Outcomes
@@ -231,6 +231,22 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 5 immutable viewport index and query
+
+- Added binary-searched variable lane boundaries, augmented max-end interval trees,
+  validated half-open queries, immutable visible output, and complete content bounds.
+- Indexed results match a brute-force two-dimensional oracle, including long
+  earlier-starting intervals and out-of-bounds windows.
+- A 1,000-lane/64-interval-per-lane observation visited one lane and fewer than 64
+  interval nodes. Focused verification passed 2 files and 8 tests, including 200
+  property runs with seed `20260737`; `vp check` passed 79 formatted and 68
+  lint/type-checked files.
+- Corrected one test-only empty-lane height expectation from 10 to the accepted
+  34-unit padding minimum; no runtime or architecture contract changed.
+- The per-slice `mise run ci` checkpoint passed 28 test files and 117 tests plus the
+  four-artifact package build.
+- Selected the reproducible pure-kernel performance baseline as Slice 6.
 
 ### 2026-07-30 — M3 Slice 4 deterministic stacks and lane geometry
 

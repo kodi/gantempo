@@ -709,7 +709,7 @@ Record exact counts, property seed/run count, and the largest dense-overlap fixt
 
 ### Slice 5: Immutable two-dimensional viewport index and query
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1337,13 +1337,35 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - The required per-slice `mise run ci` checkpoint passed 26 test files and 109 tests,
   all static checks, and the four-artifact package build.
 
+### 2026-07-30 — Slice 5 immutable viewport index and query
+
+- Added binary-searched variable-height lane ends and balanced augmented per-lane
+  interval trees with subtree maximum ends. Long intervals beginning before a query
+  are retained without scanning all earlier-starting entries.
+- Added validated finite half-open time/vertical queries, complete content bounds,
+  visible lanes even when no bar intersects horizontally, absolute geometry, stable
+  provenance, and fresh frozen result arrays for repeated queries.
+- Added internal ephemeral work observations plus a deliberately brute-force
+  two-dimensional oracle. A 1,000-lane/64-interval-per-lane example visited exactly
+  one lane and fewer than 64 interval nodes for an ordinary query.
+- Focused verification passed 2 files and 8 tests. The parity property used seed
+  `20260737`, 200 runs, at most 12 lanes and 20 intervals per lane,
+  `endOnFailure: true`, and standard seed/path replay.
+- The first focused run exposed an incorrect test expectation that an empty lane with
+  a 10-unit minimum would ignore the accepted 17+17 padding minimum. The assertion was
+  corrected to 34; runtime layout behavior and the decision contract were unchanged.
+- `vp check` passed 79 formatted and 68 lint/type-checked files after formatting the
+  new viewport directory. `git diff --check` passed.
+- The required per-slice `mise run ci` checkpoint passed 28 test files and 117 tests,
+  all static checks, and the four-artifact package build.
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
 - [x] Slice 2: Resolve deterministic view topology
 - [x] Slice 3: Resolve placement intervals
 - [x] Slice 4: Deterministic overlap stacks and variable lane geometry
-- [ ] Slice 5: Immutable two-dimensional viewport index and query
+- [x] Slice 5: Immutable two-dimensional viewport index and query
 - [ ] Slice 6: Performance fixture and M3 viewport baseline
 - [ ] Slice 7: Compose viewport-backed scene primitives
 - [ ] Slice 8: Read-only React and playground integration
@@ -1353,8 +1375,9 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 5 in `packages/gantt/src/viewport/` with binary-searchable variable lane
-boundaries, augmented per-lane interval indexes, validated half-open time/vertical
-queries, immutable deterministic results, internal ephemeral work counters, and a
-brute-force oracle/property. Verify indexed parity and reuse before the required
-per-slice `mise run ci`.
+Start Slice 6 beside the viewport code with the accepted versioned fixed-seed
+10,000-task/2,000-lane generator and benchmark. Cover document/resource views, sparse
+and dense overlap, cold build stages, repeated warm horizontal/vertical/diagonal
+queries, oracle parity outside timed sections, host/tool metadata, and structural
+query-work evidence without a timing threshold. Run the exact benchmark, focused pure
+suites, static checks, and required per-slice `mise run ci`.
