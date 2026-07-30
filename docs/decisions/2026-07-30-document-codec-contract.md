@@ -18,20 +18,27 @@ and serialization questions owned by
 
 ## Decision
 
-### Use a small internal codec for schema version 1
+### Use private Zod 4 Mini structural schemas
 
-M1 will use focused internal decoder functions rather than add a runtime-schema
-dependency. Zod 4.4.3 was the credible dependency considered. Its package metadata
-reported a 4,558,122-byte unpacked package, while the current package has no runtime
-dependencies. Zod provides mature typed schemas and path-bearing issues, but M1 would
-still need custom ordered migrations, ID/date normalization, record-level recovery,
-duplicate handling, reference validation, and deterministic serialization around it.
+The completed M1 implementation proved the persistence contract and also made the
+maintenance cost of hand-written structural validation measurable: public types, the
+wire codec, strict command validation, and serializer defenses independently restate
+substantial parts of the same record contract. Before that surface expands, Gantempo
+will adopt Zod 4.4.3 through `zod/mini` as a direct private runtime dependency of
+`@gantempo/gantt`.
 
-The internal option keeps the runtime dependency set unchanged and allows diagnostics
-and recovery to follow domain-record boundaries directly. This is not a permanent
-rejection of schema libraries: reconsider it if the supported schema surface or
-number of external codecs grows enough that duplicated scalar/object validation
-becomes a measured maintenance problem.
+The earlier decision cited the unpacked npm package size. That is not the shipped
+consumer-bundle cost: the package build leaves dependencies external, and a consumer
+bundler can tree-shake the Mini entry point. The migration therefore records both the
+packed library artifact and a downstream production bundle before and after the
+dependency change.
+
+Zod owns scalar, schedule, duration, segment, and record structure, including distinct
+ergonomic wire and strict canonical schemas. Gantempo continues to own ordered
+migrations, record-level recovery, stable diagnostics, unknown-property warnings,
+duplicate and relationship policy, JSON extension cloning, freezing, and deterministic
+serialization. Schemas and Zod issue types remain private and are not exported from the
+package.
 
 Implementation helpers, intermediate wire shapes, migrations, validators, and index
 builders remain private. The intentional public boundary is:
@@ -163,9 +170,12 @@ Later slices must cover:
 
 ## Consequences
 
-- No runtime dependency or lockfile change is needed for M1.
-- The internal decoder will contain more purpose-built code, so focused scalar,
-  recovery, and diagnostic-path tests are mandatory.
+- `zod@4.4.3` is a direct runtime dependency imported through `zod/mini`; consumers do
+  not install or configure it separately.
+- One private executable schema definition replaces duplicated scalar/object validation
+  in the wire codec and strict command path.
+- Focused scalar, recovery, diagnostic-path, packaging, and bundle tests remain
+  mandatory because domain orchestration intentionally remains outside Zod.
 - Version `1` has no synthetic migration demonstration; migration behavior is proven
   through empty-registry and unsupported-version tests until a real version `0` or
   version `2` contract exists.
@@ -177,3 +187,4 @@ Later slices must cover:
 - [Architecture JSON codec](../ARCHITECTURE.md#64-json-codec)
 - [M1 roadmap](../ROADMAP.md#m1-document-kernel)
 - [M1 implementation plan](../plans/2026-07-30-document-kernel-foundation-plan.md)
+- [Zod runtime schema migration plan](../plans/2026-07-30-zod-runtime-schema-migration-plan.md)

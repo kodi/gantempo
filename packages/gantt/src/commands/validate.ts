@@ -1,4 +1,5 @@
 import type { Diagnostic } from '../model/diagnostics';
+import { canonicalRecordSchemas } from '../model/schema/records';
 import { serializeGanttDocument } from '../model/serialize';
 import type {
   AssignmentRecord,
@@ -9,145 +10,14 @@ import type {
   PlacementRecord,
   ResourceRecord,
   TaskRecord,
-  TaskSchedule,
 } from '../model/types';
 import type { DocumentCollection, DomainRecordByCollection } from './types';
-
-const RECORD_KEYS: Readonly<Record<DocumentCollection, ReadonlySet<string>>> = {
-  assignments: new Set(['id', 'taskId', 'resourceId', 'allocation', 'effort', 'role', 'fields']),
-  dependencies: new Set(['id', 'fromTaskId', 'toTaskId', 'type', 'lag', 'fields']),
-  lanes: new Set(['id', 'title', 'parentId', 'resourceId', 'order', 'height', 'fields']),
-  placements: new Set(['id', 'taskId', 'laneId', 'assignmentId', 'segmentId', 'order', 'fields']),
-  resources: new Set(['id', 'title', 'parentId', 'capacity', 'fields']),
-  tasks: new Set(['id', 'title', 'kind', 'parentId', 'schedule', 'progress', 'segments', 'fields']),
-};
-
-const REQUIRED_KEYS: Readonly<Record<DocumentCollection, readonly string[]>> = {
-  assignments: ['id', 'taskId', 'resourceId'],
-  dependencies: ['id', 'fromTaskId', 'toTaskId', 'type'],
-  lanes: ['id', 'title'],
-  placements: ['id', 'taskId', 'laneId'],
-  resources: ['id', 'title'],
-  tasks: ['id', 'title', 'kind', 'segments'],
-};
-
-function isPlainObject(input: unknown): input is Record<string, unknown> {
-  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
-    return false;
-  }
-  const prototype = Object.getPrototypeOf(input);
-  return prototype === Object.prototype || prototype === null;
-}
-
-function hasExactKeys(input: Record<string, unknown>, keys: ReadonlySet<string>): boolean {
-  return Object.keys(input).every((key) => keys.has(key));
-}
-
-function hasRequiredKeys(input: Record<string, unknown>, keys: readonly string[]): boolean {
-  return keys.every((key) => Object.hasOwn(input, key));
-}
-
-function isCalendarDate(input: string): boolean {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
-  if (!match) {
-    return false;
-  }
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return month >= 1 && month <= 12 && day >= 1 && day <= (days[month - 1] ?? 0);
-}
-
-function isCanonicalSchedule(input: unknown): input is TaskSchedule {
-  if (!isPlainObject(input) || typeof input.mode !== 'string') {
-    return false;
-  }
-  if (input.mode === 'instant') {
-    return (
-      hasExactKeys(input, new Set(['mode', 'start', 'end'])) &&
-      typeof input.start === 'number' &&
-      Number.isFinite(input.start) &&
-      typeof input.end === 'number' &&
-      Number.isFinite(input.end) &&
-      input.end >= input.start
-    );
-  }
-  return (
-    input.mode === 'all-day' &&
-    hasExactKeys(input, new Set(['mode', 'startDate', 'endDate'])) &&
-    typeof input.startDate === 'string' &&
-    typeof input.endDate === 'string' &&
-    isCalendarDate(input.startDate) &&
-    isCalendarDate(input.endDate) &&
-    input.endDate >= input.startDate
-  );
-}
-
-function isCanonicalDuration(input: unknown): boolean {
-  return (
-    isPlainObject(input) &&
-    hasExactKeys(input, new Set(['value', 'unit', 'mode'])) &&
-    typeof input.value === 'number' &&
-    Number.isFinite(input.value) &&
-    ['millisecond', 'minute', 'hour', 'day'].includes(String(input.unit)) &&
-    (!Object.hasOwn(input, 'mode') || ['elapsed', 'working'].includes(String(input.mode)))
-  );
-}
 
 export function isCanonicalRecord<C extends DocumentCollection>(
   collection: C,
   input: unknown,
 ): input is DomainRecordByCollection[C] {
-  if (
-    !isPlainObject(input) ||
-    !hasExactKeys(input, RECORD_KEYS[collection]) ||
-    !hasRequiredKeys(input, REQUIRED_KEYS[collection]) ||
-    typeof input.id !== 'string' ||
-    input.id.length === 0
-  ) {
-    return false;
-  }
-
-  if (collection === 'tasks') {
-    if (!Array.isArray(input.segments)) {
-      return false;
-    }
-    if (
-      Object.hasOwn(input, 'schedule') &&
-      (input.schedule === undefined || !isCanonicalSchedule(input.schedule))
-    ) {
-      return false;
-    }
-    for (const segment of input.segments) {
-      if (
-        !isPlainObject(segment) ||
-        !hasExactKeys(segment, new Set(['id', 'schedule', 'fields'])) ||
-        typeof segment.id !== 'string' ||
-        segment.id.length === 0 ||
-        !isCanonicalSchedule(segment.schedule)
-      ) {
-        return false;
-      }
-    }
-  }
-
-  if (
-    collection === 'assignments' &&
-    Object.hasOwn(input, 'effort') &&
-    !isCanonicalDuration(input.effort)
-  ) {
-    return false;
-  }
-  if (
-    collection === 'dependencies' &&
-    Object.hasOwn(input, 'lag') &&
-    !isCanonicalDuration(input.lag)
-  ) {
-    return false;
-  }
-  return true;
+  return canonicalRecordSchemas[collection].safeParse(input).success;
 }
 
 function diagnostic(
@@ -190,7 +60,7 @@ function duplicateDiagnostics<T extends { readonly id: EntityId }>(
 
 function validateRecordShapes(document: GanttDocument): readonly Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
-  const collections = Object.keys(RECORD_KEYS) as DocumentCollection[];
+  const collections = Object.keys(canonicalRecordSchemas) as DocumentCollection[];
   for (const collection of collections) {
     const records = document[collection] as readonly unknown[];
     records.forEach((record, index) => {

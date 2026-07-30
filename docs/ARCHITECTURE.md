@@ -382,9 +382,13 @@ Do not mix parsing logic into React components.
 
 The accepted schema-version, wire-date, recovery, duplicate, unknown-field, and
 deterministic-serialization rules are fixed by the
-[document codec contract](decisions/2026-07-30-document-codec-contract.md). M1 uses a
-small internal codec for schema version 1; the decision must be revisited before
-adding a runtime schema dependency or changing those public persistence rules.
+[document codec contract](decisions/2026-07-30-document-codec-contract.md). Private
+Zod 4 Mini schemas are the executable authority for scalar, schedule, duration,
+segment, and record structure. Gantempo orchestration remains authoritative for
+migrations, partial recovery, stable diagnostics, unknown-property warnings,
+duplicates, relationships, JSON extension cloning, freezing, and deterministic
+serialization. Runtime schemas do not enter render, layout, viewport, or interaction
+hot paths and are not part of the public API.
 
 ## 7. State architecture
 
@@ -1448,8 +1452,5 @@ records:
 
 1. Whether the canvas renderer ships in the first stable release.
 2. The minimum supported TypeScript and browser versions.
-3. The threshold at which the
-   [M1 internal codec decision](decisions/2026-07-30-document-codec-contract.md)
-   should be revisited in favor of a runtime schema dependency.
-4. The first supported project-planning interchange format.
-5. Whether resource leveling is included in the initial Pro scheduler.
+3. The first supported project-planning interchange format.
+4. Whether resource leveling is included in the initial Pro scheduler.
