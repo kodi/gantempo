@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–2 complete, Slice 3 next
+Status: Active; Slices 1–3 complete, Slice 4 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -872,7 +872,7 @@ the runtime before the pure reducer exists would create a second mutation path.
 
 ### Slice 3: Build the React-free runtime store and ownership state machine
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1691,6 +1691,42 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - No React, primitive, style, scenario, or playground file changed, so this pure
   command slice did not trigger a browser gate.
 
+### 2026-07-30 — Slice 3 React-free runtime store and ownership state machine
+
+- Added private runtime target/session/occurrence, ownership, interaction, history
+  metadata, snapshot, selector, and store contracts without expanding the root package
+  facade.
+- Added canonical document cloning through the stable M1 serialization boundary so
+  controlled/default inputs are never retained mutably, plus independent controlled
+  and uncontrolled document/session modes.
+- Added deeply frozen versioned snapshots, batched publication, safe unsubscribe during
+  publication, non-recursive reentrant updates, peer notification when one subscriber
+  throws, disposal, and selector equality that skips unrelated state slices.
+- Added one-pending controlled proposal staging, stale-base/no-op detection, exact
+  serialized acknowledgement, same-base rerender tolerance, divergent replacement,
+  revision-only history preservation, and fail-closed content-replacement
+  invalidation metadata.
+- Added ordered occurrence identity normalization, selection de-duplication/pruning,
+  deterministic same-lane/nearest-lane focus reconciliation, controlled full-session
+  proposals, repeated-task occurrence identity, and lane/task same-key separation.
+- Fixed-seed properties cover controlled acknowledge/revision/external-replacement
+  sequences and uncontrolled session cloning/freezing. Focused examples cover two
+  instances, mutable inputs, frozen snapshots, stale proposals, view removal,
+  subscriptions, selector equality, ownership mode errors, and disposal.
+- Source inspection confirmed runtime production files import only M1 model and
+  private runtime modules and contain no React, DOM, browser, locale, clock, or time
+  zone dependency.
+- Verification passed:
+  - `vp test run packages/gantt/src/runtime` passed 2 test files and 16 tests;
+  - `vp check` reported all 89 files formatted and no warning, lint, or type error
+    across 78 checked files;
+  - `vp pack` built all four package artifacts;
+  - `git diff --check` passed;
+  - `mise run ci` passed the complete check, 33-test-file/149-test, and four-artifact
+    package build gates.
+- No React, primitive, style, scenario, or playground file changed, so this pure
+  runtime slice did not trigger a browser gate.
+
 ## Deviations
 
 ### 2026-07-30 — Persistence-ready event boundary clarification
@@ -1710,7 +1746,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 - [x] Slice 1: Freeze the M4 runtime and public API contract
 - [x] Slice 2: Add pure semantic task move and resize commands
-- [ ] Slice 3: Build the React-free runtime store and ownership state machine
+- [x] Slice 3: Build the React-free runtime store and ownership state machine
 - [ ] Slice 4: Add the async command bus, events, and bounded history orchestration
 - [ ] Slice 5: Stage derived caches and add measured viewport subscriptions
 - [ ] Slice 6: Add renderer-independent hit testing and interaction intent
@@ -1725,7 +1761,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 3. Build the React-free immutable runtime store, document/session
-ownership state machine, stable snapshot/subscription boundary, one-pending controlled
-proposal metadata, exact acknowledgement/divergence reconciliation, and fixed-seed
-ownership properties without importing React or browser modules.
+Start Slice 4. Add the per-instance async command bus, bounded interceptor lifecycle,
+immutable candidate/commit/rejection events, controlled/uncontrolled adoption,
+acknowledgement-aware M2 history, explicit undo/redo operations, abort/disposal
+settlement, and fixed-seed mixed operation properties without adding the React facade.

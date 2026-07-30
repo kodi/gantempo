@@ -137,14 +137,14 @@ M7 hardening/release
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
 viewport, and read-only rendering foundations. M4 is in progress: its public contract
-and semantic task-command foundation are complete, and the React-free runtime store is
-next.
+semantic task-command foundation, and React-free ownership store are complete; the
+async command bus and history orchestration are next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–2 complete, Slice 3 next
+**Status:** `[-]` In progress; Slices 1–3 complete, Slice 4 next
 
 **Target outcome**
 
@@ -164,13 +164,14 @@ persistence.
 
 **Next action**
 
-Execute Slice 3 of the
+Execute Slice 4 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
-and pure instant-only `task.move`/`task.resize` foundation are verified. Build the
-React-free immutable store, independent document/session ownership, subscriptions,
-and exact controlled input reconciliation before async commands or DOM integration.
+pure instant-only `task.move`/`task.resize` foundation, and React-free ownership store
+are verified. Add the ordered async command bus, interception, immutable lifecycle
+events, controlled/uncontrolled adoption, and bounded undo/redo orchestration before
+React or DOM integration.
 
 **Adjacent proof complete**
 
@@ -259,6 +260,28 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 React-free runtime ownership store complete
+
+- Added private immutable runtime snapshots, independent document/session ownership,
+  batched and reentrant-safe subscriptions, selector equality, interaction/history
+  metadata, and disposal without expanding the package facade.
+- Added stable-serialization document cloning, one-pending controlled proposal
+  metadata, exact acknowledgement, same-base rerender tolerance, divergence handling,
+  revision-only history preservation, and fail-closed external-content invalidation.
+- Added occurrence-based selection/focus normalization and deterministic reconciliation
+  with controlled full-session proposals, repeated task occurrences, and cross-family
+  same-key identity preserved.
+- Added fixed-seed ownership/session sequences and focused evidence for independent
+  instances, mutable inputs, frozen snapshots, view removal, stale inputs,
+  unsubscribe/reentrancy, selector equality, subscriber failures, and disposal.
+- Focused runtime tests passed 2 files/16 tests, `vp check` passed all 89 formatted and
+  78 lint/type-checked files, `vp pack` built four artifacts, import inspection and
+  `git diff --check` passed.
+- `mise run ci` passed the complete check, 33-test-file/149-test, and four-artifact
+  package build gates.
+- No React, renderer, style, playground, or browser behavior changed; no browser claim
+  was added.
 
 ### 2026-07-30 — M4 semantic task commands complete
 
