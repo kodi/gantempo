@@ -1,6 +1,7 @@
 import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import type { GanttViewDefinition, ViewLaneSource, ViewPlacementSource } from '../view/types';
+import type { EffectiveAppearancePrimitive, GanttAppearanceVariantOption } from './appearance';
 
 export interface ChartLayoutMetrics {
   readonly headerHeight: number;
@@ -44,6 +45,7 @@ export interface GridLinePrimitive {
 }
 
 export interface LaneRowPrimitive {
+  readonly appearance?: EffectiveAppearancePrimitive;
   readonly viewKey: string;
   readonly laneId?: EntityId;
   readonly resourceId?: EntityId;
@@ -53,7 +55,14 @@ export interface LaneRowPrimitive {
   readonly height: number;
 }
 
+export interface TaskProgressPrimitive {
+  readonly value: number;
+  readonly width: number;
+  readonly x: number;
+}
+
 export interface TaskBarPrimitive {
+  readonly appearance?: EffectiveAppearancePrimitive;
   readonly viewKey: string;
   readonly laneViewKey: string;
   readonly placementId?: EntityId;
@@ -70,6 +79,7 @@ export interface TaskBarPrimitive {
   readonly width: number;
   readonly y: number;
   readonly height: number;
+  readonly progress?: TaskProgressPrimitive;
   readonly clippedStart: boolean;
   readonly clippedEnd: boolean;
 }
@@ -91,6 +101,7 @@ export interface ChartScene {
 }
 
 export interface BuildChartSceneOptions {
+  readonly appearanceVariants?: readonly GanttAppearanceVariantOption[];
   readonly document: GanttDocument;
   readonly view?: GanttViewDefinition;
   readonly range: TimeRange;
@@ -103,4 +114,5 @@ export interface BuildChartSceneOptions {
   readonly timeZone: string;
   readonly locale?: string;
   readonly metrics?: Partial<ChartLayoutMetrics>;
+  readonly taskVariants?: Readonly<Record<EntityId, string>>;
 }

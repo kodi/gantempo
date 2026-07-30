@@ -125,7 +125,7 @@ Detailed completion evidence is recorded in
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
-| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A2 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
+| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A3 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -171,7 +171,7 @@ post-M4 work.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[-]` Appendix Slice A2 complete; A3 appearance/progress primitives next
+**Status:** `[-]` Appendix Slice A3 complete; A4 DOM/SVG and accessibility next
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -195,6 +195,26 @@ model/command/facade properties passed 10 files / 47 tests; the complete gate pa
 declarations expose only `GanttAppearanceReference` plus the accepted record/input/
 command members. Rendering is unchanged. Appendix Slice A3 owns pure resolution,
 progress primitives, and selective invalidation.
+
+Appendix Slice A3's first complete CI run exposed one order-dependent existing pan DOM
+fixture: synthetic geometry was installed after mount, but the test could begin its
+drag before publishing that geometry through the measured scroll/frame path. The
+isolated case and complete DOM file passed immediately. A narrow test-only correction
+now publishes installed geometry before the drag; runtime behavior and the accepted
+interaction contract are unchanged.
+
+Appendix Slice A3 now resolves configured lane/task semantic variants and the legacy
+task fallback into frozen portable paint data, reports each unresolved ID once per
+scene, and projects canonical task progress into clipped/virtualized geometry.
+Appearance, progress, and registry changes selectively rebuild primitives without
+topology, interval, stack, occurrence-catalog, viewport-kernel, or query work.
+Focused scene/resolver parity passed 5 files / 24 tests; the deterministic pan case
+passed five consecutive isolated runs; and the corrected full gate passed 64 files /
+311 tests plus formatting/lint/types and four package artifacts. The fixed
+`m4-appendix-scene-v1` 2,000-task/400-lane local benchmark observed a 7.0164 ms mean
+for warm affected appearance/progress projection with no release threshold. Appendix
+Slice A4 owns DOM/SVG paint, progress semantics, forced colors, and per-instance
+diagnostic delivery deduplication.
 
 ### Post-M4 persistence entity-change projection
 

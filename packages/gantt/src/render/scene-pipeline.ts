@@ -39,6 +39,13 @@ import {
   type TaskBarPrimitive,
   type TimeTickPrimitive,
 } from './primitives';
+import {
+  createAppearanceRegistry,
+  resolveLaneAppearance,
+  resolveTaskAppearance,
+  type AppearanceRegistry,
+  type EffectiveAppearancePrimitive,
+} from './appearance';
 
 export type ChartSceneInvalidation =
   | {
@@ -50,6 +57,7 @@ export type ChartSceneInvalidation =
     };
 
 export interface ChartScenePipelineWork {
+  readonly appearanceRegistryBuilds: number;
   readonly affectedLaneKeys: readonly string[];
   readonly indexBuilds: number;
   readonly intervalBuilds: number;
@@ -106,6 +114,7 @@ export interface ChartScenePipeline {
 }
 
 interface MutableWork {
+  appearanceRegistryBuilds: number;
   affectedLaneKeys: string[];
   indexBuilds: number;
   intervalBuilds: number;
@@ -129,6 +138,7 @@ interface LaneStackCacheEntry {
 }
 
 interface PipelineCache {
+  readonly appearanceRegistry: AppearanceRegistry;
   readonly dependencies?: ChartSceneDependencyMap;
   readonly indexes: DocumentIndexes;
   readonly intervals?: ResolvePlacementIntervalsResult;
@@ -138,6 +148,7 @@ interface PipelineCache {
   readonly layout?: StackLayout;
   readonly localLanes?: readonly LaidOutLane[];
   readonly metrics: ChartLayoutMetrics;
+  readonly legacyTaskVariantsSignature: string;
   readonly occurrences: readonly ChartSceneOccurrence[];
   readonly options: BuildChartSceneOptions;
   readonly scene: ChartScene;
@@ -150,6 +161,7 @@ interface PipelineCache {
 
 function createWork(mode: MutableWork['mode']): MutableWork {
   return {
+    appearanceRegistryBuilds: 0,
     affectedLaneKeys: [],
     indexBuilds: 0,
     intervalBuilds: 0,
@@ -220,6 +232,18 @@ function tickSignature(options: BuildChartSceneOptions): string {
     options.timeZone,
     options.locale,
   ]);
+}
+
+function appearanceRegistrySignature(options: BuildChartSceneOptions): string {
+  return JSON.stringify(options.appearanceVariants ?? []);
+}
+
+function legacyTaskVariantsSignature(options: BuildChartSceneOptions): string {
+  return JSON.stringify(
+    Object.entries(options.taskVariants ?? {}).sort(([left], [right]) =>
+      left < right ? -1 : left > right ? 1 : 0,
+    ),
+  );
 }
 
 function viewportSignature(options: BuildChartSceneOptions, totalHeight: number): string {
@@ -351,6 +375,22 @@ function taskTopologySignature(
   ]);
 }
 
+function laneTopologySignature(record: object | undefined): string | undefined {
+  if (record === undefined) {
+    return undefined;
+  }
+  const lane = record as GanttDocument['lanes'][number];
+  return JSON.stringify([
+    lane.id,
+    lane.title,
+    lane.parentId,
+    lane.resourceId,
+    lane.order,
+    lane.height,
+    lane.fields,
+  ]);
+}
+
 function topologyAffected(
   affected: readonly EntityReference[],
   previousDocument: GanttDocument,
@@ -373,7 +413,9 @@ function topologyAffected(
       return viewKind === 'document' || viewKind === 'resource' || viewKind === 'custom';
     }
     if (reference.collection === 'lanes') {
-      return viewKind === 'document';
+      return (
+        viewKind === 'document' && laneTopologySignature(previous) !== laneTopologySignature(next)
+      );
     }
     if (reference.collection === 'resources') {
       return viewKind === 'resource' || previous === undefined || next === undefined;
@@ -553,7 +595,11 @@ function buildViewportKernel(
   });
 }
 
-function lanePrimitive(lane: LaidOutLane): LaneRowPrimitive {
+function lanePrimitive(
+  lane: LaidOutLane,
+  indexes: DocumentIndexes,
+  appearanceRegistry: AppearanceRegistry,
+): LaneRowPrimitive {
   const laneId = lane.source.kind === 'document-lane' ? lane.source.laneId : undefined;
   const resourceId =
     lane.source.kind === 'resource'
@@ -561,7 +607,10 @@ function lanePrimitive(lane: LaidOutLane): LaneRowPrimitive {
       : lane.source.kind === 'document-lane'
         ? lane.source.resourceId
         : undefined;
+  const laneVariant =
+    laneId === undefined ? undefined : indexes.lanesById.get(laneId)?.appearance?.variant;
   return Object.freeze({
+    appearance: resolveLaneAppearance(appearanceRegistry, laneVariant),
     viewKey: lane.key,
     ...(laneId === undefined ? {} : { laneId }),
     ...(resourceId === undefined ? {} : { resourceId }),
@@ -595,7 +644,17 @@ function placementProvenance(
 function buildOccurrenceCatalog(layout: StackLayout): readonly ChartSceneOccurrence[] {
   return Object.freeze(
     layout.lanes.flatMap((lane, laneIndex) => {
-      const laneMetadata = lanePrimitive(lane);
+      const laneId = lane.source.kind === 'document-lane' ? lane.source.laneId : undefined;
+      const resourceId =
+        lane.source.kind === 'resource'
+          ? lane.source.resourceId
+          : lane.source.kind === 'document-lane'
+            ? lane.source.resourceId
+            : undefined;
+      const laneMetadata = {
+        ...(laneId === undefined ? {} : { laneId }),
+        ...(resourceId === undefined ? {} : { resourceId }),
+      };
       return lane.placements.map((placement) =>
         Object.freeze({
           viewKey: placement.key,
@@ -613,6 +672,51 @@ function buildOccurrenceCatalog(layout: StackLayout): readonly ChartSceneOccurre
       );
     }),
   );
+}
+
+function progressPrimitive(
+  task: GanttDocument['tasks'][number],
+  placement: ResolvedIntervalPlacement,
+  range: TimeRange,
+  scale: ReturnType<typeof createLinearTimeScale>,
+): TaskBarPrimitive['progress'] {
+  const progress = task.progress;
+  if (
+    task.kind !== 'task' ||
+    placement.segmentId !== undefined ||
+    progress === undefined ||
+    !Number.isFinite(progress) ||
+    progress < 0 ||
+    progress > 1
+  ) {
+    return undefined;
+  }
+  const completedEnd = placement.start + (placement.end - placement.start) * progress;
+  const visibleStart = Math.max(placement.start, range.start);
+  const visibleCompletedEnd = Math.min(
+    Math.max(completedEnd, visibleStart),
+    placement.end,
+    range.end,
+  );
+  const x = scale.timeToX(visibleStart);
+  return Object.freeze({
+    value: progress,
+    width: Math.max(0, scale.timeToX(visibleCompletedEnd) - x),
+    x,
+  });
+}
+
+function unresolvedAppearanceDiagnostic(
+  appearance: EffectiveAppearancePrimitive,
+): Diagnostic | undefined {
+  return appearance.resolution !== 'unresolved' || appearance.variant === undefined
+    ? undefined
+    : Object.freeze({
+        code: 'appearance.variant.unresolved',
+        details: Object.freeze({ variant: appearance.variant }),
+        message: `Semantic appearance variant "${appearance.variant}" is not registered.`,
+        severity: 'warning',
+      });
 }
 
 function reusablePrimitive<T>(
@@ -682,6 +786,14 @@ export function createChartScenePipeline(): ChartScenePipeline {
       const work = createWork(mode);
       const forceAll = mode === 'cold' || mode === 'fallback' || invalidation?.kind === 'external';
       const metrics = resolveMetrics(options.metrics);
+      const nextAppearanceRegistrySignature = appearanceRegistrySignature(options);
+      const appearanceRegistryChanged =
+        cache === undefined ||
+        appearanceRegistrySignature(cache.options) !== nextAppearanceRegistrySignature;
+      const nextLegacyTaskVariantsSignature = legacyTaskVariantsSignature(options);
+      const legacyTaskVariantsChanged =
+        cache === undefined ||
+        cache.legacyTaskVariantsSignature !== nextLegacyTaskVariantsSignature;
       const metricsChanged = cache === undefined || !sameMetrics(cache.metrics, metrics);
       const viewChanged =
         cache === undefined || viewSignature(cache.options.view) !== viewSignature(options.view);
@@ -694,6 +806,8 @@ export function createChartScenePipeline(): ChartScenePipeline {
         !metricsChanged &&
         !viewChanged &&
         !rangeChanged &&
+        !appearanceRegistryChanged &&
+        !legacyTaskVariantsChanged &&
         tickSignature(cache.options) === tickSignature(options) &&
         viewportSignature(cache.options, cache.layout?.totalHeight ?? 0) ===
           viewportSignature(options, cache.layout?.totalHeight ?? 0)
@@ -704,6 +818,14 @@ export function createChartScenePipeline(): ChartScenePipeline {
           scene: cache.scene,
           work: freezeWork(work),
         });
+      }
+
+      const appearanceRegistry =
+        !appearanceRegistryChanged && cache !== undefined
+          ? cache.appearanceRegistry
+          : createAppearanceRegistry(options.appearanceVariants);
+      if (appearanceRegistry !== cache?.appearanceRegistry) {
+        work.appearanceRegistryBuilds += 1;
       }
 
       const validation =
@@ -769,11 +891,13 @@ export function createChartScenePipeline(): ChartScenePipeline {
           ...topology.diagnostics,
         ]);
         cache = {
+          appearanceRegistry,
           ...(dependencies === undefined ? {} : { dependencies }),
           indexes,
           lanePrimitiveByKey: new Map(),
           laneStacks: new Map(),
           metrics,
+          legacyTaskVariantsSignature: nextLegacyTaskVariantsSignature,
           occurrences,
           options,
           scene,
@@ -842,7 +966,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
       const lanes = Object.freeze(
         (viewport?.lanes ?? []).map((lane) => {
           const primitive = reusablePrimitive(
-            lanePrimitive(lane),
+            lanePrimitive(lane, indexes, appearanceRegistry),
             forceAll ? undefined : cache?.lanePrimitiveByKey.get(lane.key),
             work,
             'lanePrimitiveBuilds',
@@ -865,7 +989,18 @@ export function createChartScenePipeline(): ChartScenePipeline {
         const visibleEnd = Math.min(placement.end, options.range.end);
         const x = scale.timeToX(visibleStart);
         const xEnd = scale.timeToX(visibleEnd);
-        const primitive = Object.freeze({
+        const laneVariant =
+          lane.laneId === undefined
+            ? undefined
+            : indexes.lanesById.get(lane.laneId)?.appearance?.variant;
+        const legacyTaskVariant = options.taskVariants?.[task.id];
+        const progress = progressPrimitive(task, placement, options.range, scale);
+        const primitive: TaskBarPrimitive = Object.freeze({
+          appearance: resolveTaskAppearance(appearanceRegistry, {
+            ...(laneVariant === undefined ? {} : { laneVariant }),
+            ...(legacyTaskVariant === undefined ? {} : { legacyTaskVariant }),
+            ...(task.appearance === undefined ? {} : { taskVariant: task.appearance.variant }),
+          }),
           viewKey: placement.key,
           laneViewKey: placement.laneKey,
           ...placementProvenance(placement, lane),
@@ -878,6 +1013,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
           width: xEnd - x,
           y: placement.y,
           height: placement.height,
+          ...(progress === undefined ? {} : { progress }),
           clippedStart: placement.start < options.range.start,
           clippedEnd: placement.end > options.range.end,
         }) satisfies TaskBarPrimitive;
@@ -891,10 +1027,32 @@ export function createChartScenePipeline(): ChartScenePipeline {
         taskBars.push(reusable);
       }
 
+      const appearanceDiagnostics: Diagnostic[] = [];
+      const unresolvedVariantIds = new Set<string>();
+      for (const appearance of [
+        ...lanes.map((lane) => lane.appearance),
+        ...taskBars.map((task) => task.appearance),
+      ]) {
+        if (appearance === undefined) {
+          continue;
+        }
+        const diagnostic = unresolvedAppearanceDiagnostic(appearance);
+        const variant = appearance.variant;
+        if (
+          diagnostic !== undefined &&
+          variant !== undefined &&
+          !unresolvedVariantIds.has(variant)
+        ) {
+          unresolvedVariantIds.add(variant);
+          appearanceDiagnostics.push(diagnostic);
+        }
+      }
+
       const diagnostics = Object.freeze([
         ...validation.diagnostics,
         ...topology.diagnostics,
         ...intervals.diagnostics,
+        ...appearanceDiagnostics,
       ]);
       const scene: ChartScene = Object.freeze({
         range: Object.freeze({ ...options.range }),
@@ -915,6 +1073,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         diagnostics,
       });
       cache = {
+        appearanceRegistry,
         ...(dependencies === undefined ? {} : { dependencies }),
         indexes,
         intervals,
@@ -924,6 +1083,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         layout: layoutStage.layout,
         localLanes: layoutStage.localLanes,
         metrics,
+        legacyTaskVariantsSignature: nextLegacyTaskVariantsSignature,
         occurrences,
         options,
         scene,

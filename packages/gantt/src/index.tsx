@@ -1,5 +1,6 @@
 export { Gantt, type GanttHandle, type GanttProps } from './react/Gantt';
 export { useGanttSelector } from './react/context';
+export type { GanttAppearanceToken, GanttAppearanceVariantOption } from './render/appearance';
 export type {
   GanttCommandMappingResult,
   GanttBuiltInMenuAction,

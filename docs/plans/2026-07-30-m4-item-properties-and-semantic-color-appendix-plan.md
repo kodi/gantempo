@@ -483,7 +483,7 @@ UI and appearance need a verified persistence/mutation boundary.
 
 ### Appendix Slice A3: Resolve appearance and progress primitives
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -805,7 +805,7 @@ Resolved in Appendix Slice A1:
 
 - [x] Appendix Slice A1: Freeze the properties and appearance contract
 - [x] Appendix Slice A2: Add canonical task/lane properties and commands
-- [ ] Appendix Slice A3: Resolve appearance and progress primitives
+- [x] Appendix Slice A3: Resolve appearance and progress primitives
 - [ ] Appendix Slice A4: Render accessible semantic color and progress
 - [ ] Appendix Slice A5: Add task and lane properties surfaces
 - [ ] Appendix Slice A6: Add direct and keyboard progress editing
@@ -864,12 +864,49 @@ Resolved in Appendix Slice A1:
   declaration inspection found only `GanttAppearanceReference` and the accepted
   record/input/update members, with no private schema/normalizer leakage. Rendering
   and browser behavior were not changed, so A2 makes no visual claim.
+- 2026-07-31: A3's first `mise run ci` found one order-dependent pre-existing pan DOM
+  fixture: `uses empty primary drag for pan only without a creation mapper and cleans
+  up capture loss` observed `scrollTop=0` instead of `40`. The isolated case and the
+  complete 22-test DOM file passed immediately. Inspection showed the fixture
+  installed synthetic geometry after mount without first publishing it through the
+  measured scroll/animation-frame path. The test now publishes that geometry before
+  pointer input, matching the established deterministic measurement gate. This is a
+  test-only deviation; runtime behavior, public API, architecture, and appendix
+  contracts are unchanged.
+- 2026-07-31: Appendix Slice A3 added a pure instance registry and explicit
+  theme/kind, lane, legacy task fallback, canonical task, and derived-state
+  precedence. Scene lane/task primitives carry frozen effective variant/token data;
+  only `GanttAppearanceToken` and `GanttAppearanceVariantOption` join the root export
+  list. Unknown canonical IDs retain their semantic variant with deterministic empty
+  token fallback and one structured warning per distinct scene ID. A4 owns
+  per-instance callback deduplication by registry revision.
+- 2026-07-31: Ordinary unsegmented task primitives now carry canonical progress value
+  plus clipped visible x/width. Zero has zero completed width, one covers the full
+  eligible visible bar, and partial progress intersects the underlying full task
+  interval before viewport clipping. Summary, milestone, and segment primitives do
+  not expose editable task progress; segment-level progress semantics remain
+  deliberately deferred with direct segment editing.
+- 2026-07-31: A3 focused verification passed 5 files / 24 tests for precedence,
+  repeated tasks across lanes, task override, source-compatible legacy fallback,
+  unknown preservation, registry refresh, `0`/partial/`1`, clipped and virtualized
+  progress, unsupported kinds, selective lane/task/progress invalidation, and
+  fixed-seed cached/cold parity. The deterministic pan regression passed five
+  consecutive isolated runs. The corrected `mise run ci` passed 154 formatted files,
+  143 lint/type-checked files, 64 test files / 311 tests, and four package artifacts.
+  Packed declarations export only the two accepted appearance registry types; private
+  registry/resolver/work-counter implementations are not exported.
+- 2026-07-31: The fixed `m4-appendix-scene-v1` benchmark (seed `20260730`, 2,000
+  tasks, 400 lanes, 45/40 visible) observed means of `15.2644 ms` cold,
+  `6.7870 ms` warm label, `7.0164 ms` warm affected appearance/progress, and
+  `0.0328 ms` warm vertical query. These are local observations from this checkout,
+  not cross-machine thresholds or release guarantees.
 
 ## Next Slice
 
-Begin Appendix Slice A3 in `packages/gantt/src/render/primitives.ts`,
-`packages/gantt/src/render/scene-pipeline.ts`, and the scene tests. Add the pure
-registry/effective-appearance resolver, lane accent and task progress primitive data,
-and selective lane/task/progress/registry invalidation. Prove same-task/multiple-lane
-precedence, unknown fallback, clipped/virtualized progress, cold/cached parity, and
-legacy scene compatibility before changing DOM/SVG rendering.
+Begin Appendix Slice A4 in `packages/gantt/src/react/Gantt.tsx`,
+`packages/gantt/src/styles.css`, renderer DOM tests, and SSR/hydration coverage.
+Publish stable lane-accent, task-track, progress, and effective-variant parts; map
+portable tokens without geometry work; add textual/assistive progress semantics and
+per-instance unresolved-variant diagnostic deduplication; then verify SSR, package,
+production playground, responsive computed styles, accessibility trees, forced
+colors, console, and network before starting properties surfaces.

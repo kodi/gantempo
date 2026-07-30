@@ -4,7 +4,7 @@ import type { EntityReference } from '../commands/types';
 import type { GanttDocument } from '../model/types';
 import { createChartScenePipeline } from './scene-pipeline';
 
-const GENERATOR_VERSION = 'm4-scene-v1';
+const GENERATOR_VERSION = 'm4-appendix-scene-v1';
 const BENCHMARK_SEED = 20_260_730;
 const TASK_COUNT = 2_000;
 const LANE_COUNT = 400;
@@ -71,7 +71,31 @@ const renamedDocument = Object.freeze({
     ),
   ),
 });
+const appearanceDocument = Object.freeze({
+  ...document,
+  tasks: Object.freeze(
+    document.tasks.map((task, index) =>
+      index === 0
+        ? Object.freeze({
+            ...task,
+            appearance: Object.freeze({ variant: 'blocked' }),
+            progress: 0.5,
+          })
+        : task,
+    ),
+  ),
+});
 const baseOptions = {
+  appearanceVariants: Object.freeze([
+    Object.freeze({
+      id: 'blocked',
+      label: 'Blocked',
+      tokens: Object.freeze({
+        'task.fill': '#fecaca',
+        'task.progressFill': '#dc2626',
+      }),
+    }),
+  ]),
   document,
   range: RANGE,
   tickAnchor: 0,
@@ -90,6 +114,7 @@ const visibleB = visiblePipeline.build({
   viewport: { verticalStart: 20_000, verticalExtent: 480 },
 });
 let labelToggle = false;
+let appearanceToggle = false;
 let scrollToggle = false;
 
 if (
@@ -111,6 +136,17 @@ describe(`${GENERATOR_VERSION} seed=${BENCHMARK_SEED} tasks=${TASK_COUNT} lanes=
       {
         ...baseOptions,
         document: labelToggle ? renamedDocument : document,
+      },
+      { kind: 'affected', affected: TASK_AFFECTED },
+    );
+  });
+
+  bench('warm affected task appearance-progress', () => {
+    appearanceToggle = !appearanceToggle;
+    pipeline.build(
+      {
+        ...baseOptions,
+        document: appearanceToggle ? appearanceDocument : document,
       },
       { kind: 'affected', affected: TASK_AFFECTED },
     );

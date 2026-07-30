@@ -984,6 +984,10 @@ describe('Gantt React facade in a DOM environment', () => {
     });
 
     await act(async () => {
+      body.dispatchEvent(new Event('scroll'));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    await act(async () => {
       dispatchPointer(timeline, 'pointerdown', {
         clientX: 800,
         clientY: 90,

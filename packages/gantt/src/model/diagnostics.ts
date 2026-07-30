@@ -4,6 +4,7 @@ import type { EntityId } from './types';
 export type DiagnosticSeverity = 'error' | 'info' | 'warning';
 
 export type DiagnosticCode =
+  | 'appearance.variant.unresolved'
   | 'command.duplicate-target'
   | 'command.immutable-id'
   | 'command.invalid-clear'

@@ -41,8 +41,32 @@ function fixture(): GanttDocument {
   };
 }
 
-function commandFor(kind: 'label' | 'move' | 'placement', step: number): GanttCommand {
+function commandFor(
+  kind: 'appearance' | 'label' | 'lane-appearance' | 'move' | 'placement' | 'progress',
+  step: number,
+): GanttCommand {
   const index = Math.abs(step) % 6;
+  if (kind === 'appearance') {
+    return {
+      changes: { appearance: { variant: step % 2 === 0 ? 'blocked' : 'lane-blue' } },
+      id: `task-${index}`,
+      type: 'task.update',
+    };
+  }
+  if (kind === 'lane-appearance') {
+    return {
+      changes: { appearance: { variant: step % 2 === 0 ? 'blocked' : 'lane-blue' } },
+      id: `lane-${index % 2}`,
+      type: 'lane.update',
+    };
+  }
+  if (kind === 'progress') {
+    return {
+      changes: { progress: (Math.abs(step) % 101) / 100 },
+      id: `task-${index}`,
+      type: 'task.update',
+    };
+  }
   if (kind === 'label') {
     return {
       type: 'task.update',
@@ -70,7 +94,14 @@ describe(`scene pipeline cached/cold parity seed=${PROPERTY_SEED}`, () => {
       fc.property(
         fc.array(
           fc.record({
-            kind: fc.constantFrom('label' as const, 'move' as const, 'placement' as const),
+            kind: fc.constantFrom(
+              'appearance' as const,
+              'label' as const,
+              'lane-appearance' as const,
+              'move' as const,
+              'placement' as const,
+              'progress' as const,
+            ),
             step: fc.integer({ min: 0, max: 1_000 }),
             verticalStart: fc.integer({ min: 0, max: 400 }),
           }),
@@ -80,6 +111,10 @@ describe(`scene pipeline cached/cold parity seed=${PROPERTY_SEED}`, () => {
           let document = fixture();
           const pipeline = createChartScenePipeline();
           const baseOptions = {
+            appearanceVariants: [
+              { id: 'blocked', label: 'Blocked', tokens: { 'task.fill': '#f00' } },
+              { id: 'lane-blue', label: 'Lane blue', tokens: { 'task.fill': '#00f' } },
+            ],
             range: { start: START, end: START + 10 * DAY },
             tickAnchor: START,
             tickInterval: DAY,
