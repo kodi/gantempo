@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: Ready for implementation; Slice 1 next
+Status: In progress; Slice 1 complete, Slice 2 next
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -68,6 +68,9 @@ At completion:
 These are the selected implementation direction for this plan. Slice 1 must formalize
 the durable parts in a focused decision record and architecture update before runtime
 code begins.
+
+The durable parts are accepted in the
+[timeline navigation interaction contract](../decisions/2026-07-30-timeline-navigation-interaction-contract.md).
 
 ### 1. Pan the semantic time range, not a wide DOM canvas
 
@@ -340,7 +343,7 @@ Dependencies: none.
 
 ### Slice 1: Freeze the navigation and occurrence-lifetime contract
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Accept the durable behavior before changing runtime ownership or gestures.
 
@@ -373,6 +376,25 @@ Verification:
 - exact link existence and cross-document terminology/status checks.
 
 Dependencies: Slice 0.
+
+Completed in this slice:
+
+- accepted the axis/modifier/pointer matrix and semantic controlled-range pan model;
+- fixed one transient per-instance proposal lifecycle and browser-zoom pass-through;
+- separated private full-occurrence lifetime from viewport-only paint, hit testing,
+  and public selectors;
+- fixed read-only navigation, DOM-focus handoff, offscreen reveal, keyboard paging,
+  and accessibility expectations;
+- confirmed that no public type or export is required;
+- linked the decision from architecture, roadmap, the base-M4 decision, and this
+  plan, while correcting the broad base-M4 occurrence-scroll wording.
+
+Verification:
+
+- `git diff --check` passed;
+- exact decision/architecture/roadmap/plan links and status terminology checks
+  passed;
+- `mise run ci` passed on the completed Slice 1 tree.
 
 ### Slice 2: Add a viewport-independent occurrence catalog
 
@@ -894,6 +916,20 @@ during implementation.
   searches, explicit future page/test path checks, and confirmation that the former
   route-versus-section open question was removed.
 
+### 2026-07-30 Slice 1 navigation contract
+
+- Accepted
+  `docs/decisions/2026-07-30-timeline-navigation-interaction-contract.md`.
+- The correction keeps `range` required and controlled, adds no public export, and
+  treats the proposed-range accumulator plus full occurrence catalog as private
+  per-instance/derived runtime state.
+- Architecture now distinguishes semantic time panning from DOM overflow and full
+  occurrence lifetime from visible painting/hit testing.
+- The base-M4 decision now links the correction and limits its completed imperative
+  focus/scroll claim to viewport-rendered targets.
+- `git diff --check`, exact cross-document link/status checks, and `mise run ci`
+  passed on the completed slice.
+
 ## Deviations
 
 ### 2026-07-30 — Base-M4 “scrolling” evidence did not include ordinary time panning
@@ -932,10 +968,11 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 1 by auditing the accepted M4 viewport/range sections in
-`docs/ARCHITECTURE.md` and
-`docs/decisions/2026-07-30-interaction-runtime-public-api-contract.md`. Add the focused
-timeline-navigation decision record, fix the broad base-M4 scrolling wording, and
-formalize the axis/modifier/pointer conflict matrix plus full-occurrence lifetime
-before editing runtime code. Verify with `git diff --check`, exact link existence, and
-cross-document contract/status checks.
+Start Slice 2 by auditing the completed layout return/cache boundary in
+`packages/gantt/src/render/scene-pipeline.ts` and the occurrence reconciliation in
+`packages/gantt/src/runtime/session.ts`, `packages/gantt/src/runtime/store.ts`, and
+`packages/gantt/src/react/runtime.ts`. Add one private immutable full occurrence
+catalog before viewport filtering, use it for session existence and known-target
+`scrollToTask`, preserve viewport-only primitives/hit testing/public selectors, and
+verify focused parity/removal/cache tests plus `vp check`, `git diff --check`, and
+`mise run ci`.

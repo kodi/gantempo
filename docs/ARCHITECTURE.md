@@ -666,8 +666,31 @@ retry-safe operation ID.
 Document ownership is an exclusive `document`/`defaultDocument` union. Committed
 selection, logical focus, and vertical viewport intent use one independently
 controlled or uncontrolled session value. M4 keeps the existing horizontal `range`
-controlled and uses `onRangeChange` for edge-pan and imperative requests; it does not
-add `defaultRange` before M5 fixes adaptive zoom policy.
+controlled and uses `onRangeChange` for edge-pan, imperative, wheel, trackpad,
+mouse-grab, and keyboard-page requests; it does not add `defaultRange` before M5
+fixes adaptive zoom policy.
+
+#### 9.2.1 Timeline navigation
+
+Horizontal navigation pans the semantic time range rather than a wide DOM canvas.
+Accepted pixel deltas preserve the finite positive range duration and are coalesced
+through one transient per-instance proposed-range accumulator. A chart without
+`onRangeChange` does not claim horizontal navigation input, and read-only document
+state does not disable viewport navigation.
+
+The derived pipeline keeps a private viewport-independent occurrence catalog beside
+viewport-filtered render primitives. The full catalog owns selection and logical
+focus existence, offscreen reveal, and keyboard geometry; visible primitives remain
+the only paint, hit-test, and public selector surface. Viewport exclusion therefore
+does not mean occurrence deletion, and horizontal or vertical navigation reuses
+completed topology, interval, and layout work.
+
+Wheel/trackpad axis and modifier handling, pointer conflict rules, focus handoff,
+keyboard paging, browser-zoom exclusion, and the private/public occurrence boundary
+are fixed by the
+[timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md).
+Zoom, pinch, uncontrolled range ownership, semantic horizontal scrollbars, and
+calendar-aware navigation remain M5 work.
 
 ### 9.3 Imperative handle
 
@@ -1200,6 +1223,9 @@ false spreadsheet cells. Roving focus, mode-based keyboard move/resize, live
 announcements, virtualization focus retention, and the exact M4 key bindings are
 fixed by the
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+Post-M4 paging, offscreen task reveal, DOM-focus handoff, and silent continuous
+navigation are fixed by the
+[timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md).
 
 ## 17. SSR and browser boundaries
 
@@ -1391,6 +1417,10 @@ by built-in UI.
 The slice's durable ownership, acknowledgement, occurrence-target, accessibility, and
 minimum customization choices are fixed by the
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+The accepted post-M4 correction adds ordinary timeline navigation and
+viewport-independent occurrence lifetime without changing this slice's public
+ownership boundary; see the
+[timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md).
 
 ### Slice 4: Project Gantt capabilities
 

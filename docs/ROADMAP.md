@@ -102,8 +102,8 @@ The base M4 interaction runtime and public API is complete:
 - pointer, pen, touch, keyboard, toolbar, menu, editor, history, and imperative
   actions use the same semantic commands and lifecycle;
 - occurrence-aware selection, focus, measured viewport, hit testing, snapping,
-  previews, native vertical scrolling, drag-edge auto-pan, and accessible treegrid
-  behavior are verified;
+  previews, native vertical scrolling, drag-edge auto-pan, viewport-rendered
+  occurrence focus/scroll, and accessible treegrid behavior are verified;
 - typed content/surface slots, class hooks, columns, tooltip, context menu, and the
   instant-task editor compose without exposing private runtime or renderer state;
 - controlled and runtime-owned playground consumers prove API-shaped loading,
@@ -167,7 +167,7 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Planning baseline complete; Slice 1 next
+**Status:** `[-]` Navigation contract accepted; Slice 2 next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
@@ -185,9 +185,13 @@ deterministic scheduled events across 36 lanes and an 18-month UTC period, initi
 shown through a 12-week range. Zoom, pinch, default-range ownership, touch panning,
 and M5 project navigation policy remain out of scope.
 
-Slice 1 will freeze the durable axis/modifier/pointer, controlled-range,
-occurrence-lifetime, browser-zoom, and accessibility contract in a focused decision
-record and architecture update before runtime implementation.
+Slice 1 accepted the durable
+[timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md),
+including the axis/modifier/pointer matrix, controlled-range proposal lifecycle,
+private full-occurrence lifetime, focus handoff, browser-zoom exclusion, and
+keyboard paging. It requires no public API expansion. Slice 2 will add the private
+viewport-independent occurrence catalog and correct offscreen session/reveal
+behavior before input adapters change.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -353,6 +357,13 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Accepted the post-M4
+  [timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md).
+  It keeps `range` controlled, makes accepted wheel/grab/page input pan semantic
+  time, separates private full-occurrence lifetime from viewport-only rendering,
+  fixes focus handoff and offscreen reveal expectations, preserves browser zoom and
+  document-edit conflicts, requires no public API expansion, and selects the private
+  occurrence catalog as Slice 2.
 - 2026-07-30: Expanded the active timeline-navigation plan with a required top-level
   `Navigation` menu item and `/navigation` page. The deterministic consumer fixture
   will contain exactly 144 scheduled task events across 36 lanes over an 18-month UTC
@@ -468,8 +479,9 @@ The M4 ownership, acknowledgement, event, interaction-target, viewport, accessib
 and minimum customization decisions are recorded in the
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
 The post-M4 timeline navigation axis/modifier/pointer, controlled-range,
-occurrence-lifetime, browser-zoom, and accessibility contract is queued as Slice 1 of
-the
+occurrence-lifetime, browser-zoom, and accessibility contract is accepted in the
+[timeline navigation interaction decision](decisions/2026-07-30-timeline-navigation-interaction-contract.md)
+and implemented through the
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md).
 The post-M4 document/root/custom-container portal default, overlay lifecycle,
 collision, modal-isolation, shadow-root, SSR, and iframe decisions are recorded in

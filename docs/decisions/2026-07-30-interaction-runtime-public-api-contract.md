@@ -484,6 +484,13 @@ fallback tab stop when no task is focusable. Focused occurrences are retained in
 rendered overscan set until focus moves or reconciliation selects the root, preventing
 virtual scrolling from discarding the active element.
 
+The later
+[timeline navigation interaction contract](2026-07-30-timeline-navigation-interaction-contract.md)
+supersedes only the viewport-lifetime implementation detail: logical focus is
+reconciled against a private full occurrence catalog, while DOM focus hands off to
+the chart root when the focused occurrence is outside the rendered window. The
+public target and session ownership contracts remain unchanged.
+
 The fixed M4 keyboard contract is:
 
 - `Tab` enters or leaves the chart once;
@@ -610,7 +617,7 @@ Base M4 completed on 2026-07-30 without revising this accepted contract:
 - the runtime-owned resource-view consumer proves asynchronous allow/reject/replace
   interception, application-mapped atomic resource reassignment, useful mapper
   rejection, document/session defaults, semantic events, typed slots/columns, and
-  occurrence-aware imperative focus/scroll;
+  occurrence-aware imperative focus/scroll for viewport-rendered targets;
 - root-facade consumer, ownership, runtime, pointer, keyboard, customization, SSR,
   hydration, and accessibility tests pass as part of 50 test files and 238 tests;
 - the packed module exports exactly the intended component, selector hook,
@@ -668,5 +675,6 @@ Revisit this decision before:
 - [Architecture state, commands, events, React API, rendering, and accessibility](../ARCHITECTURE.md)
 - [M4 roadmap](../ROADMAP.md#m4-interaction-runtime-and-public-api)
 - [M4 implementation plan](../plans/2026-07-30-interaction-runtime-public-api-plan.md)
+- [Post-M4 timeline navigation contract](2026-07-30-timeline-navigation-interaction-contract.md)
 - [M2 change-kernel contract](2026-07-30-change-kernel-contract.md)
 - [M3 view/layout/viewport contract](2026-07-30-view-layout-viewport-kernel-contract.md)
