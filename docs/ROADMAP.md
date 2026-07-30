@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 1 contract complete
+**Status:** `[-]` In progress; Slice 2 view topology complete
 
 **Target outcome**
 
@@ -145,12 +145,9 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Implement deterministic document, project, resource, and custom topology in Slice 2
-of the
-[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md). The accepted
-[M3 contract](decisions/2026-07-30-view-layout-viewport-kernel-contract.md) fixes the
-identity, provenance, interval, stack, lane-height, viewport, performance-evidence,
-and minimum React-facade semantics.
+Resolve task and explicit segment instant intervals in Slice 3 of the
+[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md), using
+the accepted placement-isolated `layout.*` diagnostic contract.
 
 ## Later Milestone Outcomes
 
@@ -234,6 +231,20 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 2 deterministic view topology
+
+- Added one immutable React-free document/project/resource/custom topology boundary
+  with stable collision-safe view keys and canonical provenance.
+- Preserved explicit source order and cross-family same-ID legality while rejecting
+  ambiguous keys and custom lane topology.
+- Isolated invalid task, segment, assignment, and assignment-compatibility references
+  to the affected placement.
+- Focused verification passed 2 files and 8 tests, including 150 property runs with
+  seed `20260734`; `vp check` passed 65 formatted and 54 lint/type-checked files.
+- The per-slice full CI rerun passed 22 test files and 97 tests plus the four-artifact
+  package build after fixing one formatting-only drift.
+- Selected task and explicit segment interval resolution as Slice 3.
 
 ### 2026-07-30 — M3 Slice 1 contract selected
 

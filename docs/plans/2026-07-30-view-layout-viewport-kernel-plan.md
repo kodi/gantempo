@@ -561,7 +561,7 @@ DOM identity, application-defined inputs, and benchmark fixtures.
 
 ### Slice 2: Resolve deterministic view topology
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1279,10 +1279,32 @@ None of these questions authorizes implementation before Slice 1 is complete.
   lint/type-checked files, 20 test files and 89 tests, then built all four package
   artifacts.
 
+### 2026-07-30 — Slice 2 deterministic view topology
+
+- Added one React-free topology resolver for document, flat project, flat resource,
+  and custom data-only views.
+- Added private branded lane/placement keys using the accepted tuple encoding and
+  preserved canonical lane, resource, task, assignment, placement, and segment
+  provenance where applicable.
+- Built-in views preserve their canonical source collection order. Custom views
+  defensively copy and freeze caller descriptors.
+- Duplicate source or custom keys and missing custom lane topology reject the view.
+  Missing task, segment, assignment, or incompatible assignment references omit only
+  the affected placement with stable `view.*` diagnostics.
+- Focused verification passed 2 files and 8 tests. The property used seed `20260734`,
+  150 runs, at most 20 generated lanes/placements, `endOnFailure: true`, and the
+  standard fast-check seed/path replay configuration.
+- `vp check` passed 65 formatted and 54 lint/type-checked files after formatting the
+  two newly added source files. `git diff --check` passed.
+- The first full CI attempt exposed one formatting-only drift after an import cleanup;
+  `vp fmt packages/gantt/src/view/resolve-view.ts` fixed it. The rerun passed 22 test
+  files and 97 tests, all 65 formatting files and 54 lint/type-checked files, and all
+  four package artifacts.
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
-- [ ] Slice 2: Resolve deterministic view topology
+- [x] Slice 2: Resolve deterministic view topology
 - [ ] Slice 3: Resolve placement intervals
 - [ ] Slice 4: Deterministic overlap stacks and variable lane geometry
 - [ ] Slice 5: Immutable two-dimensional viewport index and query
@@ -1295,8 +1317,8 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 2 in `packages/gantt/src/view/` with the public data-only view definition,
-private resolved topology and provenance, document/project/resource/custom
-normalization, example tests, and a fixed-seed determinism/immutability property.
-Verify with `vp test run packages/gantt/src/view`, `vp check`, `git diff --check`, and
-the required per-slice `mise run ci`.
+Start Slice 3 in `packages/gantt/src/layout/` by resolving task and explicit segment
+instant schedules into one half-open interval per resolved placement. Preserve view
+identity/provenance, isolate invalid interval sources with the accepted `layout.*`
+diagnostics, and add fixed-seed determinism/immutability/omission properties. Verify
+the view and layout suites plus the required per-slice `mise run ci`.

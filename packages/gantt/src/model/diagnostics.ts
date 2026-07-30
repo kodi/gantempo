@@ -64,7 +64,17 @@ export type DiagnosticCode =
   | 'value.invalid-json'
   | 'value.invalid-number'
   | 'value.invalid-string'
-  | 'value.unknown-property';
+  | 'value.unknown-property'
+  | 'view.assignment-resource'
+  | 'view.assignment-task'
+  | 'view.duplicate-lane-key'
+  | 'view.duplicate-placement-key'
+  | 'view.duplicate-source-id'
+  | 'view.invalid-definition'
+  | 'view.missing-assignment'
+  | 'view.missing-lane'
+  | 'view.missing-segment'
+  | 'view.missing-task';
 
 export interface Diagnostic {
   readonly code: DiagnosticCode;
