@@ -46,16 +46,29 @@ Completion evidence and implementation findings are recorded in
 
 This baseline is a deliberately narrow vertical subset of architecture Slice 2. It
 uses only the minimum model contracts required by rendering and does not yet provide
-the document codec, command, patch, history, resolved-view, or viewport foundations
-required by later interaction and scheduling work.
+the command, patch, history, resolved-view, or viewport foundations required by later
+interaction and scheduling work.
+
+The M1 document kernel is also complete:
+
+- unknown wire input passes through one schema-version-1 parse boundary;
+- IDs, instant/all-day dates, collections, JSON extensions, and records normalize to
+  one canonical React-free model;
+- structured diagnostics preserve unrelated valid records across recoverable failures;
+- referential validation and deterministic primary/relationship indexes are verified;
+- stable serialization and the full six-domain round trip are byte-idempotent;
+- the existing scene, React package, and responsive playground consume the same model.
+
+Detailed completion evidence is recorded in
+[`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md).
 
 ## Milestone Map
 
 | Milestone | Architecture mapping | Outcome | Status | Detailed plan |
 | --- | --- | --- | --- | --- |
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
-| M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[ ]` Next | [Active plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
-| M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[ ]` | Not yet created |
+| M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
+| M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[ ]` Next | Not yet created |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | Not yet created |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
@@ -97,7 +110,7 @@ or broadening the public React API.
 
 ### M1: Document kernel
 
-**Status:** `[-]` In progress
+**Status:** `[x]` Done and verified
 
 **Target outcome**
 
@@ -128,12 +141,22 @@ identity was lost. Invalid input returns structured diagnostics without silently
 discarding unrelated valid data. The existing read-only playground remains unchanged
 and all repository gates pass.
 
+**Completion evidence**
+
+- The public codec documentation, exact automated output, round-trip proof, package
+  artifacts, HTTP checks, and responsive browser matrix are recorded in the
+  [completed M1 plan](plans/2026-07-30-document-kernel-foundation-plan.md).
+- `mise run ci` passed 10 test files and 57 tests plus clean format/lint/types and the
+  package build.
+- The main and matrix playground routes passed connected visual, layout,
+  accessibility-tree, identity, diagnostic, console, and asset checks at
+  `1440 x 900`, `900 x 900`, and `560 x 900`.
+
 **Next action**
 
-Execute Slice 7 of
-[`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md):
-document the public boundary, run the final automated and browser regression gates,
-and record complete M1 milestone evidence.
+Create a detailed M2 change-kernel plan before implementation. It should resolve the
+patch representation and divide command validation, deterministic patch/inverse
+generation, atomic transactions, and local history into verified slices.
 
 ## Later Milestone Outcomes
 
@@ -217,6 +240,26 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M1 Slice 7 milestone completion
+
+- Documented the public wire-versus-normalized parse/serialize flow in `README.md`.
+- `mise run ci` passed clean format/lint/type checking, 10 test files and 57 tests,
+  and the package build; `mise run build-playground` transformed 32 modules
+  successfully.
+- Chrome DevTools `list_pages` timed out, so the plan-authorized built-in Browser
+  fallback performed a connected inspection of `/` and `/matrix` at all three
+  required viewports.
+- The browser gate found aligned headers/lanes/timelines, no horizontal page overflow,
+  zero unexpected diagnostics, unchanged entity identities, complete accessible
+  regions/groups/task names, empty console logs, and correct light/dark/high-contrast,
+  overlap, clipped, compact, and empty scenarios. Both routes and both observed Vite
+  assets returned HTTP `200`.
+- `git diff --check`, explicit existence checks for architecture, roadmap, completed
+  plan, decision record, and README, and the focused cross-document completion/link
+  read all passed.
+- Marked M1 complete only after final evidence and selected M2 planning as the next
+  action.
 
 ### 2026-07-30 — M1 Slice 6 scene convergence
 

@@ -584,7 +584,7 @@ or adapted.
 
 ### Slice 7: Documentation, regression gate, and milestone evidence
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -945,6 +945,68 @@ they remain here as the preserved decision-gate history.
   internals were absent.
 - `vp build apps/playground` passed after transforming 32 modules.
 
+### 2026-07-30 — Slice 7 final documentation and automated gates
+
+- Added `README.md` documentation distinguishing unknown wire input from the
+  normalized runtime document, showing the public parse/serialize flow, explaining
+  fatal versus recoverable results, and keeping parsing outside React.
+- The first `mise run ci` attempt passed 10 test files/57 tests and the package build,
+  but failed because the new README section needed formatting.
+- `vp fmt README.md` corrected that documentation-only issue.
+- The final `mise run ci` passed:
+  - formatting for 44 files;
+  - lint/type checking for 33 files with no warnings or errors;
+  - 10 test files and 57 tests;
+  - ESM, source-map, CSS, and declaration package output.
+- `mise run build-playground` passed after transforming 32 modules.
+- The local playground server started at `http://127.0.0.1:5173/`; `/`, `/matrix`,
+  `/@vite/client`, and `/src/main.tsx` each returned HTTP `200`. The server emitted no
+  runtime errors during inspection.
+
+### 2026-07-30 — Slice 7 connected browser regression gate
+
+- Chrome DevTools MCP `list_pages` was checked first as required and timed out, so the
+  plan-authorized built-in Browser fallback performed the actual connected inspection.
+  This limitation is recorded explicitly; no Chrome-specific evidence is claimed.
+- Inspected `/` and `/matrix` at `1440 x 900`, `900 x 900`, and `560 x 900`.
+- Main-route findings at all three viewports:
+  - the corner/time headers and lane/timeline regions shared top and height geometry;
+  - page scroll width equaled client width, with chart widths adapting from 1323 to
+    826 to 530 pixels and no horizontal page overflow;
+  - `data-diagnostic-count` was `0`;
+  - lane IDs remained `discovery`, `design`, `delivery`, `release`;
+  - task IDs remained `requirements`, `wireframes`, `review`, `build`, `qa`, `launch`;
+  - all six original placement IDs remained present;
+  - the accessibility tree retained the named chart region, `Scheduled tasks` group,
+    and six individually named task images;
+  - warning/error console logs were empty.
+- Matrix-route findings at all three viewports:
+  - all four chart regions reported zero diagnostics;
+  - every non-empty chart kept aligned header and lane/timeline geometry;
+  - scroll width equaled client width at 1425, 885, and 545 pixels after accounting
+    for the vertical scrollbar, so no horizontal page overflow appeared;
+  - compact and dark scenarios retained the main lane/task/placement identities;
+  - resource overlap retained lanes `alex`, `sam`, `taylor`, four named task images,
+    and placement IDs `place-alex-a`, `place-alex-b`, `place-sam-a`,
+    `place-taylor-a`;
+  - the accessibility tree retained four named chart regions, three
+    `Scheduled tasks` groups, 16 named task images, and the empty-state text;
+  - computed colors distinguished light, dark, and high-contrast roots, and connected
+    screenshots confirmed the compact, dark, overlap, clipped, and empty cases at
+    wide and narrow layouts;
+  - warning/error console logs were empty.
+- Browser asset inspection found the Vite client and playground entry script loaded,
+  the DOM at `readyState: complete`, and no console-reported network/runtime errors.
+- The temporary browser viewport override was reset, the inspection tab was finalized,
+  and the local server was stopped after the gate.
+- No live browser issue required an implementation change.
+- `git diff --check` passed for the final Slice 7 change set.
+- Explicit existence checks passed for architecture, roadmap, completed plan, codec
+  decision record, and README.
+- A focused cross-document read confirmed the completed M1 status, all seven completed
+  slices, both completed final gates, public parse/serialize names, decision links,
+  and M2 planning as the actionable next step.
+
 ## Progress
 
 - [x] Slice 1: Freeze the codec contract and decision record
@@ -953,15 +1015,14 @@ they remain here as the preserved decision-gate history.
 - [x] Slice 4: Referential integrity and stable document indexes
 - [x] Slice 5: Deterministic serialization and full-domain round trip
 - [x] Slice 6: Scene pipeline and public facade convergence
-- [ ] Slice 7: Documentation, regression gate, and milestone evidence
-- [ ] Final automated gate
-- [ ] Final browser gate
+- [x] Slice 7: Documentation, regression gate, and milestone evidence
+- [x] Final automated gate
+- [x] Final browser gate
 
 ## Next Slice
 
-Begin Slice 7 by documenting the normalized-versus-wire boundary and public
-parse/serialize flow in `README.md`. Then run `mise run ci`,
-`mise run build-playground`, start the local playground, and use Chrome DevTools MCP
-to inspect `/` and `/matrix` at all three required viewports with visual, DOM/style,
-accessibility, console, network, identity, and zero-diagnostic evidence before
-marking M1 complete.
+M1 is complete and verified. Create a new detailed M2 change-kernel plan before
+implementation, beginning with the patch-representation decision and slices for
+command normalization/validation, deterministic patches and inverse patches, atomic
+transactions, and local undo/redo. Link that plan from `docs/ROADMAP.md` and do not
+start M2 implementation until its decision boundary and per-slice gates are recorded.
