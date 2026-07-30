@@ -611,7 +611,7 @@ contract refinement before marking the slice done.
 
 ### Slice 3: Resolve placement intervals
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1301,11 +1301,27 @@ None of these questions authorizes implementation before Slice 1 is complete.
   files and 97 tests, all 65 formatting files and 54 lint/type-checked files, and all
   four package artifacts.
 
+### 2026-07-30 — Slice 3 placement interval resolution
+
+- Added a pure task/explicit-segment dereference boundary that preserves resolved view
+  keys, order, source provenance, and caller inputs.
+- Each resolved placement produces at most one half-open instant interval. Missing
+  tasks or segments, absent schedules, all-day schedules, non-finite boundaries,
+  zero-width intervals, and reversed intervals omit only that placement with the
+  accepted stable `layout.*` code.
+- Focused view/layout verification passed 4 files and 13 tests. The interval property
+  used seed `20260735`, 200 runs, at most 50 placements, `endOnFailure: true`, and
+  standard seed/path replay.
+- `vp check` passed 68 formatted and 57 lint/type-checked files after `vp fmt` corrected
+  formatting in the three new layout files. `git diff --check` passed.
+- The required per-slice `mise run ci` checkpoint passed 24 test files and 102 tests,
+  all static checks, and the four-artifact package build.
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
 - [x] Slice 2: Resolve deterministic view topology
-- [ ] Slice 3: Resolve placement intervals
+- [x] Slice 3: Resolve placement intervals
 - [ ] Slice 4: Deterministic overlap stacks and variable lane geometry
 - [ ] Slice 5: Immutable two-dimensional viewport index and query
 - [ ] Slice 6: Performance fixture and M3 viewport baseline
@@ -1317,8 +1333,8 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 3 in `packages/gantt/src/layout/` by resolving task and explicit segment
-instant schedules into one half-open interval per resolved placement. Preserve view
-identity/provenance, isolate invalid interval sources with the accepted `layout.*`
-diagnostics, and add fixed-seed determinism/immutability/omission properties. Verify
-the view and layout suites plus the required per-slice `mise run ci`.
+Start Slice 4 in `packages/gantt/src/layout/` with validated stack metrics,
+lowest-available deterministic track assignment, effective minimum outer heights,
+contiguous lane offsets, and absolute bar geometry. Cover touching/nested/equal/dense
+overlaps and brute-force concurrency with a fixed-seed property, then run the focused
+layout gate and required per-slice `mise run ci`.

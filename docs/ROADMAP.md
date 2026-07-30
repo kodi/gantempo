@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 2 view topology complete
+**Status:** `[-]` In progress; Slice 3 interval resolution complete
 
 **Target outcome**
 
@@ -145,9 +145,8 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Resolve task and explicit segment instant intervals in Slice 3 of the
-[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md), using
-the accepted placement-isolated `layout.*` diagnostic contract.
+Implement deterministic overlap stacks and variable lane geometry in Slice 4 of the
+[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
 ## Later Milestone Outcomes
 
@@ -231,6 +230,18 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 3 placement interval resolution
+
+- Added one pure task/explicit-segment instant interval boundary while preserving
+  resolved identity, order, provenance, and input immutability.
+- Isolated missing, all-day, non-finite, zero-width, and reversed interval failures to
+  the affected placement with stable `layout.*` diagnostics.
+- Focused verification passed 4 files and 13 tests, including 200 property runs with
+  seed `20260735`; `vp check` passed 68 formatted and 57 lint/type-checked files.
+- The per-slice `mise run ci` checkpoint passed 24 test files and 102 tests plus the
+  four-artifact package build.
+- Selected deterministic overlap stacks and variable lane geometry as Slice 4.
 
 ### 2026-07-30 — M3 Slice 2 deterministic view topology
 
