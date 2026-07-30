@@ -1,7 +1,7 @@
 # UI and Theming Strategy
 
 Status: Architecture baseline
-Last updated: 2026-07-29
+Last updated: 2026-07-31
 
 ## 1. Decision
 
@@ -322,6 +322,37 @@ Customization support is explicit:
 This boundary prevents a false promise that arbitrary browser CSS can be reproduced by
 a pixel renderer or a server process.
 
+### 9.1 Canonical item variants
+
+Tasks and lanes may persist one optional `GanttAppearanceReference` containing a
+bounded semantic variant ID. Documents never persist colors, token maps, CSS classes,
+theme objects, or renderer configuration. The instance-level
+`appearanceVariants` registry supplies accessible labels and coordinated portable
+tokens for:
+
+- task fill;
+- task progress fill;
+- task text;
+- task border;
+- lane accent;
+- lane surface.
+
+Resolution applies theme/task-kind defaults, lane appearance, the legacy view-only
+`taskVariants` fallback, persisted task appearance, then derived interaction and
+system state. Persisted task appearance wins over the compatibility fallback. Unknown
+valid IDs remain canonical and serialize unchanged; they use deterministic
+kind/theme paint and one deduplicated warning per ID and registry revision.
+
+The default lane treatment is a restrained accent or subtle surface, not a saturated
+row fill. The same effective variant supplies task and progress paint, while focus,
+selection, pending, invalid, critical, disabled, and forced-colors states retain
+non-color indicators. Core defines no priority, status, or workflow meaning; examples
+supply their own palette.
+
+The exact data validity, precedence, registry, compatibility, progress, and properties
+surface contracts are fixed by the
+[item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md).
+
 ## 10. Tailwind integration
 
 Tailwind support has three parts.
@@ -505,6 +536,5 @@ The first stable theming contract is complete when:
 
 - Final token names and the initial manifest contents.
 - Whether the Tailwind bridge is a core subpath or a small adapter package.
-- The initial set of portable appearance tokens.
 - Whether a visual theme builder ships before or after the first stable release.
 - The support window for version-specific Tailwind setup fixtures.

@@ -255,10 +255,12 @@ export interface GanttDocument {
 export interface TaskRecord {
   id: EntityId;
   title: string;
+  description?: string;
   kind?: "task" | "summary" | "milestone";
   parentId?: EntityId;
   schedule?: TaskSchedule;
   progress?: number;
+  appearance?: GanttAppearanceReference;
   segments?: TaskSegment[];
   calendarId?: EntityId;
   constraint?: TaskConstraint;
@@ -289,12 +291,17 @@ export interface TaskSegment {
 export interface LaneRecord {
   id: EntityId;
   title: string;
+  appearance?: GanttAppearanceReference;
   parentId?: EntityId;
   resourceId?: EntityId;
   order?: number;
   height?: number;
   calendarId?: EntityId;
   fields?: Record<string, JsonValue>;
+}
+
+export interface GanttAppearanceReference {
+  variant: string;
 }
 
 export interface ResourceRecord {
@@ -750,7 +757,24 @@ Prefer component slots receiving data and behavior props over arbitrary HTML str
 Visual customization must not require consumers to target undocumented DOM structure.
 The detailed contract is defined in [UI and theming](UI_THEMING.md).
 
-### 9.5 Subscriptions and React ownership
+### 9.5 Item properties and progress
+
+The post-M4 item-properties appendix adds one selection-driven task/lane properties
+surface on the existing runtime and command bus. Canonical task description and
+task/lane semantic appearance remain plain optional schema-version-1 data. The
+surface edits ordinary instant tasks and canonical persisted placements only; IDs,
+task kind, derived duration, linked resource identity, ambiguous topology, milestone
+progress, and summary progress remain read-only where policy is incomplete.
+
+Progress remains the task's finite `0..1` numeric value. Properties, pointer, and
+keyboard workflows produce `task.update` through the same interception,
+acknowledgement, patch, history, and event lifecycle. Semantic variant resolution
+coordinates task, progress, text, border, and restrained lane treatments without
+persisting theme values. The exact persistence, precedence, compatibility, editor,
+and accessibility contract is fixed by the
+[item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md).
+
+### 9.6 Subscriptions and React ownership
 
 The public API remains declarative in controlled and uncontrolled modes. Internally,
 React surfaces subscribe to the smallest useful state slice:
@@ -842,6 +866,15 @@ Themes belong to view configuration, not the persistent `GanttDocument`. Multipl
 instances with different themes must coexist, and portalled UI must retain the theme of
 its owning instance. See [UI and theming](UI_THEMING.md) for tokens, packages, Tailwind
 integration, renderer parity, and acceptance criteria.
+
+Documents may persist only bounded semantic appearance IDs on tasks and lanes. The
+instance registry resolves those IDs to coordinated task fill, progress fill, text,
+border, lane accent, and lane surface tokens. Resolution uses theme/kind defaults,
+lane appearance, a source-compatible view-only `taskVariants` fallback, persisted task
+appearance, then derived system state. Unknown valid IDs survive document round trips,
+fall back deterministically, and are diagnosed once per ID and registry revision. The
+accepted contract is recorded in the
+[item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md).
 
 ### 10.5 Lane overlap strategies
 

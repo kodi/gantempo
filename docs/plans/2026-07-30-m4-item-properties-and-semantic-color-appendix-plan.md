@@ -400,7 +400,7 @@ surface while retaining:
 
 ### Appendix Slice A1: Freeze the properties and appearance contract
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -782,20 +782,28 @@ Likely changes:
 
 ## Open Questions
 
-Resolve in Appendix Slice A1:
+Resolved in Appendix Slice A1:
 
-- final names for task/lane appearance and variant registry props;
-- whether description/appearance remain schema-version-1 additive fields;
-- whether the editor exposes end plus derived duration or start plus editable duration
-  for the instant-only baseline;
-- normal and accelerated keyboard progress steps;
-- whether a demonstration palette ships publicly or stays example configuration;
-- whether read-only selection opens properties automatically or by activation;
-- compatibility/deprecation from `taskVariants` to canonical appearance.
+- canonical records use `GanttAppearanceReference`, while instance configuration uses
+  `GanttAppearanceVariantOption`, `GanttAppearanceToken`, and
+  `appearanceVariants`;
+- task `description` and task/lane `appearance` are backward-compatible optional
+  schema-version-1 fields;
+- the default instant-task surface edits start/end and displays elapsed duration
+  read-only, avoiding calendar-aware duration policy before M5;
+- keyboard progress uses 1 percentage point normally and 10 with `Shift`, plus
+  Home/End for 0/100;
+- the demonstration palette stays application/example configuration; core publishes
+  no workflow meanings;
+- read-only selection updates inspection identity but opens properties only by
+  activation;
+- `taskVariants` remains a source-compatible renderer-only fallback when canonical
+  task appearance is absent and enters a documented deprecation path after the
+  appendix.
 
 ## Progress
 
-- [ ] Appendix Slice A1: Freeze the properties and appearance contract
+- [x] Appendix Slice A1: Freeze the properties and appearance contract
 - [ ] Appendix Slice A2: Add canonical task/lane properties and commands
 - [ ] Appendix Slice A3: Resolve appearance and progress primitives
 - [ ] Appendix Slice A4: Render accessible semantic color and progress
@@ -816,10 +824,31 @@ Resolve in Appendix Slice A1:
   properties. This supports deferring occurrence-level appearance.
 - The theming architecture already prefers semantic variants and coordinated portable
   tokens. This appendix makes them editable and persistable without persisting themes.
+- 2026-07-31: Appendix Slice A1 audited the packed base-M4 declaration and confirmed
+  the public occurrence target, selector, command lifecycle, `TaskEditor`,
+  `features.editor`, and renderer-only `taskVariants` boundaries. The accepted
+  decision keeps those source-compatible, adds one `ItemProperties` replacement
+  surface and `appearanceVariants` registry, and makes persisted task appearance
+  authoritative over the compatibility fallback.
+- 2026-07-31: The schema-version-1 record definitions already support additive
+  optional fields without a migration. The appendix fixes bounded semantic IDs,
+  deterministic unknown fallback with per-instance registry-revision diagnostic
+  deduplication, task-only editable progress, 1/10 percentage-point keyboard steps,
+  read-only elapsed duration, activation-driven read-only inspection, and an
+  example-owned palette.
+- 2026-07-31: Appendix Slice A1 verification passed. `vp check` formatted all 149
+  files and found no lint/type errors in 138 files. Packed declaration inspection
+  confirmed the accepted `GanttInteractionTarget`, selector, `GanttHandle`,
+  `TaskEditor`, `features.editor`, and `taskVariants` base-M4 facade. Terminology,
+  relative link targets, and `git diff --check` passed. The required full
+  `mise run ci` passed 61 test files / 297 tests and produced four package artifacts
+  (`index.js`, source map, CSS, and declarations). This docs-only slice makes no
+  runtime, rendering, browser, or package-surface implementation claim.
 
 ## Next Slice
 
-Wait until the base M4 plan and both final gates are complete. Then start Appendix
-Slice A1 by auditing the final facade and formalizing task/lane appearance,
-description, progress, properties, compatibility, and accessibility before
-implementation.
+Begin Appendix Slice A2 in `packages/gantt/src/model/types.ts`,
+`packages/gantt/src/model/schema/records.ts`, codec/serialization fixtures, and
+`packages/gantt/src/commands/types.ts`. Add canonical description and appearance,
+extend task/lane updates with strict normalization, and prove patches, transactions,
+history, fixed-seed round trips, and packed declarations without changing rendering.
