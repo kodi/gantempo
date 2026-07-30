@@ -44,10 +44,9 @@ The first real read-only chart path is complete:
 Completion evidence and implementation findings are recorded in
 [`2026-07-30-simplest-chart-primitives-plan.md`](plans/2026-07-30-simplest-chart-primitives-plan.md).
 
-This baseline is a deliberately narrow vertical subset of architecture Slice 2. It
-uses only the minimum model contracts required by rendering and does not yet provide
-the command, patch, history, resolved-view, or viewport foundations required by later
-interaction and scheduling work.
+This rendering baseline is a deliberately narrow vertical subset of architecture
+Slice 2. The completed M1 and M2 kernels now provide its canonical document and change
+foundations; resolved-view and viewport foundations remain for M3.
 
 The M1 document kernel is also complete:
 
@@ -62,13 +61,30 @@ The M1 document kernel is also complete:
 Detailed completion evidence is recorded in
 [`2026-07-30-document-kernel-foundation-plan.md`](plans/2026-07-30-document-kernel-foundation-plan.md).
 
+The M2 change kernel is complete:
+
+- typed commands normalize ergonomic record inputs and reject invalid intent without
+  repairing it;
+- one versioned collection-plus-ID patch format applies atomically and returns direct
+  inverses;
+- task/relationship deletion, ordered nested transactions, and collection-qualified
+  affected references are deterministic;
+- explicit-capacity immutable history reuses patch application for fail-closed
+  undo/redo;
+- stable root exports document the pure change and persistence boundary;
+- fixed-seed properties, the full repository gate, packed artifacts, and playground
+  build pass without changing rendered output.
+
+Detailed completion evidence is recorded in
+[`2026-07-30-change-kernel-plan.md`](plans/2026-07-30-change-kernel-plan.md).
+
 ## Milestone Map
 
 | Milestone | Architecture mapping | Outcome | Status | Detailed plan |
 | --- | --- | --- | --- | --- |
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
-| M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[-]` In progress | [Active plan](plans/2026-07-30-change-kernel-plan.md) |
+| M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | Not yet created |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
@@ -84,7 +100,7 @@ M0 read-only vertical slice [done]
 M1 document kernel [done]
   |
   v
-M2 change kernel [in progress]
+M2 change kernel [done]
   |
   v
 M3 view/layout/viewport kernel
@@ -102,82 +118,39 @@ M6 advanced scheduling/resources
 M7 hardening/release
 ```
 
-The completed M0 vertical slice proves the renderer direction, and M1 supplies the
-canonical document boundary. M2 is finishing architecture Slice 1 with the pure
-change path before interaction or a broader public React API begins.
+The completed M0 vertical slice proves the renderer direction, M1 supplies the
+canonical document boundary, and M2 completes architecture Slice 1 with the pure
+change path. M3 is next and must establish resolved view, layout, and viewport
+contracts before interaction or a broader public React API begins.
 
 ## Current Focus
 
-### M2: Change kernel
+### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress
+**Status:** `[ ]` Not started; detailed plan not yet created
 
 **Target outcome**
 
-Create a framework-independent mutation boundary in which typed commands strictly
-validate their intent, reduce to deterministic domain patches and ready-to-apply
-inverse patches, commit transactions atomically, and drive bounded local undo/redo.
+Resolve persisted document state into deterministic project, resource, and
+application-defined lane views; stack overlaps with variable lane heights; and query
+only the horizontal and vertical primitives required by the viewport.
 
-**Minimum capabilities**
+**Verified prerequisites**
 
-- one versioned ID-keyed domain patch representation;
-- collection-qualified affected entity references;
-- strict non-repairing command and final-document validation;
-- typed add/update/set/move/delete commands spanning all six M1 domains;
-- exact forward and inverse patch generation;
-- deterministic relationship-aware task deletion and assignment cleanup;
-- ordered nested transactions with all-or-nothing rejection;
-- immutable bounded local history;
-- seeded patch-inversion and history property tests;
-- a deliberately small React-free package surface.
-
-**Exit condition**
-
-A React-free test can apply typed commands and transactions across tasks, resources,
-lanes, assignments, placements, and dependencies; prove that emitted patches reproduce
-the returned document; apply inverse patches to restore byte-identical stable JSON;
-and undo and redo committed transactions as one bounded history step. Invalid commands,
-patches, or transaction children return structured diagnostics and retain the original
-document without partial changes. The existing codec, scene, React component, and
-playground remain unchanged and all repository gates pass.
-
-**Planning and contract evidence**
-
-- The [active M2 plan](plans/2026-07-30-change-kernel-plan.md) orders patch,
-  command, deletion, transaction, history, facade, and final-evidence slices.
-- The accepted
-  [change-kernel contract](decisions/2026-07-30-change-kernel-contract.md) selects one
-  versioned ID-keyed domain patch format, rejects a dual JSON Patch core, defines
-  strict command validation and atomic transactions, and keeps revision ownership
-  outside the local engine.
-- M1 permits cross-family ID reuse, so the original raw affected-ID sketch is replaced
-  by deterministic collection-qualified entity references.
-- Slice 2 provides the atomic six-collection patch interpreter, strict final-state
-  integrity check, ready-to-apply inverses, and fixed-seed property evidence.
-- Slice 3 provides strict typed add/update/set/move commands across all six domains,
-  sharing M1 record normalization without changing codec recovery behavior.
-- Slice 4 adds fail-closed referential deletion, deterministic task cascade, placement
-  assignment clearing, and exact restoration across relationship-heavy removals.
-- Slice 5 composes the full command set into ordered nested all-or-nothing
-  transactions with stable child diagnostics and one flattened outcome.
-- Slice 6 adds explicit-capacity immutable local history over committed patch pairs,
-  with fail-closed stale undo/redo and generated undo-all/redo-all evidence.
+- M1 supplies the canonical six-domain document, stable serialization, reference
+  validation, and deterministic indexes.
+- M2 supplies strict typed changes, atomic patches and inverses, deterministic
+  transactions, bounded history, and collection-qualified invalidation references.
+- The existing read-only scene and responsive renderer remain the regression baseline.
 
 **Next action**
 
-Complete Slice 7's intentional package facade, README contract, packed artifact
-inspection, and final M2 automated evidence.
+Create `docs/plans/YYYY-MM-DD-view-layout-viewport-kernel-plan.md` before
+implementation. Fix the resolved-view, overlap, lane-height, and two-dimensional
+viewport contracts and their performance evidence, then select the smallest first
+implementation slice. Keep M3 `[ ]` until that slice is verified.
 
 ## Later Milestone Outcomes
-
-### M3: View, layout, and viewport kernel
-
-- Separate persisted and derived placements.
-- Resolve project, resource, and application-defined lane views.
-- Apply deterministic filtering, sorting, and lane flattening.
-- Stack overlapping entries and return variable effective lane heights.
-- Add vertical prefix sums and horizontal interval intersection.
-- Emit only viewport-relevant primitives while preserving stable identity.
 
 ### M4: Interaction runtime and public API
 
@@ -256,6 +229,23 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 change kernel complete
+
+- Exposed one stable root facade for typed commands, versioned domain patches,
+  collection-qualified affected references, transactions, and bounded local history.
+- Documented ergonomic input normalization, explicit clears, committed/rejected/no-op
+  outcomes, direct inverses, revision preservation, persistence ownership, and M2
+  exclusions.
+- The root-facade test passed 2 files and 7 tests. `mise run ci` passed clean checks,
+  20 test files and 89 tests, and a four-artifact package build.
+- `mise run build-playground` transformed 38 modules successfully. Packed declaration
+  and runtime export inspection found the intentional facade, no private declaration
+  exports, and no property-test runtime dependency.
+- Browser verification was not applicable because no React renderer, scene, style,
+  playground source, route output, or serialized scene input changed.
+- Marked M2 complete only after the final evidence gate and selected detailed M3
+  view/layout/viewport planning as the next action.
 
 ### 2026-07-30 — M2 Slice 6 bounded local history
 

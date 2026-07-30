@@ -1,6 +1,6 @@
 # M2 Change Kernel Implementation Plan
 
-Status: Active
+Status: Complete
 Date: 2026-07-30
 Milestone: M2
 
@@ -719,7 +719,7 @@ Verification passed on 2026-07-30:
 
 ### Slice 7: Intentional facade, documentation, and M2 completion evidence
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -778,6 +778,38 @@ history, and property tests have supplied implementation evidence.
 The final gate is not replaceable by focused tests. Record the exact command output,
 test counts, property-test seed/replay configuration, package artifacts, browser
 applicability and evidence, and any warnings before marking M2 done.
+
+Verification passed on 2026-07-30:
+
+- The focused root-facade test command
+  `vp test run packages/gantt/src/index.test.tsx packages/gantt/src/index.change-kernel.test.ts`
+  passed 2 test files and 7 tests using only the chosen root imports.
+- `mise run ci` passed:
+  - `vp check` formatted 61 files and lint/type checked 50 files with no warnings or
+    errors;
+  - `vp test run` passed 20 test files and 89 tests;
+  - `vp pack` produced 4 files: `index.js` 99.14 kB, `index.js.map` 213.96 kB,
+    `style.css` 3.75 kB, and `index.d.ts` 16.79 kB.
+- `mise run build-playground` transformed 38 modules and produced `index.html`
+  0.52 kB, CSS 9.43 kB, and JavaScript 209.10 kB.
+- Packed declaration inspection confirmed the intentional root exports for commands,
+  patches, outcomes, affected references, history, codec, model, and React component.
+  Private normalizers, strict validators, cascade traversal, indexes, and property
+  generators are absent from the declaration export list.
+- Packed JavaScript exposes only the intentional runtime facade and contains no
+  `fast-check` runtime dependency. React and `react/jsx-runtime` remain the existing
+  peer imports for the root component facade; production command source imports no
+  React, browser globals, clock, locale, or randomness.
+- `git diff --check` and explicit existence checks for architecture, roadmap, this
+  plan, decision record, README, packed declaration, JavaScript, and CSS passed.
+- Browser verification was not applicable: no React renderer, scene, style,
+  playground source, route output, or serialized scene input changed. The root facade
+  export list changed, and the existing SSR/facade tests plus package and playground
+  builds remained green.
+- Property configuration retained fixed seeds `20260730`, `20260731`, `20260732`, and
+  `20260733` for patch, cascade, transaction, and history suites. The suites ran 200,
+  150, 150, and 100 examples respectively with `endOnFailure: true`; fast-check
+  failure output provides replay seed and path.
 
 **Dependencies**
 
@@ -1014,6 +1046,30 @@ These questions do not block Slice 2:
 - Focused verification passed 2 files and 10 tests. `vp check` passed 60 formatted
   files and 49 lint/type-checked files with no warnings or errors.
 
+### 2026-07-30 — Slice 7 facade and M2 completion
+
+- Selected one stable root package facade. It exports the pure command and patch entry
+  points, typed commands and inputs, outcomes, affected references, history
+  operations/state, and existing document/React contracts without a duplicate
+  experimental surface.
+- Added a root-import-only test that commits and replays a transaction, preserves
+  caller-owned revision, records it as one history step, and undoes/redoes it.
+- Documented canonical documents versus ergonomic inputs, explicit clears,
+  committed/rejected/no-op outcomes, direct forward/inverse application, transactions,
+  bounded history, revision ownership, persistence responsibilities, and M2
+  exclusions in `README.md`.
+- Packed declarations expose only the intended facade; normalizers, strict validators,
+  cascade traversal, indexes, and property generators remain private. The runtime
+  bundle contains no `fast-check` dependency.
+- The final `mise run ci` gate passed 20 test files and 89 tests, clean checks across
+  61 formatted and 50 lint/type-checked files, and a four-file package build.
+  `mise run build-playground` transformed 38 modules successfully.
+- Browser verification was not triggered because no React renderer, scene, style,
+  playground source, route output, or serialized scene input changed. Existing SSR
+  tests, package build, and playground build passed.
+- All accepted M2 contracts remain unchanged. No architecture or decision-record
+  update was required.
+
 ## Progress
 
 - [x] Slice 1: Freeze the change-kernel contract and decision record
@@ -1022,13 +1078,13 @@ These questions do not block Slice 2:
 - [x] Slice 4: Referential deletion and deterministic cascade
 - [x] Slice 5: Atomic ordered transactions
 - [x] Slice 6: Bounded immutable local history
-- [ ] Slice 7: Intentional facade, documentation, and M2 completion evidence
-- [ ] Final automated gate
-- [ ] Conditional browser gate, only if visual surfaces change
+- [x] Slice 7: Intentional facade, documentation, and M2 completion evidence
+- [x] Final automated gate
+- [x] Conditional browser gate not applicable; visual trigger did not fire
 
 ## Next Slice
 
-Begin Slice 7 by selecting one intentional root package facade, adding facade tests,
-and documenting the pure change flow in `README.md`. Inspect packed declarations and
-bundle output, run `mise run ci` and `mise run build-playground`, and record the final
-M2 evidence before changing the plan and roadmap to complete.
+Create the detailed M3 view/layout/viewport kernel plan before implementation. Start
+from the accepted architecture's resolved-view and viewport boundaries, link the new
+plan from `docs/ROADMAP.md`, and keep M3 `[ ]` until its first implementation slice is
+verified.

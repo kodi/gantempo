@@ -91,6 +91,96 @@ The React `Gantt` component accepts the normalized `GanttDocument`; parsing does
 run inside React. Keep the external trust boundary in application loading or
 persistence code, then pass the accepted document to the component.
 
+## Pure change flow
+
+The root package also exports a synchronous framework-independent change kernel.
+Commands accept ergonomic record inputs at the mutation boundary, normalize them to
+the canonical document contract, and either commit a complete change or reject it
+without mutating or replacing the original document.
+
+```ts
+import {
+  applyGanttCommand,
+  applyGanttPatches,
+  type GanttCommand,
+  type GanttDocument,
+} from '@gantempo/gantt';
+
+const command: GanttCommand = {
+  type: 'transaction',
+  commands: [
+    {
+      type: 'task.add',
+      value: {
+        id: 42,
+        title: 'Release',
+        schedule: {
+          mode: 'instant',
+          start: '2026-07-30T09:00:00Z',
+          end: '2026-07-30T12:00:00Z',
+        },
+      },
+    },
+    {
+      type: 'task.update',
+      id: '42',
+      changes: { progress: 0.5 },
+    },
+  ],
+};
+
+const outcome = applyGanttCommand(document, command);
+if (outcome.status === 'rejected') {
+  throw new Error(outcome.diagnostics[0]?.message ?? 'Command rejected');
+}
+
+const nextDocument: GanttDocument = outcome.document;
+const replay = applyGanttPatches(document, outcome.patches);
+const restored = applyGanttPatches(nextDocument, outcome.inversePatches);
+```
+
+Committed outcomes contain deterministic collection-plus-ID patches, inverse patches
+already ordered for direct application, and collection-qualified affected references.
+A committed no-op has empty change arrays and retains the input document by identity.
+A rejected command or transaction has structured diagnostics, empty change arrays,
+and the original document by identity. Transactions run children in order and commit
+all or none.
+
+Optional fields in update commands use `null` as an explicit clear value; `undefined`
+is rejected as persistence data. Add and set commands accept the same documented
+numeric/string ID and instant/all-day schedule forms as the document codec, while
+update and delete targets use canonical string IDs.
+
+Bounded local undo and redo are immutable session state:
+
+```ts
+import {
+  commitGanttHistory,
+  createGanttHistory,
+  redoGanttHistory,
+  undoGanttHistory,
+} from '@gantempo/gantt';
+
+let history = createGanttHistory(document, 50);
+const committed = commitGanttHistory(history, outcome);
+if (committed.status === 'applied') {
+  history = committed.history;
+}
+
+history = undoGanttHistory(history).history;
+history = redoGanttHistory(history).history;
+```
+
+Only committed non-empty outcomes enter history, and one transaction is one history
+step. A new commit after undo clears the redo branch. Stale patch application fails
+closed without moving either stack.
+
+Local commands, patches, and history preserve `document.revision`. Persistence
+adapters remain responsible for server revisions, operation IDs, retries, conflicts,
+temporary-ID reconciliation, and translating domain patches to a backend-specific
+format such as JSON Patch. M2 does not add React state ownership, interaction events,
+semantic scheduling commands, persistent audit history, or collaborative rebasing.
+
 ## Local development
 
 Start the React playground:

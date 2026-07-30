@@ -1,4 +1,55 @@
 export { Gantt, type GanttProps } from './react/Gantt';
+export {
+  clearGanttHistory,
+  commitGanttHistory,
+  createGanttHistory,
+  redoGanttHistory,
+  undoGanttHistory,
+  type GanttHistoryEntry,
+  type GanttHistoryState,
+  type HistoryOperationResult,
+} from './commands/history';
+export { applyGanttPatches } from './commands/patches';
+export { applyGanttCommand } from './commands/reduce';
+export type {
+  AddEntityPatch,
+  AllDayScheduleInput,
+  AssignmentDeleteCommand,
+  AssignmentInput,
+  AssignmentSetCommand,
+  CommandOutcome,
+  DependencyAddCommand,
+  DependencyDeleteCommand,
+  DependencyInput,
+  DocumentCollection,
+  DomainRecordByCollection,
+  DurationInput,
+  EntityIdInput,
+  EntityReference,
+  GanttCommand,
+  GanttPatch,
+  InstantScheduleInput,
+  LaneAddCommand,
+  LaneInput,
+  LaneUpdateCommand,
+  PatchApplicationResult,
+  PlacementAddCommand,
+  PlacementDeleteCommand,
+  PlacementInput,
+  PlacementMoveCommand,
+  RemoveEntityPatch,
+  ReplaceEntityPatch,
+  ResourceAddCommand,
+  ResourceInput,
+  ResourceUpdateCommand,
+  TaskAddCommand,
+  TaskDeleteCommand,
+  TaskInput,
+  TaskScheduleInput,
+  TaskSegmentInput,
+  TaskUpdateCommand,
+  TransactionCommand,
+} from './commands/types';
 export { parseGanttDocument, type ParseDocumentResult } from './model/codec';
 export type { Diagnostic, DiagnosticCode, DiagnosticSeverity } from './model/diagnostics';
 export type { JsonArray, JsonObject, JsonPrimitive, JsonValue } from './model/json';
