@@ -741,9 +741,13 @@ describe('Gantt React facade in a DOM environment', () => {
       },
     };
     const mounted = await render(<Gantt {...props} ref={ref} />);
-    const { timeline } = installPointerGeometry(mounted.container, { height: 100 });
+    const { body, timeline } = installPointerGeometry(mounted.container, { height: 100 });
     const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
 
+    await act(async () => {
+      body.dispatchEvent(new Event('scroll'));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
     await act(async () => {
       dispatchPointer(task, 'pointerdown', {
         clientX: 310,

@@ -317,6 +317,11 @@ more than one implementation plan.
   boundary. Recorded that the final DevTools touch viewport's semantic drag emitted a
   mouse pointer source; the verified Slice 8 live touch evidence and still-green touch
   integration coverage remain authoritative.
+- The first post-commit CI rerun exposed an order-dependent pointer auto-pan DOM
+  gate. It now publishes installed synthetic geometry through the measured
+  scroll/animation-frame path before pointer movement; five consecutive isolated
+  cases, the complete DOM suite, and two consecutive full CI reruns pass without
+  changing runtime behavior.
 - Marked base M4 done only after both final gates and added completion evidence to the
   accepted decision. Architecture required no change.
 - The separately accepted post-M4 item-properties/semantic-color/progress appendix

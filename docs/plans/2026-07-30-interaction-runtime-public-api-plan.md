@@ -2194,6 +2194,13 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
   - SSR import/static rendering plus the existing hydration regression passed;
   - `git diff --check`, linked-file existence, and focused plan/roadmap/decision/API
     terminology checks passed.
+- The first post-commit `mise run ci` rerun exposed an order-dependent pointer
+  auto-pan DOM test: the test installed non-zero geometry after mount but could race
+  the runtime's queued zero-size initial measurement. The gate now dispatches the
+  measured body's scroll event and awaits the next animation frame before pointer
+  movement. The focused case passed five consecutive isolated runs, followed by its
+  complete DOM suite and two consecutive full `mise run ci` passes at 50 files/238
+  tests, 123 formatted files, and 112 lint/type-checked files.
 - Chrome DevTools final verification covered `/`, `/matrix`, `/interactive`, and
   `/uncontrolled` at 1440 × 900, 900 × 900, and 560 × 900:
   - no route had page-level horizontal overflow; main retained a 160 px lane column,
@@ -2224,6 +2231,17 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
   The decision record now contains final evidence.
 
 ## Deviations
+
+### 2026-07-30 — Pointer auto-pan gate publishes installed geometry deterministically
+
+- The first post-commit full CI rerun found that the controlled pointer auto-pan DOM
+  test could depend on file execution order. Its synthetic element geometry was
+  installed after mount while the runtime's queued initial measurement could still
+  publish the environment's zero-size geometry.
+- The test now explicitly publishes the installed geometry through the same measured
+  scroll/animation-frame path before moving the pointer. Five consecutive isolated
+  cases and the full DOM suite pass. Runtime behavior, the public contract,
+  architecture boundaries, and release acceptance criteria are unchanged.
 
 ### 2026-07-30 — The post-M4 appendix supersedes the older M5 handoff
 
