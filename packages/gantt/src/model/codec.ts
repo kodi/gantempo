@@ -37,6 +37,19 @@ interface DecodedCollection<T> {
   readonly sourcePaths: ReadonlyMap<EntityId, string>;
 }
 
+type NormalizedRecord =
+  | AssignmentRecord
+  | DependencyRecord
+  | LaneRecord
+  | PlacementRecord
+  | ResourceRecord
+  | TaskRecord;
+
+export interface NormalizeRecordInputResult {
+  readonly diagnostics: readonly Diagnostic[];
+  readonly record?: NormalizedRecord;
+}
+
 const COLLECTION_NAMES = [
   'tasks',
   'resources',
@@ -966,6 +979,27 @@ function decodeCollection<T>(
   return Object.freeze({
     records: Object.freeze(result),
     sourcePaths,
+  });
+}
+
+export function normalizeGanttRecordInput(
+  collection: 'assignments' | 'dependencies' | 'lanes' | 'placements' | 'resources' | 'tasks',
+  input: unknown,
+  path: string,
+): NormalizeRecordInputResult {
+  const context: DecodeContext = { diagnostics: [] };
+  const decoders = {
+    assignments: decodeAssignment,
+    dependencies: decodeDependency,
+    lanes: decodeLane,
+    placements: decodePlacement,
+    resources: decodeResource,
+    tasks: decodeTask,
+  } as const;
+  const record = decoders[collection](input, path, context) as NormalizedRecord | undefined;
+  return Object.freeze({
+    diagnostics: Object.freeze(context.diagnostics),
+    ...(record === undefined ? {} : { record }),
   });
 }
 

@@ -154,11 +154,13 @@ playground remain unchanged and all repository gates pass.
   by deterministic collection-qualified entity references.
 - Slice 2 provides the atomic six-collection patch interpreter, strict final-state
   integrity check, ready-to-apply inverses, and fixed-seed property evidence.
+- Slice 3 provides strict typed add/update/set/move commands across all six domains,
+  sharing M1 record normalization without changing codec recovery behavior.
 
 **Next action**
 
-Implement Slice 3's typed non-delete command normalization and reducers through the
-verified patch interpreter.
+Implement Slice 4's deterministic referential deletion and task cascade through the
+verified command and patch boundaries.
 
 ## Later Milestone Outcomes
 
@@ -248,6 +250,21 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 Slice 3 typed non-delete commands
+
+- Added typed ergonomic task, resource, lane, assignment, placement, and dependency
+  commands with canonical string update targets and explicit `null` clears.
+- Shared the existing M1 record decoders through a private record-normalization entry
+  point while leaving document recovery diagnostics and source paths unchanged.
+- Commands reject unknown fields, malformed values, immutable IDs, duplicate or
+  missing targets, and strict reference failures without exposing partial candidates.
+- Reducer patches replay the returned document and inverses restore stable bytes;
+  deterministic no-ops retain the document by identity and mutable payloads are not
+  retained.
+- Focused verification passed 5 files and 25 tests. `vp check` passed formatting for
+  53 files and lint/type checking for 42 files with no warnings or errors.
+- Selected referential deletion and deterministic task cascade as Slice 4.
 
 ### 2026-07-30 — M2 Slice 2 atomic domain patches
 

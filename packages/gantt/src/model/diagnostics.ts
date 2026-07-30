@@ -4,6 +4,13 @@ import type { EntityId } from './types';
 export type DiagnosticSeverity = 'error' | 'info' | 'warning';
 
 export type DiagnosticCode =
+  | 'command.duplicate-target'
+  | 'command.immutable-id'
+  | 'command.invalid-clear'
+  | 'command.invalid-payload'
+  | 'command.missing-target'
+  | 'command.strict-reference'
+  | 'command.unknown-type'
   | 'document.invalid-collection'
   | 'document.invalid-root'
   | 'patch.duplicate-target'

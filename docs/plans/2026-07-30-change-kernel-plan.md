@@ -482,7 +482,7 @@ Verification passed on 2026-07-30:
 
 ### Slice 3: Typed command normalization, validation, and core reducers
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -532,6 +532,13 @@ transaction rollback.
 
 - `vp test run packages/gantt/src/commands packages/gantt/src/model/codec.test.ts packages/gantt/src/model/document-round-trip.test.ts`
 - `vp check`
+
+Verification passed on 2026-07-30:
+
+- `vp test run packages/gantt/src/commands packages/gantt/src/model/codec.test.ts packages/gantt/src/model/document-round-trip.test.ts`
+  passed 5 test files and 25 tests.
+- `vp check` passed formatting for 53 files and lint/type checking for 42 files with
+  no warnings or errors.
 
 **Dependencies**
 
@@ -889,11 +896,31 @@ These questions do not block Slice 2:
 - Focused verification passed 3 files and 5 tests. `vp check` passed 50 formatted
   files and 39 lint/type-checked files with no warnings or errors.
 
+### 2026-07-30 — Slice 3 typed non-delete commands
+
+- Added typed ergonomic inputs and commands for task/resource/lane add and update,
+  assignment set, placement add and move, and dependency add.
+- Added a private single-record normalization entry point over the existing M1
+  decoders. Document parsing retains its warning-and-recovery behavior, while command
+  normalization treats every decoder diagnostic, including unknown properties, as a
+  rejecting error without reparsing a whole document.
+- Update DTOs use `null` as the explicit clear value. IDs are immutable, explicit
+  `undefined` and unknown properties reject, and target IDs remain canonical strings.
+- All reducers emit one deterministic add/replace patch and use the Slice 2
+  interpreter as the only document materialization and strict-reference authority.
+- Committed no-ops retain the document by identity and emit no patches. Mutable input
+  extension objects are cloned and frozen, equal inputs produce equal ordered output,
+  forward patches replay the result, and inverse patches restore stable bytes.
+- No renderer, React, style, playground, architecture contract, or public package
+  facade changed.
+- Focused verification passed 5 files and 25 tests. `vp check` passed 53 formatted
+  files and 42 lint/type-checked files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the change-kernel contract and decision record
 - [x] Slice 2: Domain patch application and inversion properties
-- [ ] Slice 3: Typed command normalization, validation, and core reducers
+- [x] Slice 3: Typed command normalization, validation, and core reducers
 - [ ] Slice 4: Referential deletion and deterministic cascade
 - [ ] Slice 5: Atomic ordered transactions
 - [ ] Slice 6: Bounded immutable local history
@@ -903,8 +930,7 @@ These questions do not block Slice 2:
 
 ## Next Slice
 
-Begin Slice 3 in `packages/gantt/src/commands/normalize.ts` and
-`packages/gantt/src/commands/reduce.ts`. Extract private scalar, schedule, record, and
-JSON normalization helpers without changing M1 codec diagnostics, then implement the
-typed non-delete command set through `applyGanttPatches`. Run the exact Slice 3 test
-command and `vp check` before beginning referential deletion.
+Begin Slice 4 in `packages/gantt/src/commands/reduce.ts` and focused delete test files.
+Implement deterministic task cascade plus assignment, placement, and dependency
+deletion through complete forward/inverse patch sets. Run the exact Slice 4 test
+command and `vp check` before beginning transactions.
