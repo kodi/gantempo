@@ -20,9 +20,9 @@ viewport-session ownership, or a second renderer.
 
 This plan is the working handoff for M3. It records the intended contracts, ordered
 implementation slices, verification boundaries, performance evidence, deviations,
-and actionable next work. Architecture-level contract decisions become durable only
-after Slice 1 records them in a focused decision record and synchronizes
-`docs/ARCHITECTURE.md`.
+and actionable next work. Architecture-level contract decisions are fixed by the
+[M3 view, layout, and viewport kernel contract](../decisions/2026-07-30-view-layout-viewport-kernel-contract.md)
+recorded in Slice 1 and synchronized with `docs/ARCHITECTURE.md`.
 
 ## Target State
 
@@ -393,8 +393,8 @@ marked complete by this plan.
 
 ## Implementation Shape
 
-Exact names remain private until Slice 1, but implementation should converge on a
-shape equivalent to:
+Slice 1 fixed the public/private boundary and namespacing semantics. Implementation
+should converge on a shape equivalent to:
 
 ```ts
 type GanttViewDefinition =
@@ -505,7 +505,7 @@ stacking, or visibility scans.
 
 ### Slice 1: Freeze the M3 contract and decision record
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1248,9 +1248,40 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - No implementation, unit/property test, benchmark, package build, playground build,
   or browser verification was run by this documentation-only pass.
 
+### 2026-07-30 — Slice 1 contract decisions
+
+- Accepted one package-visible data-only `GanttViewDefinition` selected through
+  optional `GanttProps.view`; document view remains the default.
+- Selected collision-safe JSON tuple serialization behind private branded lane and
+  placement keys, with custom keys namespaced by custom view ID and source family.
+- Ambiguous or malformed lane topology rejects the resolved view. A task, segment,
+  assignment, schedule, or interval failure omits only the affected placement with a
+  stable `view.*` or `layout.*` diagnostic.
+- Fixed one-placement/one-instant-interval resolution, deterministic lowest-track
+  `stack`, outer-border-box lane minimums, contiguous absolute vertical geometry, and
+  renderer-neutral half-open viewport query semantics.
+- Selected internal ephemeral query-work counters and a fixed-seed benchmark beside
+  viewport code; M3 adds no portable wall-clock threshold or frame-rate claim.
+- Linked the accepted
+  [M3 contract](../decisions/2026-07-30-view-layout-viewport-kernel-contract.md)
+  from architecture, roadmap, and this plan. Runtime implementation remains
+  unstarted until the documentation gate passes.
+- Documentation verification passed:
+  - `vp check` reported all 61 files formatted and no warnings, lint errors, or type
+    errors across 50 checked files;
+  - `git diff --check` passed;
+  - explicit existence and link checks passed across the decision, architecture,
+    roadmap, and plan;
+  - a focused terminology read confirmed compatible view variants, key/provenance,
+    rejection, interval, stack, lane-height, viewport, benchmark, and public-boundary
+    semantics.
+- The required per-slice `mise run ci` checkpoint passed all 61 formatting files, 50
+  lint/type-checked files, 20 test files and 89 tests, then built all four package
+  artifacts.
+
 ## Progress
 
-- [ ] Slice 1: Freeze the M3 contract and decision record
+- [x] Slice 1: Freeze the M3 contract and decision record
 - [ ] Slice 2: Resolve deterministic view topology
 - [ ] Slice 3: Resolve placement intervals
 - [ ] Slice 4: Deterministic overlap stacks and variable lane geometry
@@ -1264,16 +1295,8 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 1 by reading this plan, `docs/ARCHITECTURE.md` Sections 6, 7, 10, 18, 19,
-23, and 24, `packages/gantt/src/model/types.ts`,
-`packages/gantt/src/render/primitives.ts`, and
-`packages/gantt/src/render/build-chart-scene.ts`. Create
-`docs/decisions/2026-07-30-view-layout-viewport-kernel-contract.md` and resolve the
-seven open questions before adding runtime modules.
-
-The first slice must fix view-key/provenance, custom-view rejection, interval source,
-stack/height, viewport-coordinate, performance-evidence, and minimum React-facade
-contracts. Verify the synchronized docs with `vp check`, `git diff --check`, linked
-file checks, and a focused architecture/decision/plan/roadmap consistency read. Do not
-begin Slice 2 or mark M3 in progress until that evidence is recorded here and in
-`docs/ROADMAP.md`.
+Start Slice 2 in `packages/gantt/src/view/` with the public data-only view definition,
+private resolved topology and provenance, document/project/resource/custom
+normalization, example tests, and a fixed-seed determinism/immutability property.
+Verify with `vp test run packages/gantt/src/view`, `vp check`, `git diff --check`, and
+the required per-slice `mise run ci`.

@@ -85,7 +85,7 @@ Detailed completion evidence is recorded in
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
-| M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | [Active plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
+| M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[-]` | [Active plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[ ]` Not started; detailed plan created
+**Status:** `[-]` In progress; Slice 1 contract complete
 
 **Target outcome**
 
@@ -145,12 +145,12 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Execute Slice 1 of the
-[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md):
-freeze the resolved-view identity/provenance, interval source, overlap stack,
-lane-height, two-dimensional viewport, performance-evidence, and minimum React-facade
-contracts in a focused decision record before adding runtime modules. Keep M3 `[ ]`
-until that contract slice is verified.
+Implement deterministic document, project, resource, and custom topology in Slice 2
+of the
+[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md). The accepted
+[M3 contract](decisions/2026-07-30-view-layout-viewport-kernel-contract.md) fixes the
+identity, provenance, interval, stack, lane-height, viewport, performance-evidence,
+and minimum React-facade semantics.
 
 ## Later Milestone Outcomes
 
@@ -219,6 +219,9 @@ The document wire-format decisions resolved for M1 are recorded in the
 patch, affected-reference, strict-validation, transaction, revision, and local-history
 decisions are recorded in the
 [change-kernel contract](decisions/2026-07-30-change-kernel-contract.md).
+The M3 view identity, topology rejection, interval source, overlap, lane-height,
+viewport-query, benchmark, and read-only React-facade decisions are recorded in the
+[view, layout, and viewport kernel contract](decisions/2026-07-30-view-layout-viewport-kernel-contract.md).
 The repository, package, activation, release, deployment, and update-entitlement
 decisions for Community and Pro are recorded in the
 [Community and Pro distribution and licensing decision](decisions/2026-07-30-community-pro-distribution-licensing.md).
@@ -231,6 +234,23 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 1 contract selected
+
+- Accepted one data-only document/project/resource/custom view union and optional
+  `GanttProps.view`, with document view remaining the default.
+- Fixed collision-safe private view identity, explicit canonical provenance,
+  placement-isolated source diagnostics, one instant interval per placement,
+  deterministic `stack`, minimum outer lane heights, and renderer-neutral half-open
+  viewport queries.
+- Selected internal query-work evidence and a fixed-seed viewport-adjacent benchmark
+  without a portable timing threshold or browser frame-rate claim.
+- Documentation verification passed `vp check` across 61 formatted and 50
+  lint/type-checked files, `git diff --check`, explicit existence/link checks, and a
+  focused cross-document terminology read.
+- The required per-slice `mise run ci` checkpoint passed 20 test files and 89 tests
+  and built all four package artifacts.
+- Marked Slice 1 complete and selected deterministic view topology as Slice 2.
 
 ### 2026-07-30 — M3 implementation plan created
 

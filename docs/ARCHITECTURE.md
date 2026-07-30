@@ -227,6 +227,14 @@ only when the application needs an explicit, stable display mapping. Layout alwa
 consumes normalized `ResolvedPlacement` values, regardless of whether they were
 persisted or derived.
 
+The M3 view boundary accepts data-only document, flat project, flat resource, and
+application-defined views. Resolved view keys are distinct from canonical entity IDs,
+and explicit provenance is retained through layout and rendering. Ambiguous view
+topology fails closed, while an invalid individual interval is omitted with a
+structured diagnostic. These identity, ordering, interval, and error semantics are
+fixed by the
+[view, layout, and viewport kernel contract](decisions/2026-07-30-view-layout-viewport-kernel-contract.md).
+
 ### 6.2 Persistent document
 
 ```ts
@@ -731,6 +739,11 @@ Each lane can select an overlap policy:
 Layout returns the effective height of each lane, allowing virtual scrolling with
 variable-height rows.
 
+M3 implements deterministic `stack` first. It assigns half-open intervals to the
+lowest available track in start, end, source-order, and stable-key order. Persisted
+and application-defined lane heights are minimum outer heights, so dense stacks grow
+instead of clipping.
+
 ### 10.6 Virtualization
 
 Virtualize both dimensions:
@@ -747,6 +760,13 @@ Maintain:
 
 Only dirty lanes, tasks, dependencies, and time ranges should be recalculated after a
 command.
+
+The M3 viewport kernel is immutable and renderer-neutral: it uses variable-height lane
+boundary data plus augmented interval indexes, returns absolute vertical geometry,
+and leaves horizontal normalization to primitive generation. Viewport session state,
+overscan policy, and hit testing remain interaction-runtime concerns. The exact query
+and boundary semantics are fixed by the
+[view, layout, and viewport kernel contract](decisions/2026-07-30-view-layout-viewport-kernel-contract.md).
 
 ## 11. Time and calendar architecture
 
@@ -1097,6 +1117,12 @@ screen-reader experience must not depend on canvas pixel inspection.
 ## 18. Performance targets
 
 Performance claims must be backed by versioned benchmarks.
+
+M3 establishes a reproducible structural baseline for the pure view/layout/viewport
+path. It records fixed-seed 10,000-task/2,000-lane cold construction, warm query
+timings, exact brute-force parity, and query-work observations without creating a
+cross-machine threshold or claiming browser frame rate. Stable thresholds remain M7
+work.
 
 Initial targets:
 
