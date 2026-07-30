@@ -1,5 +1,5 @@
 import type { Diagnostic } from '../model/diagnostics';
-import type { EntityId, GanttDocument } from '../model/types';
+import type { EntityId, GanttDocument, InstantTaskSchedule, TaskRecord } from '../model/types';
 import { normalizeCommandRecord, normalizeUpdatedRecord } from './normalize';
 import { applyGanttPatches } from './patches';
 import type {
@@ -262,6 +262,207 @@ function updateRecord<C extends DocumentCollection>(
     } as GanttPatch,
     [{ collection, id }],
   );
+}
+
+type InstantScheduledTask = TaskRecord & {
+  readonly schedule: InstantTaskSchedule;
+};
+
+function requireInstantScheduledTask(
+  document: GanttDocument,
+  id: unknown,
+): InstantScheduledTask | CommandOutcome {
+  if (typeof id !== 'string' || id.length === 0) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'A task schedule command target must be a canonical string ID.',
+        '/command/id',
+      ),
+    ]);
+  }
+  const task = findRecord(document, 'tasks', id);
+  if (!task) {
+    return rejected(document, [
+      diagnostic(
+        'command.missing-target',
+        `Cannot change the schedule of missing task ID "${id}".`,
+        '/command/id',
+        [id],
+      ),
+    ]);
+  }
+  const schedule: unknown = task.schedule;
+  if (schedule === undefined) {
+    return rejected(document, [
+      diagnostic(
+        'command.unsupported-schedule',
+        `Task "${id}" has no schedule to move or resize.`,
+        '/command/id',
+        [id],
+      ),
+    ]);
+  }
+  if (isPlainObject(schedule) && schedule.mode === 'all-day') {
+    return rejected(document, [
+      diagnostic(
+        'command.unsupported-schedule',
+        `Task "${id}" has an all-day schedule; M4 movement and resize are instant-only.`,
+        '/command/id',
+        [id],
+      ),
+    ]);
+  }
+  if (
+    !isPlainObject(schedule) ||
+    schedule.mode !== 'instant' ||
+    typeof schedule.start !== 'number' ||
+    !Number.isFinite(schedule.start) ||
+    typeof schedule.end !== 'number' ||
+    !Number.isFinite(schedule.end) ||
+    schedule.end <= schedule.start
+  ) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-interval',
+        `Task "${id}" must have a finite positive-width instant interval.`,
+        '/command/id',
+        [id],
+      ),
+    ]);
+  }
+  return task as InstantScheduledTask;
+}
+
+function rejectsSegmentTarget(
+  document: GanttDocument,
+  command: Record<string, unknown>,
+): CommandOutcome | undefined {
+  if (!Object.hasOwn(command, 'segmentId')) {
+    return undefined;
+  }
+  return rejected(document, [
+    diagnostic(
+      'command.unsupported-target',
+      'M4 task movement and resize target the task schedule; segment targets are unsupported.',
+      '/command/segmentId',
+      typeof command.id === 'string' && command.id.length > 0 ? [command.id] : undefined,
+    ),
+  ]);
+}
+
+function replaceTaskSchedule(
+  document: GanttDocument,
+  task: InstantScheduledTask,
+  schedule: InstantTaskSchedule,
+): CommandOutcome {
+  if (task.schedule.start === schedule.start && task.schedule.end === schedule.end) {
+    return committedNoOp(document);
+  }
+  return commitPatch(
+    document,
+    {
+      op: 'replace',
+      patchVersion: 1,
+      target: { collection: 'tasks', id: task.id },
+      value: { ...task, schedule },
+    },
+    [{ collection: 'tasks', id: task.id }],
+  );
+}
+
+function moveTask(document: GanttDocument, command: Record<string, unknown>): CommandOutcome {
+  const task = requireInstantScheduledTask(document, command.id);
+  if (isCommandOutcome(task)) {
+    return task;
+  }
+  const hasDelta = Object.hasOwn(command, 'delta');
+  const hasStart = Object.hasOwn(command, 'start');
+  if (hasDelta === hasStart) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'Task move requires exactly one finite delta or absolute start.',
+        '/command',
+        [task.id],
+      ),
+    ]);
+  }
+  const key = hasDelta ? 'delta' : 'start';
+  const value = command[key];
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        `Task move ${key} must be a finite number.`,
+        `/command/${key}`,
+        [task.id],
+      ),
+    ]);
+  }
+  if ((hasDelta && value === 0) || (hasStart && value === task.schedule.start)) {
+    return committedNoOp(document);
+  }
+
+  const delta = hasDelta ? value : value - task.schedule.start;
+  const start = hasDelta ? task.schedule.start + delta : value;
+  const end = task.schedule.end + delta;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-interval',
+        `Task move would produce a non-finite, zero-width, or reversed interval for "${task.id}".`,
+        `/command/${key}`,
+        [task.id],
+      ),
+    ]);
+  }
+  return replaceTaskSchedule(document, task, { end, mode: 'instant', start });
+}
+
+function resizeTask(document: GanttDocument, command: Record<string, unknown>): CommandOutcome {
+  const task = requireInstantScheduledTask(document, command.id);
+  if (isCommandOutcome(task)) {
+    return task;
+  }
+  if (command.edge !== 'start' && command.edge !== 'end') {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'Task resize edge must be start or end.',
+        '/command/edge',
+        [task.id],
+      ),
+    ]);
+  }
+  if (typeof command.time !== 'number' || !Number.isFinite(command.time)) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'Task resize time must be a finite epoch-millisecond number.',
+        '/command/time',
+        [task.id],
+      ),
+    ]);
+  }
+  if (command.time === task.schedule[command.edge]) {
+    return committedNoOp(document);
+  }
+  const schedule: InstantTaskSchedule =
+    command.edge === 'start'
+      ? { end: task.schedule.end, mode: 'instant', start: command.time }
+      : { end: command.time, mode: 'instant', start: task.schedule.start };
+  if (schedule.end <= schedule.start) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-interval',
+        `Task resize would produce a zero-width or reversed interval for "${task.id}".`,
+        '/command/time',
+        [task.id],
+      ),
+    ]);
+  }
+  return replaceTaskSchedule(document, task, schedule);
 }
 
 function requireDeleteTarget<C extends DocumentCollection>(
@@ -532,6 +733,22 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
           new Set(['parentId', 'schedule', 'progress', 'fields']),
         )
       );
+    }
+    case 'task.move': {
+      const unsupported = rejectsSegmentTarget(document, command);
+      if (unsupported) {
+        return unsupported;
+      }
+      const invalid = commandShape(document, command, ['type', 'id', 'delta', 'start']);
+      return invalid ?? moveTask(document, command);
+    }
+    case 'task.resize': {
+      const unsupported = rejectsSegmentTarget(document, command);
+      if (unsupported) {
+        return unsupported;
+      }
+      const invalid = commandShape(document, command, ['type', 'id', 'edge', 'time']);
+      return invalid ?? resizeTask(document, command);
     }
     case 'task.delete': {
       const invalid = commandShape(document, command, ['type', 'id', 'cascade']);

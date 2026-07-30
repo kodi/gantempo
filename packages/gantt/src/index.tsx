@@ -45,6 +45,8 @@ export type {
   TaskAddCommand,
   TaskDeleteCommand,
   TaskInput,
+  TaskMoveCommand,
+  TaskResizeCommand,
   TaskScheduleInput,
   TaskSegmentInput,
   TaskUpdateCommand,

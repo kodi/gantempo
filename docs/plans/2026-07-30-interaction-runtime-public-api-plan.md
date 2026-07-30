@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slice 1 complete, Slice 2 next
+Status: Active; Slices 1–2 complete, Slice 3 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -824,7 +824,7 @@ APIs and invalidate behavior tests.
 
 ### Slice 2: Add pure semantic task move and resize commands
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1654,6 +1654,43 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - No runtime, playground, network, package, test, benchmark, or browser implementation
   claim was made by this refinement.
 
+### 2026-07-30 — Slice 2 semantic task move and resize commands
+
+- Added the accepted exclusive-delta/absolute-start `task.move` and edge/time
+  `task.resize` contracts and exported only those two public command types through the
+  root facade.
+- Added pure reducer handling that preserves instant duration, changes one resize
+  boundary, produces one deterministic whole-task replacement patch plus direct
+  inverse/affected references, and retains document identity for valid no-ops.
+- Added stable diagnostics for invalid intervals, unsupported schedules, and
+  unsupported segment targets while preserving existing missing-target and
+  invalid-payload behavior.
+- Rejected unscheduled, all-day, zero-width, reversed, non-finite, overflowing,
+  malformed, missing, and segment-directed inputs without mutating the base document
+  or command.
+- Added focused examples and fixed-seed properties covering input immutability,
+  cross-family same IDs, nested transactions, replay, byte-identical inversion,
+  no-ops, deterministic outcomes, and root-facade type use.
+- TypeScript's plain-object type guard narrowed inline object type-alias members
+  differently from interface members. The two private move-shape branches therefore
+  use interfaces while the exported `TaskMoveCommand` remains the accepted exclusive
+  union; this is an implementation-only typing finding and does not change the public
+  contract.
+- Source inspection confirmed the command types, normalizer, validator, and reducer
+  import only model/command modules and no React, DOM, browser, locale, clock, or time
+  zone dependency.
+- Verification passed:
+  - `vp test run packages/gantt/src/commands` passed 11 test files and 39 tests;
+  - the focused root-facade test passed;
+  - `vp check` reported all 84 files formatted and no warning, lint, or type error
+    across 73 checked files;
+  - `vp pack` built all four package artifacts;
+  - `git diff --check` passed;
+  - `mise run ci` passed the complete check, 31-test-file/133-test, and four-artifact
+    package build gates.
+- No React, primitive, style, scenario, or playground file changed, so this pure
+  command slice did not trigger a browser gate.
+
 ## Deviations
 
 ### 2026-07-30 — Persistence-ready event boundary clarification
@@ -1672,7 +1709,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 ## Progress
 
 - [x] Slice 1: Freeze the M4 runtime and public API contract
-- [ ] Slice 2: Add pure semantic task move and resize commands
+- [x] Slice 2: Add pure semantic task move and resize commands
 - [ ] Slice 3: Build the React-free runtime store and ownership state machine
 - [ ] Slice 4: Add the async command bus, events, and bounded history orchestration
 - [ ] Slice 5: Stage derived caches and add measured viewport subscriptions
@@ -1688,7 +1725,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 2. Add pure semantic `task.move` and `task.resize` command variants,
-normalization, strict instant-only reduction, deterministic patches/inverses and
-affected references, focused examples, and fixed-seed properties without introducing
-React or browser dependencies.
+Start Slice 3. Build the React-free immutable runtime store, document/session
+ownership state machine, stable snapshot/subscription boundary, one-pending controlled
+proposal metadata, exact acknowledgement/divergence reconciliation, and fixed-seed
+ownership properties without importing React or browser modules.

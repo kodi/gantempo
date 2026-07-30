@@ -7,6 +7,7 @@ import type {
   DurationMode,
   DurationUnit,
   EntityId,
+  EpochMilliseconds,
   GanttDocument,
   LaneRecord,
   PlacementRecord,
@@ -172,6 +173,29 @@ export interface TaskUpdateCommand {
   readonly type: 'task.update';
 }
 
+interface TaskMoveByDeltaCommand {
+  readonly delta: number;
+  readonly id: EntityId;
+  readonly start?: never;
+  readonly type: 'task.move';
+}
+
+interface TaskMoveToStartCommand {
+  readonly delta?: never;
+  readonly id: EntityId;
+  readonly start: EpochMilliseconds;
+  readonly type: 'task.move';
+}
+
+export type TaskMoveCommand = TaskMoveByDeltaCommand | TaskMoveToStartCommand;
+
+export interface TaskResizeCommand {
+  readonly edge: 'end' | 'start';
+  readonly id: EntityId;
+  readonly time: EpochMilliseconds;
+  readonly type: 'task.resize';
+}
+
 export interface TaskDeleteCommand {
   readonly cascade?: boolean;
   readonly id: EntityId;
@@ -274,6 +298,8 @@ export type GanttCommand =
   | ResourceUpdateCommand
   | TaskAddCommand
   | TaskDeleteCommand
+  | TaskMoveCommand
+  | TaskResizeCommand
   | TaskUpdateCommand
   | TransactionCommand;
 

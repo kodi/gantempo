@@ -10,6 +10,8 @@ import {
   type GanttCommand,
   type GanttDocument,
   type GanttPatch,
+  type TaskMoveCommand,
+  type TaskResizeCommand,
 } from './index';
 
 const document: GanttDocument = Object.freeze({
@@ -25,6 +27,17 @@ const document: GanttDocument = Object.freeze({
 
 describe('public change-kernel facade', () => {
   it('supports command, patch, transaction, and bounded history through root imports', () => {
+    const move: TaskMoveCommand = {
+      delta: 5,
+      id: '42',
+      type: 'task.move',
+    };
+    const resize: TaskResizeCommand = {
+      edge: 'end',
+      id: '42',
+      time: 30,
+      type: 'task.resize',
+    };
     const command: GanttCommand = {
       commands: [
         {
@@ -32,9 +45,12 @@ describe('public change-kernel facade', () => {
           value: {
             fields: { source: 'facade' },
             id: 42,
+            schedule: { end: 20, mode: 'instant', start: 10 },
             title: 'Public change',
           },
         },
+        move,
+        resize,
         {
           changes: { progress: 0.5 },
           id: '42',
@@ -51,6 +67,7 @@ describe('public change-kernel facade', () => {
       fields: { source: 'facade' },
       id: '42',
       progress: 0.5,
+      schedule: { end: 30, mode: 'instant', start: 15 },
     });
     const patches: readonly GanttPatch[] = outcome.patches;
     const replay = applyGanttPatches(document, patches);

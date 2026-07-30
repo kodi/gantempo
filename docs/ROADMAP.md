@@ -137,13 +137,14 @@ M7 hardening/release
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
 viewport, and read-only rendering foundations. M4 is in progress: its public contract
-is frozen and the semantic task-command foundation is next.
+and semantic task-command foundation are complete, and the React-free runtime store is
+next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slice 1 contract complete, Slice 2 next
+**Status:** `[-]` In progress; Slices 1–2 complete, Slice 3 next
 
 **Target outcome**
 
@@ -163,13 +164,13 @@ persistence.
 
 **Next action**
 
-Execute Slice 2 of the
+Execute Slice 3 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
-is verified. Add the pure instant-only `task.move` and `task.resize` command
-foundation, deterministic patches/inverses, strict diagnostics, and fixed-seed
-properties before gesture or React runtime work.
+and pure instant-only `task.move`/`task.resize` foundation are verified. Build the
+React-free immutable store, independent document/session ownership, subscriptions,
+and exact controlled input reconciliation before async commands or DOM integration.
 
 **Adjacent proof complete**
 
@@ -258,6 +259,26 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 semantic task commands complete
+
+- Added public `task.move` and `task.resize` command types with exclusive
+  delta/absolute-start movement and explicit instant edge/time resize payloads.
+- Added pure strict reduction with exact duration preservation, positive half-open
+  intervals, deterministic whole-task patches/inverses, direct affected references,
+  and identity-preserving no-ops.
+- Added stable failure diagnostics and focused/fixed-seed evidence for malformed,
+  unsupported, cross-family, nested transaction, replay, inversion, immutability, and
+  root-facade behavior.
+- Recorded the implementation-only TypeScript plain-object narrowing finding without
+  changing the accepted public union or any durable architecture boundary.
+- Focused command tests passed 11 files/39 tests, the root-facade test passed,
+  `vp check` passed all 84 formatted and 73 lint/type-checked files, `vp pack` built
+  four artifacts, and `git diff --check` passed.
+- `mise run ci` passed the complete check, 31-test-file/133-test, and four-artifact
+  package build gates.
+- No React, renderer, style, playground, or browser behavior changed; no browser claim
+  was added.
 
 ### 2026-07-30 — M4 interaction-runtime/public-API contract accepted
 
