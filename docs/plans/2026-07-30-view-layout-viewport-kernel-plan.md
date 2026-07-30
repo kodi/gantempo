@@ -659,7 +659,7 @@ Record exact counts and property configuration.
 
 ### Slice 4: Deterministic overlap stacks and variable lane geometry
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1317,12 +1317,32 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - The required per-slice `mise run ci` checkpoint passed 24 test files and 102 tests,
   all static checks, and the four-artifact package build.
 
+### 2026-07-30 — Slice 4 deterministic stacks and lane geometry
+
+- Added validated stack metrics with 58-unit default minimum lanes, 24-unit bars,
+  17-unit top/bottom padding, and a 6-unit stack gap, preserving the former one-bar
+  vertical baseline while allowing dense lanes to grow.
+- Implemented the accepted start/end/source-order/key working order and
+  lowest-available track assignment. Touching half-open intervals share tracks;
+  overlaps do not.
+- Persisted/custom heights remain positive finite minimum outer heights. Empty lanes
+  remain present, lane offsets are contiguous, and bars use absolute vertical
+  coordinates.
+- Focused layout verification passed 4 files and 12 tests. The property used seed
+  `20260736`, 200 runs, at most 10 lanes and 20 intervals per lane,
+  `endOnFailure: true`, and standard seed/path replay. The largest explicit dense
+  fixture contained 256 mutually overlapping placements.
+- `vp check` passed 71 formatted and 60 lint/type-checked files after formatting the
+  three new stack files. `git diff --check` passed.
+- The required per-slice `mise run ci` checkpoint passed 26 test files and 109 tests,
+  all static checks, and the four-artifact package build.
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
 - [x] Slice 2: Resolve deterministic view topology
 - [x] Slice 3: Resolve placement intervals
-- [ ] Slice 4: Deterministic overlap stacks and variable lane geometry
+- [x] Slice 4: Deterministic overlap stacks and variable lane geometry
 - [ ] Slice 5: Immutable two-dimensional viewport index and query
 - [ ] Slice 6: Performance fixture and M3 viewport baseline
 - [ ] Slice 7: Compose viewport-backed scene primitives
@@ -1333,8 +1353,8 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 4 in `packages/gantt/src/layout/` with validated stack metrics,
-lowest-available deterministic track assignment, effective minimum outer heights,
-contiguous lane offsets, and absolute bar geometry. Cover touching/nested/equal/dense
-overlaps and brute-force concurrency with a fixed-seed property, then run the focused
-layout gate and required per-slice `mise run ci`.
+Start Slice 5 in `packages/gantt/src/viewport/` with binary-searchable variable lane
+boundaries, augmented per-lane interval indexes, validated half-open time/vertical
+queries, immutable deterministic results, internal ephemeral work counters, and a
+brute-force oracle/property. Verify indexed parity and reuse before the required
+per-slice `mise run ci`.

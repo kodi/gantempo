@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 3 interval resolution complete
+**Status:** `[-]` In progress; Slice 4 layout complete
 
 **Target outcome**
 
@@ -145,7 +145,8 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Implement deterministic overlap stacks and variable lane geometry in Slice 4 of the
+Build the immutable two-dimensional viewport index and exact repeated query boundary
+in Slice 5 of the
 [M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
 ## Later Milestone Outcomes
@@ -230,6 +231,19 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 4 deterministic stacks and lane geometry
+
+- Added validated stack metrics, lowest-available deterministic tracks, and exact
+  variable outer lane heights with contiguous absolute geometry.
+- Verified touching half-open intervals share tracks, overlaps do not, empty/minimum
+  lanes remain usable, and stack count equals brute-force maximum concurrency.
+- Focused verification passed 4 files and 12 tests, including 200 property runs with
+  seed `20260736` and an explicit 256-way dense fixture; `vp check` passed 71
+  formatted and 60 lint/type-checked files.
+- The per-slice `mise run ci` checkpoint passed 26 test files and 109 tests plus the
+  four-artifact package build.
+- Selected immutable two-dimensional viewport indexing/query as Slice 5.
 
 ### 2026-07-30 — M3 Slice 3 placement interval resolution
 
