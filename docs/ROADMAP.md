@@ -138,14 +138,15 @@ The completed M0 vertical slice proves the renderer direction, M1 and M2 complet
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
 viewport, and read-only rendering foundations. M4 is in progress: its public contract,
 semantic task-command foundation, React-free ownership store, async command/history
-lifecycle, staged derivation, measured viewport model, and renderer-independent
-interaction intent are complete; React facade integration is next.
+lifecycle, staged derivation, measured viewport model, renderer-independent
+interaction intent, and the runtime-backed React facade are complete; direct
+manipulation is next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–6 complete, Slice 7 next
+**Status:** `[-]` In progress; Slices 1–7 complete, Slice 8 next
 
 **Target outcome**
 
@@ -165,17 +166,16 @@ persistence.
 
 **Next action**
 
-Execute Slice 7 of the
+Execute Slice 8 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
 pure instant-only `task.move`/`task.resize` foundation, React-free ownership store,
 async command/history lifecycle, private derived pipeline, affected-reference
 invalidation/work observations, measured vertical viewport/overscan publication,
-renderer-independent hit testing, navigation, gesture intent, command mapping, and
-previews are verified. Integrate the per-instance runtime and intentional public
-facade with React selectors, ownership props, semantic events, measurement, cleanup,
-SSR safety, and the narrow imperative handle.
+renderer-independent hit testing, navigation, gesture intent, command mapping,
+previews, and the per-instance React facade are verified. Connect pointer, pen, and
+touch event adapters to those paths without adding a second mutation authority.
 
 **Queued M4 appendix**
 
@@ -272,6 +272,34 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 React runtime facade complete
+
+- Connected exactly one per-instance ownership store, command bus, staged composer,
+  measured viewport, selector context, semantic event surface, and narrow imperative
+  handle to the React component with controlled/uncontrolled document and session
+  ownership.
+- Preserved trusted affected references through local adoption/acknowledgement,
+  retained SSR-safe deterministic initial markup, added absolute scrollable lane
+  geometry and post-mount coalesced measurement, and exposed stable
+  disabled/pending/selected/focused attributes plus a polite live region.
+- Added focused jsdom/root-facade evidence for command rendering, controlled
+  acknowledgement/callback order, selector isolation, refs, two instances, hydration,
+  measurement cleanup, Strict Mode replay, and compile-time ownership exclusivity.
+- Recorded the implementation deviation that React final disposal must defer across
+  passive cleanup and the Strict Mode replay; paired activation cancels only the final
+  disposal while direct runtime disposal remains immediate.
+- Focused tests passed 4 files/24 tests; the existing SSR/M1/M2/M3 subset passed
+  27 files/124 tests; `vp check`, `vp pack`, public declaration inspection,
+  `git diff --check`, and the 52-module production playground build passed.
+- `mise run ci` passed the complete 46-test-file/213-test and four-artifact package
+  gates.
+- Chrome DevTools passed `/`, `/matrix`, and `/interactive` at 1440 × 900 and
+  560 × 900 with zero chart diagnostics, no page-level horizontal overflow, aligned
+  viewport/lane/timeline geometry, complete labeled-region/task/live-region
+  accessibility snapshots, successful controlled “Add item” rendering, no failed
+  local request, and no application-owned console error or warning. Extension and
+  DevTools environment noise was recorded separately in the active plan.
 
 ### 2026-07-30 — M4 renderer-independent interaction geometry complete
 

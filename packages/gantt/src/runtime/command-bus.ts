@@ -219,7 +219,7 @@ export function createGanttCommandCancellationController(): GanttCommandCancella
 
 export function createGanttCommandBus(options: CreateGanttCommandBusOptions): GanttCommandBus {
   const { store } = options;
-  const interceptors = Object.freeze([...(options.interceptors ?? [])]);
+  let interceptors = Object.freeze([...(options.interceptors ?? [])]);
   let runtimeHistory = createGanttRuntimeHistory(
     store.getSnapshot().document,
     store.getSnapshot().history.capacity,
@@ -631,7 +631,10 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
         ),
       ]);
     }
-    if (controlled && options.onDocumentChange === undefined) {
+    if (
+      controlled &&
+      !(options.canProposeControlledDocument?.() ?? options.onDocumentChange !== undefined)
+    ) {
       return emitRejected(initialContext, [
         diagnostic('runtime.read-only', 'Controlled document mutation requires onDocumentChange.'),
       ]);
@@ -676,6 +679,7 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
 
     if (controlled) {
       const staged = store.stageControlledDocumentProposal({
+        affected: change.affected,
         baseSerialization: capture.serialization,
         candidate: outcome.document,
         proposalId: context.proposalId,
@@ -697,7 +701,7 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
     }
 
     runStoreBatch(() => {
-      store.adoptUncontrolledDocument(outcome.document);
+      store.adoptUncontrolledDocument(outcome.document, change.affected);
       commitUncontrolledHistory(outcome, change);
       syncHistoryCapabilities();
     });
@@ -738,7 +742,10 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
         ),
       ]);
     }
-    if (controlled && options.onDocumentChange === undefined) {
+    if (
+      controlled &&
+      !(options.canProposeControlledDocument?.() ?? options.onDocumentChange !== undefined)
+    ) {
       return emitRejected(initialContext, [
         diagnostic('runtime.read-only', 'Controlled document history requires onDocumentChange.'),
       ]);
@@ -793,6 +800,7 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
 
     if (controlled) {
       const staged = store.stageControlledDocumentProposal({
+        affected: change.affected,
         baseSerialization: capture.serialization,
         candidate: operation.document,
         proposalId: context.proposalId,
@@ -821,7 +829,7 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
     }
 
     runStoreBatch(() => {
-      store.adoptUncontrolledDocument(operation.document);
+      store.adoptUncontrolledDocument(operation.document, change.affected);
       runtimeHistory = operation.history;
       syncHistoryCapabilities();
     });
@@ -959,6 +967,16 @@ export function createGanttCommandBus(options: CreateGanttCommandBusOptions): Ga
     },
 
     updateControlledDocument,
+
+    updateInterceptors(nextInterceptors) {
+      if (disposed) {
+        throw new Error('The Gantt command bus has been disposed.');
+      }
+      if (!Array.isArray(nextInterceptors)) {
+        throw new TypeError('Runtime interceptors must be an array.');
+      }
+      interceptors = Object.freeze([...nextInterceptors]);
+    },
   };
 
   return Object.freeze(bus);

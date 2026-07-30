@@ -1,28 +1,33 @@
-import { useEffect, useMemo, type CSSProperties, type ReactElement } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ForwardRefExoticComponent,
+  type ReactElement,
+  type RefAttributes,
+} from 'react';
 
-import type { Diagnostic } from '../model/diagnostics';
-import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
-import { buildChartScene } from '../render/build-chart-scene';
 import type { TaskBarPrimitive } from '../render/primitives';
-import type { GanttViewDefinition } from '../view/types';
+import { GanttRuntimeProvider, useGanttSelector } from './context';
+import {
+  createGanttReactRuntime,
+  type GanttReactRuntime,
+  type GanttReactRuntimeSnapshot,
+} from './runtime';
+import type { GanttHandle, GanttProps } from './types';
 import '../styles.css';
 
-export interface GanttProps {
-  readonly document: GanttDocument;
-  readonly range: TimeRange;
-  readonly timeZone: string;
-  readonly tickAnchor: EpochMilliseconds;
-  readonly tickInterval: number;
-  readonly view?: GanttViewDefinition;
-  readonly className?: string;
-  readonly label?: string;
-  readonly locale?: string;
-  readonly taskVariants?: Readonly<Record<EntityId, string>>;
-  readonly onDiagnostics?: (diagnostics: readonly Diagnostic[]) => void;
-}
+export type { GanttHandle, GanttProps } from './types';
 
 interface GanttRootStyle extends CSSProperties {
   readonly '--gt-lane-column-width': string;
+  readonly '--gt-timeline-height': string;
   readonly '--gt-timeline-height-ratio': number;
 }
 
@@ -34,9 +39,12 @@ function percent(value: number): string {
   return `${value * 100}%`;
 }
 
-function laneStyle(height: number, defaultHeight: number): GanttLaneStyle {
+function laneStyle(y: number, height: number, defaultHeight: number): GanttLaneStyle {
   return {
     '--gt-lane-height-ratio': height / defaultHeight,
+    height,
+    position: 'absolute',
+    top: y,
   } as GanttLaneStyle;
 }
 
@@ -44,58 +52,117 @@ function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeForm
   return `${task.title}, ${formatter.format(task.start)} to ${formatter.format(task.end)}`;
 }
 
-export function Gantt({
-  document,
-  range,
-  timeZone,
-  tickAnchor,
-  tickInterval,
-  view,
-  className,
-  label = 'Gantt chart',
-  locale = 'en-US',
-  taskVariants,
-  onDiagnostics,
-}: GanttProps): ReactElement {
-  const scene = useMemo(
-    () =>
-      buildChartScene({
-        document,
-        range,
-        tickAnchor,
-        tickInterval,
-        timeZone,
-        locale,
-        ...(view === undefined ? {} : { view }),
-      }),
-    [document, locale, range, tickAnchor, tickInterval, timeZone, view],
-  );
-  const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone,
-      }),
-    [locale, timeZone],
-  );
-  useEffect(() => {
-    onDiagnostics?.(scene.diagnostics);
-  }, [onDiagnostics, scene.diagnostics]);
+function targetStateEqual(
+  previous: readonly [boolean, boolean],
+  next: readonly [boolean, boolean],
+): boolean {
+  return previous[0] === next[0] && previous[1] === next[1];
+}
 
+function GanttTask({
+  dateFormatter,
+  disabled,
+  task,
+  timelineHeight,
+  variant,
+}: {
+  readonly dateFormatter: Intl.DateTimeFormat;
+  readonly disabled: boolean;
+  readonly task: TaskBarPrimitive;
+  readonly timelineHeight: number;
+  readonly variant?: string | undefined;
+}): ReactElement {
+  const [selected, focused] = useGanttSelector(
+    (snapshot) =>
+      [
+        snapshot.session.selection.some(
+          (target) => target.kind === 'task' && target.viewKey === task.viewKey,
+        ),
+        snapshot.session.focused?.kind === 'task' &&
+          snapshot.session.focused.viewKey === task.viewKey,
+      ] as const,
+    targetStateEqual,
+  );
+  const accessibleName = taskAccessibleName(task, dateFormatter);
+  return (
+    <g
+      aria-label={accessibleName}
+      data-assignment-id={task.assignmentId}
+      data-clipped-end={task.clippedEnd || undefined}
+      data-clipped-start={task.clippedStart || undefined}
+      data-disabled={disabled || undefined}
+      data-focused={focused || undefined}
+      data-gt-part="task"
+      data-gt-variant={variant}
+      data-lane-id={task.laneId}
+      data-lane-view-key={task.laneViewKey}
+      data-placement-id={task.placementId}
+      data-resource-id={task.resourceId}
+      data-segment-id={task.segmentId}
+      data-selected={selected || undefined}
+      data-task-id={task.taskId}
+      data-view-key={task.viewKey}
+      role="img"
+    >
+      <rect
+        className="gt-gantt__task-bar"
+        height={percent(task.height / timelineHeight)}
+        rx="6"
+        width={percent(task.width)}
+        x={percent(task.x)}
+        y={percent(task.y / timelineHeight)}
+      />
+      <foreignObject
+        height={percent(task.height / timelineHeight)}
+        width={percent(task.width)}
+        x={percent(task.x)}
+        y={percent(task.y / timelineHeight)}
+      >
+        <div className="gt-gantt__task-label">
+          <span>{task.title}</span>
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
+function GanttSurface({
+  bodyRef,
+  className,
+  dateFormatter,
+  disabled,
+  label,
+  scene,
+  taskVariants,
+  timelineRef,
+}: {
+  readonly bodyRef: React.RefObject<HTMLDivElement | null>;
+  readonly className?: string | undefined;
+  readonly dateFormatter: Intl.DateTimeFormat;
+  readonly disabled: boolean;
+  readonly label: string;
+  readonly scene: GanttReactRuntimeSnapshot['scene'];
+  readonly taskVariants?: GanttProps['taskVariants'];
+  readonly timelineRef: React.RefObject<HTMLDivElement | null>;
+}): ReactElement {
+  const interaction = useGanttSelector((snapshot) => snapshot.interaction);
   const classes = ['gt-gantt', className].filter(Boolean).join(' ');
   const style: GanttRootStyle = {
     '--gt-lane-column-width': `${scene.bounds.laneColumnWidth}px`,
+    '--gt-timeline-height': `${scene.bounds.timelineHeight}px`,
     '--gt-timeline-height-ratio': scene.bounds.timelineHeight / scene.bounds.defaultLaneHeight,
   };
 
   return (
     <div
       aria-label={label}
+      aria-disabled={disabled || undefined}
       className={classes}
       data-diagnostic-count={scene.diagnostics.length}
+      data-disabled={disabled || undefined}
       data-gantempo=""
       data-gt-part="root"
+      data-pending={interaction.status === 'document-proposal-pending' || undefined}
       role="region"
       style={style}
     >
@@ -121,98 +188,177 @@ export function Gantt({
             <span>{scene.emptyState.description}</span>
           </div>
         ) : (
-          <>
-            <div className="gt-gantt__lanes" data-gt-part="lane-list">
-              {scene.lanes.map((lane) => (
-                <div
-                  className="gt-gantt__lane"
-                  data-lane-id={lane.laneId}
-                  data-gt-part="lane"
-                  data-resource-id={lane.resourceId}
-                  data-view-key={lane.viewKey}
-                  key={lane.viewKey}
-                  style={laneStyle(lane.height, scene.bounds.defaultLaneHeight)}
-                >
-                  <span aria-hidden="true" className="gt-gantt__lane-marker">
-                    ·
-                  </span>
-                  <span title={lane.title}>{lane.title}</span>
-                </div>
-              ))}
-            </div>
+          <div className="gt-gantt__body-scroll" data-gt-part="viewport" ref={bodyRef}>
+            <div className="gt-gantt__body" style={{ height: scene.bounds.timelineHeight }}>
+              <div className="gt-gantt__lanes" data-gt-part="lane-list">
+                {scene.lanes.map((lane) => (
+                  <div
+                    className="gt-gantt__lane"
+                    data-lane-id={lane.laneId}
+                    data-gt-part="lane"
+                    data-resource-id={lane.resourceId}
+                    data-view-key={lane.viewKey}
+                    key={lane.viewKey}
+                    style={laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight)}
+                  >
+                    <span aria-hidden="true" className="gt-gantt__lane-marker">
+                      ·
+                    </span>
+                    <span title={lane.title}>{lane.title}</span>
+                  </div>
+                ))}
+              </div>
 
-            <div className="gt-gantt__timeline" data-gt-part="timeline">
-              <svg aria-label="Scheduled tasks" role="group">
-                <g aria-hidden="true" data-gt-part="grid">
-                  {scene.gridLines.map((line) => (
-                    <line
-                      key={line.time}
-                      x1={percent(line.x)}
-                      x2={percent(line.x)}
-                      y1="0"
-                      y2="100%"
-                    />
-                  ))}
-                  {scene.lanes.map((lane) => (
-                    <line
-                      className="gt-gantt__row-separator"
-                      key={lane.viewKey}
-                      x1="0"
-                      x2="100%"
-                      y1={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
-                      y2={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
-                    />
-                  ))}
-                </g>
-
-                {scene.taskBars.map((task) => {
-                  const accessibleName = taskAccessibleName(task, dateFormatter);
-                  const variant = taskVariants?.[task.taskId];
-
-                  return (
-                    <g
-                      aria-label={accessibleName}
-                      data-clipped-end={task.clippedEnd || undefined}
-                      data-clipped-start={task.clippedStart || undefined}
-                      data-gt-part="task"
-                      data-gt-variant={variant}
-                      data-assignment-id={task.assignmentId}
-                      data-lane-id={task.laneId}
-                      data-lane-view-key={task.laneViewKey}
-                      data-placement-id={task.placementId}
-                      data-resource-id={task.resourceId}
-                      data-segment-id={task.segmentId}
-                      data-task-id={task.taskId}
-                      data-view-key={task.viewKey}
-                      key={task.viewKey}
-                      role="img"
-                    >
-                      <rect
-                        className="gt-gantt__task-bar"
-                        height={percent(task.height / scene.bounds.timelineHeight)}
-                        rx="6"
-                        width={percent(task.width)}
-                        x={percent(task.x)}
-                        y={percent(task.y / scene.bounds.timelineHeight)}
+              <div className="gt-gantt__timeline" data-gt-part="timeline" ref={timelineRef}>
+                <svg aria-label="Scheduled tasks" role="group">
+                  <g aria-hidden="true" data-gt-part="grid">
+                    {scene.gridLines.map((line) => (
+                      <line
+                        key={line.time}
+                        x1={percent(line.x)}
+                        x2={percent(line.x)}
+                        y1="0"
+                        y2="100%"
                       />
-                      <foreignObject
-                        height={percent(task.height / scene.bounds.timelineHeight)}
-                        width={percent(task.width)}
-                        x={percent(task.x)}
-                        y={percent(task.y / scene.bounds.timelineHeight)}
-                      >
-                        <div className="gt-gantt__task-label">
-                          <span>{task.title}</span>
-                        </div>
-                      </foreignObject>
-                    </g>
-                  );
-                })}
-              </svg>
+                    ))}
+                    {scene.lanes.map((lane) => (
+                      <line
+                        className="gt-gantt__row-separator"
+                        key={lane.viewKey}
+                        x1="0"
+                        x2="100%"
+                        y1={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
+                        y2={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
+                      />
+                    ))}
+                  </g>
+
+                  {scene.taskBars.map((task) => (
+                    <GanttTask
+                      dateFormatter={dateFormatter}
+                      disabled={disabled}
+                      key={task.viewKey}
+                      task={task}
+                      timelineHeight={scene.bounds.timelineHeight}
+                      variant={taskVariants?.[task.taskId]}
+                    />
+                  ))}
+                </svg>
+              </div>
             </div>
-          </>
+          </div>
         )}
+      </div>
+      <div
+        aria-atomic="true"
+        aria-live="polite"
+        className="gt-gantt__live-region"
+        data-gt-part="live-region"
+      >
+        {interaction.status === 'document-proposal-pending' ? 'Chart update pending.' : ''}
       </div>
     </div>
   );
 }
+
+function useRuntime(props: GanttProps): GanttReactRuntime {
+  const runtimeRef = useRef<GanttReactRuntime | null>(null);
+  if (runtimeRef.current === null) {
+    runtimeRef.current = createGanttReactRuntime(props);
+  }
+  runtimeRef.current.updateCallbacks(props);
+  return runtimeRef.current;
+}
+
+export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHandle>> = forwardRef<
+  GanttHandle,
+  GanttProps
+>(function Gantt(props, ref): ReactElement {
+  const runtime = useRuntime(props);
+  const getScene = useCallback(() => runtime.getSnapshot().scene, [runtime]);
+  const subscribe = useCallback(
+    (subscriber: () => void) => runtime.subscribe(subscriber),
+    [runtime],
+  );
+  const scene = useSyncExternalStore(subscribe, getScene, getScene);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const { className, label = 'Gantt chart', locale = 'en-US', onDiagnostics, taskVariants } = props;
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: props.timeZone,
+      }),
+    [locale, props.timeZone],
+  );
+  const disabled = props.document !== undefined && props.onDocumentChange === undefined;
+
+  useImperativeHandle(ref, () => runtime.getHandle(), [runtime]);
+  useLayoutEffect(() => {
+    runtime.activate();
+    return () => runtime.deactivate();
+  }, [runtime]);
+  useLayoutEffect(() => {
+    runtime.reconcile(props);
+  }, [props, runtime]);
+  useEffect(() => {
+    onDiagnostics?.(scene.diagnostics);
+  }, [onDiagnostics, scene.diagnostics]);
+  useEffect(() => {
+    const body = bodyRef.current;
+    const timeline = timelineRef.current;
+    if (body === null || timeline === null) {
+      return;
+    }
+    const measure = () => {
+      const current = runtime.getSnapshot();
+      const focused = current.selector.session.focused;
+      const focusedTask =
+        focused?.kind === 'task'
+          ? current.scene.taskBars.find((task) => task.viewKey === focused.viewKey)
+          : undefined;
+      runtime.measure({
+        clientHeight: body.clientHeight,
+        clientWidth: timeline.clientWidth,
+        verticalStart: body.scrollTop,
+        ...(focusedTask === undefined
+          ? {}
+          : {
+              retainedRange: {
+                start: focusedTask.y,
+                end: focusedTask.y + focusedTask.height,
+              },
+            }),
+      });
+    };
+    body.addEventListener('scroll', measure, { passive: true });
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : undefined;
+    observer?.observe(body);
+    observer?.observe(timeline);
+    measure();
+    return () => {
+      body.removeEventListener('scroll', measure);
+      observer?.disconnect();
+      runtime.clearMeasurement();
+    };
+  }, [runtime, scene.emptyState]);
+
+  return (
+    <GanttRuntimeProvider runtime={runtime}>
+      <GanttSurface
+        bodyRef={bodyRef}
+        className={className}
+        dateFormatter={dateFormatter}
+        disabled={disabled}
+        label={label}
+        scene={scene}
+        taskVariants={taskVariants}
+        timelineRef={timelineRef}
+      />
+    </GanttRuntimeProvider>
+  );
+});
+
+Gantt.displayName = 'Gantt';

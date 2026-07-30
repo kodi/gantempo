@@ -98,11 +98,23 @@ export interface CreateGanttRuntimeStoreOptions {
 }
 
 export interface GanttRuntimePendingDocumentProposal {
+  readonly affected?: readonly EntityReference[];
   readonly baseSerialization: string;
   readonly candidate: GanttDocument;
   readonly candidateSerialization: string;
   readonly proposalId: string;
 }
+
+export type GanttRuntimeDerivationState =
+  | {
+      readonly affected: readonly EntityReference[];
+      readonly kind: 'affected';
+      readonly version: number;
+    }
+  | {
+      readonly kind: 'external';
+      readonly version: number;
+    };
 
 export type GanttRuntimeDocumentReconciliation =
   | 'acknowledged'
@@ -137,6 +149,7 @@ export interface GanttRuntimeHistoryMetadata {
 }
 
 export interface GanttRuntimeSnapshot {
+  readonly derivation: GanttRuntimeDerivationState;
   readonly document: GanttDocument;
   readonly history: GanttRuntimeHistoryMetadata;
   readonly interaction: GanttRuntimeInteractionState;
@@ -165,6 +178,7 @@ export type UpdateControlledDocumentResult =
   | { readonly status: 'unchanged' };
 
 export interface StageControlledDocumentProposalInput {
+  readonly affected?: readonly EntityReference[];
   readonly baseSerialization: string;
   readonly candidate: GanttDocument;
   readonly proposalId: string;
@@ -176,7 +190,10 @@ export type GanttRuntimeEquality<T> = (previous: T, next: T) => boolean;
 export type GanttRuntimeSelectorSubscriber<T> = (next: T, previous: T) => void;
 
 export interface GanttRuntimeStore {
-  adoptUncontrolledDocument(document: GanttDocument): boolean;
+  adoptUncontrolledDocument(
+    document: GanttDocument,
+    affected?: readonly EntityReference[],
+  ): boolean;
   batch<T>(operation: () => T): T;
   captureDocument(): GanttRuntimeDocumentCapture;
   clearViewportMeasurement(): boolean;
@@ -279,7 +296,13 @@ export interface GanttRuntimeErrorEvent {
     | 'onCommandCommitted'
     | 'onCommandRejected'
     | 'onDocumentChange'
-    | 'onRuntimeError';
+    | 'onFocusChange'
+    | 'onRangeChange'
+    | 'onRuntimeError'
+    | 'onSelectionChange'
+    | 'onSessionChange'
+    | 'onTaskActivate'
+    | 'onViewportChange';
   readonly diagnostic: Diagnostic;
   readonly type: 'runtimeError';
 }
@@ -302,6 +325,7 @@ export type GanttDispatchResult =
     };
 
 export interface CreateGanttCommandBusOptions {
+  readonly canProposeControlledDocument?: () => boolean;
   readonly interceptors?: readonly GanttCommandInterceptor[];
   readonly onCommandCommitted?: (event: GanttCommandCommittedEvent) => void;
   readonly onCommandRejected?: (event: GanttCommandRejectedEvent) => void;
@@ -318,6 +342,7 @@ export interface GanttCommandBus {
   redo(options?: Omit<GanttDispatchOptions, 'source'>): Promise<GanttDispatchResult>;
   undo(options?: Omit<GanttDispatchOptions, 'source'>): Promise<GanttDispatchResult>;
   updateControlledDocument(document: GanttDocument): UpdateControlledDocumentResult;
+  updateInterceptors(interceptors: readonly GanttCommandInterceptor[]): void;
 }
 
 export interface GanttCommandCancellationController {

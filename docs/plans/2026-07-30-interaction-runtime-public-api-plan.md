@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–6 complete, Slice 7 next
+Status: Active; Slices 1–7 complete, Slice 8 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -1090,7 +1090,7 @@ portals, or focus effects are introduced.
 
 ### Slice 7: Integrate the React facade, selectors, semantic events, and imperative handle
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -1148,7 +1148,7 @@ remain an adapter instead of becoming a second runtime authority.
 
 ### Slice 8: Implement pointer, pen, and touch workflows
 
-Status: `[ ]` Not started
+Status: `[-]` In progress
 
 **Goal**
 
@@ -1860,7 +1860,83 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
   contains no event listeners or browser globals. This slice did not trigger a
   browser gate.
 
+### 2026-07-30 — Slice 7 React facade, selectors, semantic events, and imperative handle
+
+- Replaced the read-only component's local scene memo with one per-instance React
+  runtime that composes the Slice 3 store, Slice 4 command bus, and Slice 5 staged
+  scene pipeline without making React a second document authority.
+- Added exclusive controlled/uncontrolled document and session prop unions, retained
+  source-compatible controlled read-only rendering, reconciled controlled props in
+  layout effects, and preserved canonical input-reference diagnostics in both SSR
+  and mounted output.
+- Added a frozen public selector snapshot, instance context, `useSyncExternalStore`
+  subscriptions with equality reuse and a stable outside-provider error, semantic
+  document/session/focus/selection/viewport/range callbacks, and the accepted narrow
+  `forwardRef` imperative handle.
+- Preserved trusted affected references through uncontrolled adoption and controlled
+  acknowledgement so command-driven React updates retain selective scene
+  invalidation. External controlled documents continue to use the conservative full
+  fallback, while revision-only changes retain derived content.
+- Added post-mount scroll/resize measurement with `ResizeObserver`, passive scroll
+  listeners, coalesced animation-frame publication, focused-range retention, absolute
+  virtual lane geometry, and observer/listener/frame cleanup without module-scope
+  browser access.
+- Added stable disabled, pending, selected, and focused state attributes plus a hidden
+  polite live region. Pointer-operable task controls and treegrid semantics remain
+  intentionally owned by Slices 8 and 9.
+- Added jsdom only as a test dependency and covered uncontrolled command rendering,
+  controlled candidate/acknowledgement order, controlled semantic session proposals,
+  ref methods, selector isolation, two instances, Strict Mode replay, hydration,
+  measurement coalescing/cancellation, and observer cleanup. Root-facade compile
+  tests prove ownership exclusivity and intentional public exports.
+- Verification passed:
+  - focused facade/runtime/root tests passed 4 files and 24 tests;
+  - the existing SSR/M1/M2/M3 facade and kernel subset passed 27 files and 124 tests;
+  - `vp check` reported all 115 files formatted and no warning, lint, or type error
+    across 104 checked files;
+  - `vp pack` built the four public artifacts; declaration inspection found
+    `GanttProps`, `GanttHandle`, selector/event/session/target types and no private
+    React runtime, store, scene, viewport-index, or hit-test type;
+  - `vp build apps/playground` transformed 52 modules and produced the production
+    HTML, CSS, and JavaScript artifacts;
+  - `git diff --check` passed;
+  - `mise run ci` passed the complete check, 46-test-file/213-test, and four-artifact
+    package build gates.
+- Chrome DevTools verification passed on `/`, `/matrix`, and `/interactive` at
+  1440 × 900 and 560 × 900:
+  - all chart roots reported zero diagnostics and the document had no horizontal
+    overflow; measured root/viewport geometry remained aligned across the main chart,
+    five matrix scenarios, and the interactive chart;
+  - accessibility snapshots exposed labeled chart regions, accessible task names,
+    empty-state text, control status, and the new polite live regions;
+  - screenshots showed intact large and narrow layouts, absolute lanes aligned with
+    timeline rows, expected compact label clipping, and preserved dark/high-contrast
+    variants;
+  - the controlled `/interactive` “Add item” flow updated from zero to one rendered
+    task with correct live status and enabled undo/remove controls;
+  - every local request returned 200 or 304. No application-owned console error or
+    warning appeared; Vite connection logs and extension/DevTools CSP, deprecation,
+    MaxListeners, ObjectMultiplex, and content-script messages were separated as
+    environment noise.
+
 ## Deviations
+
+### 2026-07-30 — React final disposal is deferred across the Strict Mode replay
+
+- The initial Slice 7 cleanup called final runtime disposal from a layout-effect
+  cleanup. React runs that cleanup before passive measurement cleanup and also
+  replays it during the development Strict Mode probe while preserving component
+  state, so immediate disposal made later measurement cleanup and the paired effect
+  setup address an already-disposed store.
+- The facade now deactivates synchronously, lets passive observers/listeners clear
+  their measurements, and finalizes disposal in a microtask only if no paired
+  activation occurred. Direct non-React runtime disposal remains immediate, pending
+  frame cancellation remains deterministic, and actual unmount still settles queued
+  command work.
+- Focused jsdom coverage proves both normal unmount cleanup and retained imperative
+  dispatch after Strict Mode effect replay. This lifecycle adaptation does not change
+  public ownership, event ordering, package boundaries, milestone order, or release
+  acceptance criteria.
 
 ### 2026-07-30 — Trusted affected changes retain a conservative validation/index stage
 
@@ -1899,9 +1975,9 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 4: Add the async command bus, events, and bounded history orchestration
 - [x] Slice 5: Stage derived caches and add measured viewport subscriptions
 - [x] Slice 6: Add renderer-independent hit testing and interaction intent
-- [ ] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
+- [x] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
       handle
-- [ ] Slice 8: Implement pointer, pen, and touch workflows
+- [-] Slice 8: Implement pointer, pen, and touch workflows
 - [ ] Slice 9: Add keyboard, focus, and accessibility parity
 - [ ] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
 - [ ] Slice 11: Prove consumers, harden the facade, and close M4
@@ -1910,7 +1986,6 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 7. Integrate one per-instance runtime with the React facade through
-external-store selectors, controlled/uncontrolled document and session ownership,
-semantic events, measurement scheduling, a narrow imperative handle, SSR-safe initial
-markup, and cleanup without duplicating command or interaction semantics.
+Start Slice 8. Connect pointer, pen, and touch event adapters to the proven hit-test,
+gesture, preview, command-mapping, and per-instance command-bus paths for selection,
+task movement, resize, creation, cancellation, and persisted placement moves.

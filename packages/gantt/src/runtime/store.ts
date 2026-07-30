@@ -33,6 +33,7 @@ import type {
   StageControlledDocumentProposalResult,
   UpdateControlledDocumentResult,
 } from './types';
+import type { EntityReference } from '../commands/types';
 
 const IDLE_INTERACTION = Object.freeze({ status: 'idle' }) as GanttRuntimeInteractionState;
 
@@ -75,6 +76,14 @@ function pendingSessionEqual(
   );
 }
 
+function cloneAffected(
+  affected: readonly EntityReference[] | undefined,
+): readonly EntityReference[] | undefined {
+  return affected === undefined
+    ? undefined
+    : Object.freeze(affected.map((reference) => Object.freeze({ ...reference })));
+}
+
 export function createGanttRuntimeStore(
   options: CreateGanttRuntimeStoreOptions,
 ): GanttRuntimeStore {
@@ -99,6 +108,7 @@ export function createGanttRuntimeStore(
   const subscribers = new Set<GanttRuntimeSubscriber>();
 
   let snapshot: GanttRuntimeSnapshot = Object.freeze({
+    derivation: Object.freeze({ kind: 'external', version: 0 }),
     document: initialDocument.document,
     history: Object.freeze({
       canRedo: false,
@@ -176,6 +186,16 @@ export function createGanttRuntimeStore(
     });
   }
 
+  function derivation(
+    affected: readonly EntityReference[] | undefined,
+  ): GanttRuntimeSnapshot['derivation'] {
+    const version = snapshot.derivation.version + 1;
+    const cloned = cloneAffected(affected);
+    return cloned === undefined
+      ? Object.freeze({ kind: 'external', version })
+      : Object.freeze({ affected: cloned, kind: 'affected', version });
+  }
+
   function ownershipWith(
     changes: Partial<GanttRuntimeOwnershipState>,
     clear: {
@@ -211,18 +231,20 @@ export function createGanttRuntimeStore(
     return Object.freeze({ session });
   }
 
-  function publishSessionIfChanged(): void {
+  function publishSessionIfChanged(reconcileViewport = false): void {
     const effective = effectiveSession();
     if (sessionMode === 'uncontrolled') {
       sourceSession = effective.session;
     }
     const currentPending = snapshot.ownership.pendingSession;
     const nextPending = effective.pendingSession;
-    const viewport = viewportForIntent(
-      snapshot.viewport,
-      effective.session.viewport.verticalStart,
-      viewportOptions,
-    );
+    const viewport = reconcileViewport
+      ? viewportForIntent(
+          snapshot.viewport,
+          effective.session.viewport.verticalStart,
+          viewportOptions,
+        )
+      : snapshot.viewport;
     if (
       sessionEqual(snapshot.session, effective.session) &&
       pendingSessionEqual(currentPending, nextPending) &&
@@ -250,7 +272,25 @@ export function createGanttRuntimeStore(
     if (viewportEqual(snapshot.viewport, viewport)) {
       return false;
     }
-    replaceSnapshot({ viewport });
+    if (snapshot.session.viewport.verticalStart === viewport.verticalStart) {
+      replaceSnapshot({ viewport });
+      return true;
+    }
+    const session = normalizeSessionState({
+      ...(snapshot.session.focused === undefined ? {} : { focused: snapshot.session.focused }),
+      selection: snapshot.session.selection,
+      viewport: { verticalStart: viewport.verticalStart },
+    });
+    if (sessionMode === 'uncontrolled') {
+      sourceSession = session;
+    }
+    replaceSnapshot({
+      ...(sessionMode === 'controlled'
+        ? { ownership: ownershipWith({ pendingSession: session }) }
+        : {}),
+      session,
+      viewport,
+    });
     return true;
   }
 
@@ -270,7 +310,7 @@ export function createGanttRuntimeStore(
   }
 
   const store: GanttRuntimeStore = {
-    adoptUncontrolledDocument(document) {
+    adoptUncontrolledDocument(document, affected) {
       assertActive();
       if (documentMode !== 'uncontrolled') {
         throw new Error('Controlled document state cannot be adopted internally.');
@@ -281,7 +321,7 @@ export function createGanttRuntimeStore(
       }
       documentSerialization = next.serialization;
       documentContentSerialization = next.contentSerialization;
-      replaceSnapshot({ document: next.document });
+      replaceSnapshot({ derivation: derivation(affected), document: next.document });
       return true;
     },
 
@@ -415,6 +455,7 @@ export function createGanttRuntimeStore(
         return Object.freeze({ status: 'no-op' });
       }
       const pending = Object.freeze({
+        ...(input.affected === undefined ? {} : { affected: cloneAffected(input.affected)! }),
         baseSerialization: input.baseSerialization,
         candidate: candidate.document,
         candidateSerialization: candidate.serialization,
@@ -457,6 +498,7 @@ export function createGanttRuntimeStore(
         documentSerialization = next.serialization;
         documentContentSerialization = next.contentSerialization;
         replaceSnapshot({
+          derivation: derivation(pending.affected),
           document: next.document,
           interaction: IDLE_INTERACTION,
           ownership: ownershipWith(
@@ -474,6 +516,7 @@ export function createGanttRuntimeStore(
         documentSerialization = next.serialization;
         documentContentSerialization = next.contentSerialization;
         replaceSnapshot({
+          derivation: derivation(undefined),
           document: next.document,
           history,
           interaction: IDLE_INTERACTION,
@@ -491,6 +534,7 @@ export function createGanttRuntimeStore(
         documentSerialization = next.serialization;
         documentContentSerialization = next.contentSerialization;
         replaceSnapshot({
+          derivation: derivation([]),
           document: next.document,
           ownership: ownershipWith({ lastDocumentReconciliation: 'revision-only' }),
         });
@@ -500,6 +544,7 @@ export function createGanttRuntimeStore(
       documentSerialization = next.serialization;
       documentContentSerialization = next.contentSerialization;
       replaceSnapshot({
+        derivation: derivation(undefined),
         document: next.document,
         history: invalidateHistory(snapshot.history),
         ownership: ownershipWith({ lastDocumentReconciliation: 'external-content' }),
@@ -513,7 +558,7 @@ export function createGanttRuntimeStore(
         throw new Error('Uncontrolled session state cannot receive controlled replacement.');
       }
       sourceSession = normalizeSessionState(session);
-      publishSessionIfChanged();
+      publishSessionIfChanged(true);
     },
 
     updateUncontrolledSession(session) {
@@ -522,7 +567,7 @@ export function createGanttRuntimeStore(
         throw new Error('Controlled session state cannot be updated internally.');
       }
       sourceSession = normalizeSessionState(session);
-      publishSessionIfChanged();
+      publishSessionIfChanged(true);
     },
   };
 

@@ -1,4 +1,14 @@
-export { Gantt, type GanttProps } from './react/Gantt';
+export { Gantt, type GanttHandle, type GanttProps } from './react/Gantt';
+export { useGanttSelector } from './react/context';
+export type {
+  GanttScrollOptions,
+  GanttSelector,
+  GanttSelectorEquality,
+  GanttSelectorSnapshot,
+  GanttSemanticEvent,
+  GanttViewportChange,
+  GanttVisibleOccurrence,
+} from './react/types';
 export {
   clearGanttHistory,
   commitGanttHistory,
@@ -52,6 +62,24 @@ export type {
   TaskUpdateCommand,
   TransactionCommand,
 } from './commands/types';
+export type {
+  GanttCommandCommittedEvent,
+  GanttCommandInterception,
+  GanttCommandInterceptor,
+  GanttCommandProposal,
+  GanttCommandRejectedEvent,
+  GanttCommandSource,
+  GanttDispatchOptions,
+  GanttDispatchResult,
+  GanttDocumentChange,
+  GanttInteractionTarget,
+  GanttLaneTarget,
+  GanttMeasuredViewportState,
+  GanttRuntimeErrorEvent,
+  GanttSessionState,
+  GanttTaskTarget,
+  GanttViewportIntent,
+} from './runtime/types';
 export { parseGanttDocument, type ParseDocumentResult } from './model/codec';
 export type { Diagnostic, DiagnosticCode, DiagnosticSeverity } from './model/diagnostics';
 export type { JsonArray, JsonObject, JsonPrimitive, JsonValue } from './model/json';

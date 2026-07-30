@@ -16,6 +16,7 @@ import {
   type TaskSegment,
   parseGanttDocument,
   serializeGanttDocument,
+  useGanttSelector,
 } from './index';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -40,6 +41,17 @@ function render(document: GanttDocument): string {
 }
 
 describe('Gantt', () => {
+  it('fails clearly when a selector is rendered outside its owning chart', () => {
+    function OutsideSelector() {
+      useGanttSelector((snapshot) => snapshot.canUndo);
+      return null;
+    }
+
+    expect(() => renderToStaticMarkup(<OutsideSelector />)).toThrow(
+      'runtime.selector-outside-provider',
+    );
+  });
+
   it('uses the default accessible region label', () => {
     const markup = renderToStaticMarkup(
       <Gantt
