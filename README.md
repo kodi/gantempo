@@ -91,7 +91,221 @@ The React `Gantt` component accepts the normalized `GanttDocument`; parsing does
 run inside React. Keep the external trust boundary in application loading or
 persistence code, then pass the accepted document to the component.
 
-## Read-only views and layout
+## React ownership and interaction runtime
+
+`Gantt` has exactly one document owner for its lifetime. Use `document` for a
+controlled application store, or `defaultDocument` when the chart instance should own
+local document and history state. Both modes route toolbar, imperative, pointer,
+touch, keyboard, menu, editor, undo, and redo actions through the same command bus.
+
+### Controlled with direct React state
+
+A controlled consumer must adopt each `onDocumentChange` candidate immediately.
+Remote persistence is a later side effect of the same immutable change envelope; it
+must not delay local acknowledgement.
+
+```tsx
+import { useRef, useState } from 'react';
+import {
+  Gantt,
+  parseGanttDocument,
+  type GanttDocumentChange,
+  type GanttHandle,
+} from '@gantempo/gantt';
+
+const parsed = parseGanttDocument(apiResponse);
+if (!parsed.document) throw new Error('Invalid planning document');
+
+function toWriteRequest(change: GanttDocumentChange) {
+  return {
+    operationId: crypto.randomUUID(),
+    proposalId: change.proposalId,
+    operation: change.operation,
+    baseRevision: change.baseRevision ?? null,
+    source: change.source,
+    patches: change.patches,
+    batch: {
+      kind: change.command.type === 'transaction' ? 'transaction' : 'command',
+      commandCount: change.command.type === 'transaction' ? change.command.commands.length : 1,
+    },
+  };
+}
+
+export function ControlledPlan() {
+  const [document, setDocument] = useState(parsed.document);
+  const gantt = useRef<GanttHandle>(null);
+
+  function acceptCandidate(change: GanttDocumentChange) {
+    setDocument(change.document); // acknowledge locally first
+    persistenceQueue.enqueue(toWriteRequest(change)); // asynchronous application concern
+  }
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          gantt.current?.dispatch(
+            { delta: 86_400_000, id: 'release', type: 'task.move' },
+            { source: { kind: 'toolbar' } },
+          )
+        }
+      >
+        Move release one day
+      </button>
+      <Gantt
+        document={document}
+        onDocumentChange={acceptCandidate}
+        range={range}
+        ref={gantt}
+        tickAnchor={range.start}
+        tickInterval={7 * 86_400_000}
+        timeZone="Europe/Belgrade"
+      />
+    </>
+  );
+}
+```
+
+The write request deliberately omits the full document, DOM events, and runtime
+objects. A transaction remains one proposal, one immutable patch batch, and one local
+history entry. Operation IDs, transport retries, rollback, server revisions,
+temporary-ID reconciliation, and conflict policy belong to the application
+persistence adapter.
+
+### Controlled with an external store
+
+The same contract maps directly to an external store. Subscribe to its immutable
+document snapshot, synchronously install the candidate, then enqueue persistence:
+
+```tsx
+const document = useSyncExternalStore(planStore.subscribe, planStore.getDocument);
+
+<Gantt
+  document={document}
+  onDocumentChange={(change) => {
+    planStore.setDocument(change.document);
+    planStore.persistence.enqueue(toWriteRequest(change));
+  }}
+  range={range}
+  tickAnchor={range.start}
+  tickInterval={WEEK}
+  timeZone="UTC"
+/>;
+```
+
+Do not maintain a second toolbar reducer beside the chart. Use `GanttHandle.dispatch`,
+`undo`, and `redo` so external controls and direct manipulation share interception,
+history, events, and persistence semantics.
+
+### Runtime-owned document and session
+
+Use `defaultDocument` and `defaultSession` for an isolated instance-owned workflow.
+`onDocumentChange` remains available as an observer after the runtime has adopted the
+document:
+
+```tsx
+const gantt = createRef<GanttHandle>();
+
+<Gantt
+  defaultDocument={parsed.document}
+  defaultSession={{ selection: [], viewport: { verticalStart: 0 } }}
+  onDocumentChange={(change) => audit(change)}
+  range={range}
+  ref={gantt}
+  tickAnchor={range.start}
+  tickInterval={WEEK}
+  timeZone="UTC"
+/>;
+
+await gantt.current?.undo();
+await gantt.current?.redo();
+```
+
+Session ownership is independent from document ownership. Supply `session` plus
+`onSessionChange` to control selection, focus, and vertical viewport intent, or
+`defaultSession` to keep them local. The horizontal `range` remains controlled in M4;
+handle `onRangeChange` when using `scrollToTime`.
+
+The public handle is occurrence-aware and intentionally narrow:
+`dispatch`, `undo`, `redo`, `canUndo`, `canRedo`, `focusTask`, `scrollToTask`,
+`scrollToTime`, `getDocument`, `getSelection`, and `getSession`. Occurrence targets
+come from semantic callbacks such as `onFocusChange`, `onTaskActivate`, and
+`onSelectionChange`; their `viewKey` values are opaque.
+
+### Interception and lifecycle events
+
+Interceptors run in order before the change kernel and may asynchronously allow,
+reject, or replace a command. A replacement still uses the same proposal ID, source,
+queue, reducer, and ownership boundary:
+
+```ts
+import type { GanttCommandInterceptor } from '@gantempo/gantt';
+
+const policy: GanttCommandInterceptor = async (proposal) => {
+  const result = await applicationPolicy.check(proposal.command);
+  if (!result.allowed) {
+    return {
+      kind: 'reject',
+      diagnostic: {
+        code: 'command.unsupported-target',
+        message: result.reason,
+        severity: 'error',
+      },
+    };
+  }
+  return result.replacement ? { kind: 'replace', command: result.replacement } : { kind: 'allow' };
+};
+```
+
+`onDocumentChange` delivers a candidate. `onCommandCommitted` fires only after
+uncontrolled adoption or exact controlled acknowledgement.
+`onCommandRejected` reports policy, command, stale-base, divergence, and history
+failures. `onRuntimeError` reports host callback failures that are not command
+rejections. Event values are frozen data-only snapshots and include proposal,
+operation, source, optional target, and applicable command/change data.
+
+### Typed customization and derived-view mapping
+
+Content slots stay inside library-owned focusable task/lane wrappers, so replacing
+visual content does not discard pointer, keyboard, ARIA, or hit-test behavior.
+Columns are read-only and align with the semantic treegrid:
+
+```tsx
+import type { GanttLaneColumn, GanttSlots } from '@gantempo/gantt';
+
+const slots = {
+  TaskContent: ({ task, pending }) => (
+    <span>
+      {task.title}
+      {pending ? ' · saving' : ''}
+    </span>
+  ),
+  LaneHeader: ({ lane }) => <strong>{lane.title}</strong>,
+} satisfies GanttSlots;
+
+const columns = [
+  { id: 'name', header: 'Team', width: 160 },
+  {
+    id: 'resource',
+    header: 'Resource ID',
+    width: 120,
+    renderCell: ({ lane }) => lane.target.resourceId ?? '—',
+  },
+] satisfies readonly GanttLaneColumn[];
+```
+
+Project, resource, custom, segment, and ambiguous occurrence moves fail closed unless
+an application `moveOccurrence` mapper returns an explicit command or transaction.
+For example, a resource-view mapper can combine `task.move` and `assignment.set` in
+one transaction. Empty-lane creation similarly requires a `createTask` mapper because
+IDs and relationship semantics are application policy.
+
+Built-in movement, resizing, and editing apply only to unsegmented instant schedules.
+All-day schedules remain canonical model records but do not produce instant bars and
+are never coerced into instants; calendar-aware rendering and all-day interaction
+belong to a later scheduling layer.
+
+## Views and layout
 
 `Gantt` defaults to persisted document lanes and placements. Its optional data-only
 `view` prop can instead derive one flat lane per task, derive resource lanes from
@@ -146,9 +360,9 @@ intervals emit structured `layout.*` diagnostics without removing usable sibling
 Overlapping bars use deterministic stacking and grow the lane beyond its minimum
 outer height when necessary. Touching intervals may share a track. Variable lane
 height, interval indexing, and viewport intersection are pure derived kernels; the
-current React component remains read-only and does not own scrolling, zooming,
-selection, focus, hit testing, drag state, editors, or command dispatch. Those are M4
-interaction-runtime concerns.
+React runtime composes those kernels into measured vertical viewport, selection,
+focus, hit testing, preview, and command behavior without exposing private indexes or
+caches.
 
 ## Pure change flow
 
@@ -237,25 +451,29 @@ closed without moving either stack.
 Local commands, patches, and history preserve `document.revision`. Persistence
 adapters remain responsible for server revisions, operation IDs, retries, conflicts,
 temporary-ID reconciliation, and translating domain patches to a backend-specific
-format such as JSON Patch. M2 does not add React state ownership, interaction events,
-semantic scheduling commands, persistent audit history, or collaborative rebasing.
+format such as JSON Patch. The interaction runtime adds local ownership and semantic
+events, but not persistent audit history or collaborative rebasing.
 
 ## Local development
 
 Start the React playground:
 
 ```sh
-pnpm dev
+vp dev apps/playground
 ```
 
-The playground exercises the complete M3 read-only pipeline: canonical documents and
-data-only views pass through view resolution, interval resolution, variable-height
-stack layout, indexed viewport query, time-scale primitives, and the DOM/SVG renderer.
-It has two pages:
+The playground exercises the canonical model, pure change kernel, resolved
+view/layout/viewport pipeline, interaction runtime, public facade, and DOM/SVG
+renderer. It has four routes:
 
 - `/` keeps the default persisted document view at a large, useful size;
 - `/matrix` shows project, resource, custom, segment, overlap, density, theme,
-  clipping, and empty variants together.
+  clipping, and empty variants together;
+- `/interactive` is a controlled application store with one shared command/history
+  path and an inspectable network-free API-shaped change log;
+- `/uncontrolled` owns its default document/session while demonstrating async
+  allow/reject/replace interception, derived resource mapping, lifecycle events, and
+  imperative focus/scroll.
 
 The equivalent mise command is `mise run dev`. To verify the standalone playground
 build, run `pnpm build:playground`.

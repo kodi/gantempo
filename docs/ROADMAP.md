@@ -94,6 +94,27 @@ The M3 view, layout, and viewport kernel is complete:
 Detailed completion evidence is recorded in
 [`2026-07-30-view-layout-viewport-kernel-plan.md`](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
+The base M4 interaction runtime and public API is complete:
+
+- controlled and uncontrolled document/session ownership converge on one per-instance
+  command bus, bounded history, persistence-ready change envelope, and selective
+  derived pipeline;
+- pointer, pen, touch, keyboard, toolbar, menu, editor, history, and imperative
+  actions use the same semantic commands and lifecycle;
+- occurrence-aware selection, focus, measured viewport, hit testing, snapping,
+  previews, scrolling, and accessible treegrid behavior are verified;
+- typed content/surface slots, class hooks, columns, tooltip, context menu, and the
+  instant-task editor compose without exposing private runtime or renderer state;
+- controlled and runtime-owned playground consumers prove API-shaped loading,
+  immediate acknowledgement, async interception, CRUD, ambiguous-view mapping,
+  persistence batch derivation, lifecycle events, and the narrow handle;
+- fixed-seed runtime/cache/hit-test evidence, 238 tests, full CI, SSR/hydration,
+  packed-facade, production-build, responsive, accessibility, console, and network
+  gates pass.
+
+Detailed completion evidence is recorded in
+[`2026-07-30-interaction-runtime-public-api-plan.md`](plans/2026-07-30-interaction-runtime-public-api-plan.md).
+
 ## Milestone Map
 
 | Milestone | Architecture mapping | Outcome | Status | Detailed plan |
@@ -102,7 +123,7 @@ Detailed completion evidence is recorded in
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
-| M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[-]` | [Active plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
+| M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -122,7 +143,7 @@ M2 change kernel [done]
 M3 view/layout/viewport kernel [done]
   |
   v
-M4 interaction runtime
+M4 interaction runtime [done]
   |
   v
 M5 basic project Gantt
@@ -135,61 +156,46 @@ M7 hardening/release
 ```
 
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
-architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
-viewport, and read-only rendering foundations. M4 is in progress: its public contract,
-semantic task-command foundation, React-free ownership store, async command/history
-lifecycle, staged derivation, measured viewport model, renderer-independent
-interaction intent, runtime-backed React facade, and pointer/pen/touch direct
-manipulation plus keyboard/focus/accessibility parity are complete; bounded typed
-customization, menus, tooltip, columns, and instant-task editing are complete;
-consumer proof, facade hardening, and M4 closure are next.
+architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
+architecture Slice 3 with one verified interaction/runtime/public-facade path. The
+bounded item-properties, semantic-color, and progress appendix is next; M5 remains
+queued after that additive post-M4 work.
 
 ## Current Focus
 
-### M4: Interaction runtime and public API
+### M4 appendix: Item properties, semantic color, and progress
 
-**Status:** `[-]` In progress; Slices 1–10 complete, Slice 11 next
+**Status:** `[ ]` Planned; base M4 complete and Appendix Slice A1 next
 
 **Target outcome**
 
-Give controlled and uncontrolled applications the same command path as pointer,
-touch, keyboard, toolbar, and imperative interaction while keeping document, session,
-and derived state separate. Expose one immutable persistence-ready change envelope
-while keeping local controlled acknowledgement independent from asynchronous backend
-persistence.
+Add a bounded standard task/lane properties surface, semantic task/lane appearance,
+and coordinated progress rendering/editing over the verified base-M4 ownership,
+command, event, accessibility, customization, and package boundaries.
 
 **Verified prerequisites**
 
-- M1 supplies the canonical document, diagnostics, persistence, and indexes.
-- M2 supplies strict commands, patches/inverses, transactions, affected references,
-  and bounded history.
-- M3 supplies stable view/provenance identity, absolute variable geometry, reusable
-  viewport indexes, semantic primitives, and one read-only React renderer.
+- M1–M3 supply the canonical model, change kernel, view/layout/viewport kernels, and
+  renderer.
+- Base M4 supplies the verified per-instance runtime, unified command bus, public
+  facade, consumer examples, persistence envelope, interaction parity, and
+  customization surfaces.
 
 **Next action**
 
-Execute Slice 11 of the
-[M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
-The
-[interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
-pure instant-only `task.move`/`task.resize` foundation, React-free ownership store,
-async command/history lifecycle, private derived pipeline, affected-reference
-invalidation/work observations, measured vertical viewport/overscan publication,
-renderer-independent hit testing, navigation, gesture intent, command mapping,
-previews, the per-instance React facade, pointer/pen/touch workflows, and
-keyboard/focus/assistive-technology parity plus typed content/class/column
-customization and accessible tooltip/menu/editor CRUD are verified. Consolidate the
-playground and direct React/external-store consumer proofs, add the API-shaped
-persistence debug seam, harden the facade/documentation, and record M4 completion
-evidence before the separate final gates.
+Execute Appendix Slice A1 of the
+[item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md).
+Freeze the canonical appearance/description/progress contract and exact command,
+editor, rendering, codec, and package implications before implementation. M5 detailed
+planning follows the verified appendix.
 
 **Queued M4 appendix**
 
-After the base M4 implementation and both final gates close, execute the
-[item properties, semantic color, and progress appendix](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md).
-The appendix adds task and lane semantic variants, coordinated progress rendering and
-editing, and a bounded standard properties surface without inserting scope into the
-active M4 slices.
+The prerequisite has now closed. The
+[item properties, semantic color, and progress appendix](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
+is the selected next plan and adds task/lane semantic variants, coordinated progress
+rendering/editing, and a bounded standard properties surface without reopening the
+completed base-M4 contract.
 
 **Adjacent proof complete**
 
@@ -278,6 +284,44 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — Base M4 interaction runtime and public API complete
+
+- Completed the controlled `/interactive` consumer over one runtime-owned
+  toolbar/pointer/keyboard/menu/editor/history path and added immediate application
+  candidate adoption plus the labelled network-free API-shaped change log.
+- Added `/uncontrolled` with parsed `defaultDocument`, `defaultSession`, async
+  allow/reject/replace interception, derived resource-view mapping, typed
+  slots/columns, lifecycle observers, toolbar CRUD/history, and occurrence-aware
+  imperative focus/scroll.
+- Rewrote the README for API loading, direct React and external-store controlled
+  ownership, uncontrolled ownership, persistence batches, session ownership,
+  interception/events, handles, customization, ambiguous-view mapping, and the
+  instant/all-day boundary.
+- Added root-facade consumer proof and fixed-seed `m4-runtime-v1` evidence. The full
+  suite passed 50 files/238 tests; `vp check` and `mise run ci` passed 123 formatted
+  and 112 checked source files; the package built four artifacts with exactly eleven
+  intentional runtime exports and no private runtime/store/scene/hit-test declaration
+  leakage; the playground transformed 59 modules.
+- Fixed-seed scene/runtime/cache/hit-test evidence used 2,000 tasks, 400 lanes, seed
+  `20260730`, local Vite Plus `0.2.6`, Vitest `4.1.10`, Node `24.18.1`, macOS arm64,
+  and Apple M3 Pro hardware. Exact timings and work metadata are recorded in the
+  completed plan without a cross-machine threshold.
+- Chrome DevTools verified `/`, `/matrix`, `/interactive`, and `/uncontrolled` at
+  1440 × 900, 900 × 900, and 560 × 900 with aligned columns/timelines, no horizontal
+  page overflow, labelled treegrid/task/status/persistence surfaces, controlled
+  transaction logging, async policy outcomes, mapped and rejected derived moves,
+  focus retention, high contrast, inspected reduced-motion/forced-colors rules, no
+  failed local request, and no application-owned console error.
+- Corrected all-day example wording to the accepted canonical-data/no-instant-bar M4
+  boundary. Recorded that the final DevTools touch viewport's semantic drag emitted a
+  mouse pointer source; the verified Slice 8 live touch evidence and still-green touch
+  integration coverage remain authoritative.
+- Marked base M4 done only after both final gates and added completion evidence to the
+  accepted decision. Architecture required no change.
+- The separately accepted post-M4 item-properties/semantic-color/progress appendix
+  supersedes the older M5-next handoff. Appendix Slice A1 is now the next action; M5
+  detailed planning remains queued after it.
 
 ### 2026-07-30 — M4 typed customization and instant-task CRUD complete
 

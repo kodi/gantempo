@@ -596,6 +596,41 @@ Implementation slices must prove:
   replace the live Chrome gate;
 - SSR import and deterministic pre-measurement markup without browser globals.
 
+## Completion Evidence
+
+Base M4 completed on 2026-07-30 without revising this accepted contract:
+
+- controlled and uncontrolled React consumers use the same per-instance command bus
+  for toolbar, imperative, pointer, keyboard, context-menu, editor, and history
+  actions;
+- the controlled playground acknowledges candidates immediately and derives a
+  network-free persistence request containing operation/proposal identity, base
+  revision, source, patches, and transaction batch metadata without a full-document,
+  DOM-event, or runtime-object payload;
+- the runtime-owned resource-view consumer proves asynchronous allow/reject/replace
+  interception, application-mapped atomic resource reassignment, useful mapper
+  rejection, document/session defaults, semantic events, typed slots/columns, and
+  occurrence-aware imperative focus/scroll;
+- root-facade consumer, ownership, runtime, pointer, keyboard, customization, SSR,
+  hydration, and accessibility tests pass as part of 50 test files and 238 tests;
+- the packed module exports exactly the intended component, selector hook,
+  parse/serialize, change-kernel, patch, and history values, while declarations expose
+  no React runtime, runtime store, scene pipeline, or hit-test index;
+- fixed-seed `m4-scene-v1` and `m4-runtime-v1` evidence records cache, viewport,
+  runtime construction, controlled adoption, focus, preview, command, and hit-test
+  observations for 2,000 tasks and 400 lanes without a release threshold;
+- Chrome DevTools verified the main, matrix, controlled, and runtime-owned routes at
+  1440 × 900, 900 × 900, and 560 × 900 with aligned geometry, no page overflow,
+  complete labelled interaction surfaces, focus retention, live results, high
+  contrast, media-rule inspection, no application console error, and no failed local
+  request;
+- `mise run ci`, the production playground build, packed-artifact inspection,
+  linked-document checks, and `git diff --check` pass.
+
+Detailed commands, timings, browser geometry, tool limitations, and deviations are
+recorded in the
+[completed M4 implementation plan](../plans/2026-07-30-interaction-runtime-public-api-plan.md).
+
 ## Consequences
 
 - Controlled consumers must acknowledge a candidate locally before asynchronous

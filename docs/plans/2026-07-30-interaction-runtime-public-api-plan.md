@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–10 complete, Slice 11 next
+Status: Completed; Slices 1–11 and both final gates verified
 Date: 2026-07-30
 Milestone: M4
 
@@ -1315,7 +1315,7 @@ stable behavior rather than making third-party content reconstruct it.
 
 ### Slice 11: Prove consumers, harden the facade, and close M4
 
-Status: `[-]` In progress
+Status: `[x]` Done
 
 **Goal**
 
@@ -2128,7 +2128,134 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - Automated accessibility and source inspection found and fixed the editor-landmark
   and narrow column-override deviations recorded below.
 
+### 2026-07-30 — Slice 11 consumer proof and base-M4 completion
+
+- Rebuilt `/interactive` as one controlled application store over the public
+  `GanttHandle`. Add, batch-add, remove, clear, pointer, keyboard, context-menu,
+  editor, undo, and redo actions now use the same runtime command bus and history
+  instead of resetting a separate playground history after chart changes.
+- Loaded the initial controlled document from API-shaped unknown input through
+  `parseGanttDocument`, adopted every `onDocumentChange` candidate immediately, and
+  derived a network-free persistence request from that same immutable envelope. The
+  accessible read-only `Example API change log` records ordered candidate,
+  API-write, committed, and rejected entries with deterministic example operation
+  IDs, proposal IDs, base revisions, command sources, patches, and one batch
+  descriptor per command or transaction. It omits DOM events, runtime objects,
+  inverse patches, and the unnecessary full candidate document.
+- Added `/uncontrolled` with `defaultDocument`, `defaultSession`, independent range
+  control, public handle dispatch/history/focus/scroll, typed task/lane slots, and
+  two typed resource columns. The route observes its runtime-owned document without
+  passing it back as a controlled prop.
+- Added an asynchronous consumer interceptor that demonstrates allow, typed reject,
+  and typed replace outcomes. A derived resource-view move mapper rejects the
+  policy-locked task with a useful application diagnostic and maps the other task to
+  one atomic `task.move` plus `assignment.set` transaction. Toolbar CRUD proves
+  create, move, resize, persisted resource reassignment, edit, delete, undo, and
+  redo; focus/selection callbacks provide occurrence targets for imperative
+  focus/scroll.
+- Rewrote the README interaction-runtime handoff with API-shaped parsing, direct React
+  controlled state, external-store controlled state, uncontrolled ownership,
+  persistence envelopes, transaction batches, session ownership, interception,
+  lifecycle events, the narrow handle, typed slots/columns, ambiguous-view mappers,
+  and the instant/all-day boundary.
+- Added a root-only DOM consumer suite. It proves immediate controlled
+  acknowledgement, narrow API request derivation, transaction history/undo,
+  runtime-owned document/session state, async replacement/rejection, slots, and
+  occurrence-aware handle focus/scroll without importing private runtime modules.
+  Existing root type, SSR, hydration, customization, pointer, keyboard, runtime, and
+  pure-kernel suites remain green.
+- Packed-facade inspection found exactly eleven runtime exports:
+  `Gantt`, `useGanttSelector`, parse/serialize, apply-command/apply-patches, and the
+  five pure history helpers. The declaration contains no `GanttReactRuntime`,
+  `GanttRuntimeStore`, `ChartScenePipeline`, `InteractionHitTestIndex`, or matching
+  constructor leakage.
+- Fixed-seed performance evidence used local Vite Plus `0.2.6`, Vitest `4.1.10`,
+  Node `24.18.1`, macOS `26.5.2` arm64, and an Apple M3 Pro MacBook Pro with 12 cores
+  and 18 GB memory. Both generators used seed `20260730`, 2,000 tasks, and 400 lanes:
+  - `m4-scene-v1` observed 45/40 visible tasks; mean cold
+    validation/view/layout/index/primitives was `14.3855 ms`, selective one-lane task
+    label invalidation was `5.1600 ms`, and warm viewport query was `0.0220 ms`;
+  - `m4-runtime-v1` observed 2,000 visible tasks, one selectively invalidated lane,
+    and a 2,000-task/400-lane hit index; mean cold runtime construction was
+    `29.5517 ms`, controlled revision-only adoption `22.3403 ms`, measured scroll
+    query `0.0997 ms`, selection/focus update `2.3721 ms`, pointer preview
+    `4.6613 ms`, committed task move `33.1053 ms`, and indexed mouse hit test
+    `0.0093 ms`.
+  These are reproducible local observations with no cross-machine threshold or
+  release-percentile claim.
+- Automated and package verification passed:
+  - focused root/SSR/hydration tests passed 3 files and 25 tests;
+  - the full suite passed 50 files and 238 tests;
+  - `vp check` and `mise run ci` passed all 123 formatted and 112 lint/type-checked
+    source files;
+  - `vp pack` produced four artifacts: `index.js` 297.21 kB, source map 622.66 kB,
+    CSS 11.20 kB, and declaration 39.86 kB, total 970.94 kB;
+  - `vp build apps/playground` transformed 59 modules successfully;
+  - SSR import/static rendering plus the existing hydration regression passed;
+  - `git diff --check`, linked-file existence, and focused plan/roadmap/decision/API
+    terminology checks passed.
+- Chrome DevTools final verification covered `/`, `/matrix`, `/interactive`, and
+  `/uncontrolled` at 1440 × 900, 900 × 900, and 560 × 900:
+  - no route had page-level horizontal overflow; main retained a 160 px lane column,
+    the five matrix charts retained 160 px lane columns, controlled columns remained
+    204 px with a 296 px narrow timeline, and runtime-owned columns remained 298 px
+    with a 202 px narrow timeline;
+  - accessibility snapshots exposed the expected banners/navigation, labelled chart
+    regions/treegrids, typed column names, task controls and shortcuts, polite
+    results, disabled history/imperative controls, the persistence region, and the
+    labelled read-only change textarea;
+  - controlled toolbar add produced a two-command transaction, two patches, one API
+    batch, then an ordered commit entry; touch-viewport Chrome drag produced a live
+    persisted cross-lane/time transaction and focus retention;
+  - runtime-owned async rejection and replacement, toolbar resource reassignment,
+    keyboard-derived move rejection, mapped keyboard transaction, focus/selection,
+    and imperative target capture all produced the expected visible and live results;
+  - temporary high-contrast theming computed black text on white with a 2 px blue
+    task focus outline. Source inspection found the exact reduced-motion transition
+    and scroll rules plus the forced-colors focus, preview, task, tooltip, menu, and
+    editor rules; the installed DevTools surface could not activate those two media
+    features directly;
+  - every application request returned HTTP 200 or 304. No application-owned console
+    error or warning appeared; Vite and extension/DevTools CSP, deprecated-feature,
+    MaxListeners, ObjectMultiplex, content-script, and helper messages were
+    environment noise.
+- Architecture required no update because implementation and evidence match the
+  accepted ownership, command, persistence, accessibility, and package contracts.
+  The decision record now contains final evidence.
+
 ## Deviations
+
+### 2026-07-30 — The post-M4 appendix supersedes the older M5 handoff
+
+- Slice 11 originally said to select M5 detailed planning after base-M4 closure.
+  Repository governance later accepted the separate
+  `2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md`, whose explicit
+  dependency requires verified base M4 before Appendix Slice A1 begins.
+- The roadmap therefore selects Appendix Slice A1 as the next repository action and
+  leaves M5 queued after the appendix. This changes execution order only; it does not
+  change the completed base-M4 contract, architecture boundary, or release acceptance
+  criteria.
+
+### 2026-07-30 — All-day example wording follows the instant renderer boundary
+
+- The first runtime-owned page note said the parsed all-day task remained visible.
+  Live accessibility inspection correctly showed two instant occurrences while the
+  canonical document observer counted three tasks and the scene reported one
+  unsupported-schedule diagnostic.
+- The page and README now state the actual boundary: all-day records remain canonical
+  model data but do not produce instant bars or M4 interaction. No runtime behavior,
+  parser contract, or architecture target changed.
+
+### 2026-07-30 — Final DevTools touch drag reports a mouse pointer source
+
+- Chrome DevTools successfully enabled a 900 × 900 touch viewport, including touch
+  target sizing, but its semantic `drag` operation emitted `pointerType: "mouse"` in
+  the public change envelope rather than a trusted touch pointer.
+- The final gate records that tooling limitation instead of relabeling the event.
+  Slice 8's live touch-emulation evidence and the still-green pointer integration
+  suite cover touch movement/creation, while the final touch viewport independently
+  verified responsive and accessible presentation. This does not change runtime code
+  or the accepted pointer-source contract.
 
 ### 2026-07-30 — Editor chrome does not create nested page landmarks
 
@@ -2269,12 +2396,14 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 8: Implement pointer, pen, and touch workflows
 - [x] Slice 9: Add keyboard, focus, and accessibility parity
 - [x] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
-- [-] Slice 11: Prove consumers, harden the facade, and close M4
-- [ ] Final automated/package/SSR gate
-- [ ] Final browser/accessibility gate
+- [x] Slice 11: Prove consumers, harden the facade, and close M4
+- [x] Final automated/package/SSR gate
+- [x] Final browser/accessibility gate
 
 ## Next Slice
 
-Start Slice 11. Consolidate the playground and direct React/external-store consumer
-proofs, add the API-shaped persistence debug seam, harden the public facade and docs,
-and record the final M4 completion evidence before the separate final gates.
+Base M4 is complete. Begin Appendix Slice A1 in
+[`2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md`](2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md):
+freeze the canonical semantic-appearance, description, progress, editor, and command
+contract from the verified base-M4 facade before implementing appendix behavior. M5
+detailed planning remains queued after that accepted post-M4 appendix.

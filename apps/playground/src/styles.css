@@ -316,6 +316,88 @@ button {
   border-color: color-mix(in srgb, var(--gt-color-task) 45%, var(--gt-color-border));
 }
 
+.uncontrolled-task--pending {
+  opacity: 0.72;
+}
+
+.api-log {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgb(36 48 68 / 10%);
+  border-radius: 15px;
+  background: rgb(255 255 255 / 58%);
+}
+
+.api-log__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.api-log h2,
+.api-log p {
+  margin: 0;
+}
+
+.api-log h2 {
+  color: #263142;
+  font-size: 14px;
+}
+
+.api-log p {
+  max-width: 780px;
+  margin-top: 5px;
+  color: #737b87;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.api-log label {
+  color: #3a4555;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.api-log button {
+  min-height: 32px;
+  flex: 0 0 auto;
+  padding: 0 11px;
+  border: 1px solid rgb(36 48 68 / 14%);
+  border-radius: 8px;
+  color: #2d3a4b;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.api-log textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  padding: 13px;
+  border: 1px solid rgb(36 48 68 / 13%);
+  border-radius: 9px;
+  color: #314052;
+  background: #fbfcfa;
+  font:
+    10px/1.55 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+
+.api-log button:focus-visible,
+.api-log textarea:focus-visible {
+  outline: 3px solid rgb(23 107 87 / 24%);
+  outline-offset: 2px;
+}
+
 .scenario-matrix {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -559,6 +641,16 @@ button {
   .interactive-controls__status {
     max-width: none;
     text-align: left;
+  }
+
+  .api-log__header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .api-log button {
+    align-self: start;
   }
 }
 

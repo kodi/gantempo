@@ -1,19 +1,19 @@
 import {
   Gantt,
-  applyGanttCommand,
-  commitGanttHistory,
-  createGanttHistory,
-  redoGanttHistory,
-  undoGanttHistory,
+  parseGanttDocument,
   type GanttCommand,
+  type GanttCommandCommittedEvent,
+  type GanttCommandRejectedEvent,
   type GanttDocument,
   type GanttDocumentChange,
-  type GanttHistoryState,
+  type GanttHandle,
   type GanttInteractionCommandMappers,
   type GanttLaneHeaderProps,
   type GanttTaskContentProps,
+  type GanttTaskTarget,
+  type TimeRange,
 } from '@gantempo/gantt';
-import { useMemo, useReducer, type ReactElement } from 'react';
+import { useMemo, useReducer, useRef, type ReactElement } from 'react';
 
 const DAY = 24 * 60 * 60 * 1000;
 const RANGE_START = Date.UTC(2026, 6, 29);
@@ -21,7 +21,7 @@ const RANGE_END = Date.UTC(2026, 7, 27);
 const LANE_IDS = ['discovery', 'design', 'delivery', 'release'] as const;
 const TASK_TONES = ['accent', 'success', 'warning', 'neutral'] as const;
 
-const INITIAL_DOCUMENT: GanttDocument = {
+const API_DOCUMENT = {
   assignments: [],
   dependencies: [],
   lanes: [
@@ -30,16 +30,111 @@ const INITIAL_DOCUMENT: GanttDocument = {
     { id: 'delivery', title: 'Delivery' },
     { id: 'release', title: 'Release' },
   ],
-  placements: [],
+  placements: [
+    { id: 'interactive-placement-1', laneId: 'discovery', taskId: 'interactive-task-1' },
+    { id: 'interactive-placement-2', laneId: 'design', taskId: 'interactive-task-2' },
+    { id: 'interactive-placement-3', laneId: 'delivery', taskId: 'interactive-task-3' },
+  ],
   resources: [],
+  revision: 'example-server-r17',
   schemaVersion: 1,
-  tasks: [],
-};
+  tasks: [
+    {
+      id: 'interactive-task-1',
+      schedule: {
+        end: '2026-08-02T00:00:00+00:00',
+        mode: 'instant',
+        start: '2026-07-29T00:00:00+00:00',
+      },
+      title: 'Work item 1',
+    },
+    {
+      id: 'interactive-task-2',
+      schedule: {
+        end: '2026-08-07T00:00:00+00:00',
+        mode: 'instant',
+        start: '2026-08-01T00:00:00+00:00',
+      },
+      title: 'Work item 2',
+    },
+    {
+      id: 'interactive-task-3',
+      schedule: {
+        end: '2026-08-12T00:00:00+00:00',
+        mode: 'instant',
+        start: '2026-08-05T00:00:00+00:00',
+      },
+      title: 'Work item 3',
+    },
+  ],
+} satisfies unknown;
+
+interface ExampleApiWrite {
+  readonly batch: {
+    readonly commandCount: number;
+    readonly kind: 'command' | 'transaction';
+  };
+  readonly baseRevision: number | string | null;
+  readonly operationId: string;
+  readonly operation: GanttDocumentChange['operation'];
+  readonly patches: GanttDocumentChange['patches'];
+  readonly proposalId: string;
+  readonly source: GanttDocumentChange['source'];
+}
+
+type ExampleApiLogEntry =
+  | {
+      readonly operationId: string;
+      readonly operation: GanttDocumentChange['operation'];
+      readonly patchCount: number;
+      readonly phase: 'candidate';
+      readonly proposalId: string;
+      readonly source: GanttDocumentChange['source'];
+    }
+  | {
+      readonly phase: 'api-write';
+      readonly request: ExampleApiWrite;
+    }
+  | {
+      readonly operationId: string | null;
+      readonly operation: GanttCommandCommittedEvent['operation'];
+      readonly phase: 'committed';
+      readonly proposalId: string;
+      readonly source: GanttCommandCommittedEvent['source'];
+    }
+  | {
+      readonly diagnostics: readonly {
+        readonly code: string;
+        readonly message: string;
+      }[];
+      readonly operationId: string | null;
+      readonly operation: GanttCommandRejectedEvent['operation'];
+      readonly phase: 'rejected';
+      readonly proposalId: string;
+      readonly source: GanttCommandRejectedEvent['source'];
+    };
 
 interface InteractiveState {
-  readonly history: GanttHistoryState;
+  readonly apiLog: readonly ExampleApiLogEntry[];
+  readonly canRedo: boolean;
+  readonly canUndo: boolean;
+  readonly document: GanttDocument;
+  readonly focusedTask?: GanttTaskTarget;
+  readonly nextOperation: number;
   readonly nextSerial: number;
+  readonly operationByProposal: Readonly<Record<string, string>>;
+  readonly range: TimeRange;
   readonly status: string;
+}
+
+function loadApiDocument(): GanttDocument {
+  const parsed = parseGanttDocument(API_DOCUMENT);
+  if (parsed.document === undefined) {
+    throw new Error(
+      `The example API document was rejected: ${parsed.diagnostics[0]?.message ?? 'unknown error'}`,
+    );
+  }
+  return parsed.document;
 }
 
 function InteractiveTaskContent({ pending, selected, task }: GanttTaskContentProps): ReactElement {
@@ -62,17 +157,23 @@ function InteractiveLaneHeader({ lane }: GanttLaneHeaderProps): ReactElement {
 }
 
 type InteractiveAction =
-  | { readonly count: number; readonly type: 'add' }
-  | { readonly type: 'clear' }
-  | { readonly type: 'redo' }
-  | { readonly type: 'remove' }
   | {
-      readonly document: GanttDocument;
-      readonly nextSerial: number;
-      readonly type: 'runtime-change';
+      readonly canRedo: boolean;
+      readonly canUndo: boolean;
+      readonly event: GanttCommandCommittedEvent;
+      readonly type: 'committed';
     }
+  | {
+      readonly canRedo: boolean;
+      readonly canUndo: boolean;
+      readonly event: GanttCommandRejectedEvent;
+      readonly type: 'rejected';
+    }
+  | { readonly change: GanttDocumentChange; readonly type: 'runtime-change' }
+  | { readonly focusedTask?: GanttTaskTarget; readonly type: 'focus' }
+  | { readonly range: TimeRange; readonly type: 'range' }
   | { readonly status: string; readonly type: 'status' }
-  | { readonly type: 'undo' };
+  | { readonly type: 'clear-log' };
 
 function commandsForItems(firstSerial: number, count: number): readonly GanttCommand[] {
   return Array.from({ length: count }, (_, index): readonly GanttCommand[] => {
@@ -107,124 +208,132 @@ function commandsForItems(firstSerial: number, count: number): readonly GanttCom
   }).flat();
 }
 
-function commitCommand(
-  state: InteractiveState,
-  command: GanttCommand,
-  status: string,
-  nextSerial = state.nextSerial,
-): InteractiveState {
-  const outcome = applyGanttCommand(state.history.document, command);
-  if (outcome.status === 'rejected') {
-    return {
-      ...state,
-      status: outcome.diagnostics[0]?.message ?? 'The chart rejected that change.',
-    };
-  }
-
-  const committed = commitGanttHistory(state.history, outcome);
-  if (committed.status === 'rejected') {
-    return {
-      ...state,
-      status: committed.diagnostics[0]?.message ?? 'The history rejected that change.',
-    };
-  }
-
-  return {
-    history: committed.history,
-    nextSerial,
-    status,
-  };
+function operationIdFor(state: InteractiveState, proposalId: string): string | null {
+  return state.operationByProposal[proposalId] ?? null;
 }
 
 function interactiveReducer(state: InteractiveState, action: InteractiveAction): InteractiveState {
   switch (action.type) {
-    case 'add':
-      return commitCommand(
-        state,
-        {
-          commands: commandsForItems(state.nextSerial, action.count),
-          type: 'transaction',
+    case 'runtime-change': {
+      const operationId = `example-operation-${String(state.nextOperation).padStart(3, '0')}`;
+      const commandCount =
+        action.change.command.type === 'transaction' ? action.change.command.commands.length : 1;
+      const addedTasks = action.change.patches.filter(
+        (patch) => patch.target.collection === 'tasks' && patch.op === 'add',
+      ).length;
+      const request: ExampleApiWrite = {
+        baseRevision: action.change.baseRevision ?? null,
+        batch: {
+          commandCount,
+          kind: action.change.command.type === 'transaction' ? 'transaction' : 'command',
         },
-        action.count === 1 ? 'Added one work item.' : `Added ${action.count} work items.`,
-        state.nextSerial + action.count,
-      );
-    case 'remove': {
-      const latestTask = state.history.document.tasks.at(-1);
-      if (!latestTask) {
-        return { ...state, status: 'There are no work items to remove.' };
-      }
-      return commitCommand(
-        state,
-        { cascade: true, id: latestTask.id, type: 'task.delete' },
-        `Removed ${latestTask.title}.`,
-      );
-    }
-    case 'clear': {
-      const tasks = state.history.document.tasks;
-      if (tasks.length === 0) {
-        return { ...state, status: 'The canvas is already empty.' };
-      }
-      return commitCommand(
-        state,
-        {
-          commands: tasks.map((task) => ({
-            cascade: true,
-            id: task.id,
-            type: 'task.delete' as const,
-          })),
-          type: 'transaction',
-        },
-        `Cleared ${tasks.length} work ${tasks.length === 1 ? 'item' : 'items'}.`,
-      );
-    }
-    case 'undo': {
-      const result = undoGanttHistory(state.history);
-      return result.status === 'applied'
-        ? { ...state, history: result.history, status: 'Undid the latest change.' }
-        : {
-            ...state,
-            status: result.diagnostics[0]?.message ?? 'Undo was rejected.',
-          };
-    }
-    case 'redo': {
-      const result = redoGanttHistory(state.history);
-      return result.status === 'applied'
-        ? { ...state, history: result.history, status: 'Redid the latest change.' }
-        : {
-            ...state,
-            status: result.diagnostics[0]?.message ?? 'Redo was rejected.',
-          };
-    }
-    case 'runtime-change':
-      return {
-        history: createGanttHistory(action.document, 50),
-        nextSerial: action.nextSerial,
-        status: 'Accepted a chart interaction candidate.',
+        operation: action.change.operation,
+        operationId,
+        patches: action.change.patches,
+        proposalId: action.change.proposalId,
+        source: action.change.source,
       };
+      return {
+        ...state,
+        apiLog: [
+          ...state.apiLog,
+          {
+            operation: action.change.operation,
+            operationId,
+            patchCount: action.change.patches.length,
+            phase: 'candidate',
+            proposalId: action.change.proposalId,
+            source: action.change.source,
+          },
+          { phase: 'api-write', request },
+        ],
+        document: action.change.document,
+        nextOperation: state.nextOperation + 1,
+        nextSerial: state.nextSerial + addedTasks,
+        operationByProposal: {
+          ...state.operationByProposal,
+          [action.change.proposalId]: operationId,
+        },
+        status: `Candidate ${action.change.proposalId} was adopted by the application store.`,
+      };
+    }
+    case 'committed':
+      return {
+        ...state,
+        apiLog: [
+          ...state.apiLog,
+          {
+            operation: action.event.operation,
+            operationId: operationIdFor(state, action.event.proposalId),
+            phase: 'committed',
+            proposalId: action.event.proposalId,
+            source: action.event.source,
+          },
+        ],
+        canRedo: action.canRedo,
+        canUndo: action.canUndo,
+        status: `${action.event.source.kind === 'history' ? 'History' : 'Command'} committed locally.`,
+      };
+    case 'rejected':
+      return {
+        ...state,
+        apiLog: [
+          ...state.apiLog,
+          {
+            diagnostics: action.event.diagnostics.map(({ code, message }) => ({ code, message })),
+            operation: action.event.operation,
+            operationId: operationIdFor(state, action.event.proposalId),
+            phase: 'rejected',
+            proposalId: action.event.proposalId,
+            source: action.event.source,
+          },
+        ],
+        canRedo: action.canRedo,
+        canUndo: action.canUndo,
+        status: action.event.diagnostics[0]?.message ?? 'The chart interaction was rejected.',
+      };
+    case 'focus':
+      return {
+        ...state,
+        ...(action.focusedTask === undefined ? {} : { focusedTask: action.focusedTask }),
+      };
+    case 'range':
+      return { ...state, range: action.range, status: 'The controlled range was updated.' };
     case 'status':
       return { ...state, status: action.status };
+    case 'clear-log':
+      return { ...state, apiLog: [], operationByProposal: {} };
   }
 }
 
 function createInitialState(): InteractiveState {
   return {
-    history: createGanttHistory(INITIAL_DOCUMENT, 50),
-    nextSerial: 1,
-    status: 'The canvas is ready. Add a work item to begin.',
+    apiLog: [],
+    canRedo: false,
+    canUndo: false,
+    document: loadApiDocument(),
+    nextOperation: 1,
+    nextSerial: 4,
+    operationByProposal: {},
+    range: { start: RANGE_START, end: RANGE_END },
+    status: 'The API-shaped document was parsed and the controlled store is ready.',
   };
 }
 
 export function InteractivePage(): ReactElement {
   const [state, dispatch] = useReducer(interactiveReducer, undefined, createInitialState);
-  const { document } = state.history;
+  const ganttRef = useRef<GanttHandle>(null);
   const taskVariants = useMemo(
     () =>
       Object.fromEntries(
-        document.tasks.map((task, index) => [task.id, TASK_TONES[index % TASK_TONES.length]!]),
+        state.document.tasks.map((task, index) => [
+          task.id,
+          TASK_TONES[index % TASK_TONES.length]!,
+        ]),
       ),
-    [document.tasks],
+    [state.document.tasks],
   );
-  const hasTasks = document.tasks.length > 0;
+  const hasTasks = state.document.tasks.length > 0;
   const interactionMappers = useMemo<GanttInteractionCommandMappers>(
     () => ({
       createTask(intent) {
@@ -234,7 +343,7 @@ export function InteractivePage(): ReactElement {
           return {
             diagnostic: {
               code: 'command.unsupported-target',
-              message: 'The playground creates tasks only in persisted lanes.',
+              message: 'The controlled example creates tasks only in persisted lanes.',
               path: '/interaction',
               severity: 'error',
             },
@@ -273,14 +382,23 @@ export function InteractivePage(): ReactElement {
     }),
     [state.nextSerial],
   );
-  const adoptRuntimeChange = (change: GanttDocumentChange) => {
-    const addedTasks = change.patches.filter(
-      (patch) => patch.target.collection === 'tasks' && patch.op === 'add',
-    ).length;
+  const dispatchToolbar = (command: GanttCommand) => {
+    void ganttRef.current?.dispatch(command, { source: { kind: 'toolbar' } });
+  };
+  const recordCommitted = (event: GanttCommandCommittedEvent) => {
     dispatch({
-      document: change.document,
-      nextSerial: state.nextSerial + addedTasks,
-      type: 'runtime-change',
+      canRedo: ganttRef.current?.canRedo() ?? false,
+      canUndo: ganttRef.current?.canUndo() ?? false,
+      event,
+      type: 'committed',
+    });
+  };
+  const recordRejected = (event: GanttCommandRejectedEvent) => {
+    dispatch({
+      canRedo: ganttRef.current?.canRedo() ?? false,
+      canUndo: ganttRef.current?.canUndo() ?? false,
+      event,
+      type: 'rejected',
     });
   };
 
@@ -291,44 +409,99 @@ export function InteractivePage(): ReactElement {
           <p className="eyebrow">Controlled consumer proof</p>
           <h1>Interactive</h1>
           <p>
-            Build a plan with public toolbar commands, then move, resize, or create work directly
-            through the chart’s interaction runtime.
+            One application store adopts runtime candidates immediately while every toolbar,
+            pointer, keyboard, menu, editor, and history action uses the chart command bus.
           </p>
         </div>
         <div className="page-intro__meta">
-          <span>{document.tasks.length} items</span>
+          <span>{state.document.tasks.length} items</span>
           <span>{LANE_IDS.length} lanes</span>
         </div>
       </header>
 
       <section aria-label="Interactive chart controls" className="interactive-controls">
         <div className="interactive-controls__buttons">
-          <button onClick={() => dispatch({ count: 1, type: 'add' })} type="button">
+          <button
+            onClick={() =>
+              dispatchToolbar({
+                commands: commandsForItems(state.nextSerial, 1),
+                type: 'transaction',
+              })
+            }
+            type="button"
+          >
             Add item
           </button>
-          <button onClick={() => dispatch({ count: 5, type: 'add' })} type="button">
+          <button
+            onClick={() =>
+              dispatchToolbar({
+                commands: commandsForItems(state.nextSerial, 5),
+                type: 'transaction',
+              })
+            }
+            type="button"
+          >
             Add 5 items
           </button>
-          <button disabled={!hasTasks} onClick={() => dispatch({ type: 'remove' })} type="button">
+          <button
+            disabled={!hasTasks}
+            onClick={() => {
+              const latest = state.document.tasks.at(-1);
+              if (latest !== undefined) {
+                dispatchToolbar({ cascade: true, id: latest.id, type: 'task.delete' });
+              }
+            }}
+            type="button"
+          >
             Remove latest
           </button>
-          <button disabled={!hasTasks} onClick={() => dispatch({ type: 'clear' })} type="button">
+          <button
+            disabled={!hasTasks}
+            onClick={() =>
+              dispatchToolbar({
+                commands: state.document.tasks.map((task) => ({
+                  cascade: true,
+                  id: task.id,
+                  type: 'task.delete' as const,
+                })),
+                type: 'transaction',
+              })
+            }
+            type="button"
+          >
             Clear
           </button>
           <span aria-hidden="true" className="interactive-controls__separator" />
           <button
-            disabled={state.history.past.length === 0}
-            onClick={() => dispatch({ type: 'undo' })}
+            disabled={!state.canUndo}
+            onClick={() => void ganttRef.current?.undo()}
             type="button"
           >
             Undo
           </button>
           <button
-            disabled={state.history.future.length === 0}
-            onClick={() => dispatch({ type: 'redo' })}
+            disabled={!state.canRedo}
+            onClick={() => void ganttRef.current?.redo()}
             type="button"
           >
             Redo
+          </button>
+          <button
+            disabled={state.focusedTask === undefined}
+            onClick={() => {
+              const target = state.focusedTask;
+              if (target !== undefined) {
+                ganttRef.current?.focusTask(target);
+                ganttRef.current?.scrollToTask(target, { align: 'center' });
+                dispatch({
+                  status: 'Imperatively focused and scrolled to the last task.',
+                  type: 'status',
+                });
+              }
+            }}
+            type="button"
+          >
+            Focus last task
           </button>
         </div>
         <output aria-live="polite" className="interactive-controls__status">
@@ -340,10 +513,10 @@ export function InteractivePage(): ReactElement {
         <div className="chart-frame__toolbar">
           <div>
             <strong>Interactive delivery plan</strong>
-            <span>29 Jul – 27 Aug · Europe/Belgrade</span>
+            <span>Parsed API input · Europe/Belgrade</span>
           </div>
           <div className="interactive-chart-count">
-            <strong>{document.tasks.length}</strong>
+            <strong>{state.document.tasks.length}</strong>
             <span>scheduled</span>
           </div>
         </div>
@@ -380,28 +553,23 @@ export function InteractivePage(): ReactElement {
               label: 'Mark as focus',
             },
           ]}
-          document={document}
+          document={state.document}
           features={{ contextMenu: true, editor: true, tooltip: true }}
           interactionMappers={interactionMappers}
           interactionSnap={{ anchor: RANGE_START, step: DAY }}
           label="Interactive delivery plan chart"
-          onCommandCommitted={(event) =>
+          onCommandCommitted={recordCommitted}
+          onCommandRejected={recordRejected}
+          onDocumentChange={(change) => dispatch({ change, type: 'runtime-change' })}
+          onFocusChange={(focused) =>
             dispatch({
-              status:
-                event.source.kind === 'pointer'
-                  ? 'The chart interaction was committed.'
-                  : 'The command was committed.',
-              type: 'status',
+              ...(focused?.kind === 'task' ? { focusedTask: focused } : {}),
+              type: 'focus',
             })
           }
-          onCommandRejected={(event) =>
-            dispatch({
-              status: event.diagnostics[0]?.message ?? 'The chart interaction was rejected.',
-              type: 'status',
-            })
-          }
-          onDocumentChange={adoptRuntimeChange}
-          range={{ start: RANGE_START, end: RANGE_END }}
+          onRangeChange={(range) => dispatch({ range, type: 'range' })}
+          range={state.range}
+          ref={ganttRef}
           slots={{ LaneHeader: InteractiveLaneHeader, TaskContent: InteractiveTaskContent }}
           taskVariants={taskVariants}
           tickAnchor={RANGE_START}
@@ -410,11 +578,34 @@ export function InteractivePage(): ReactElement {
         />
       </div>
 
+      <section aria-labelledby="api-log-title" className="api-log">
+        <div className="api-log__header">
+          <div>
+            <h2 id="api-log-title">Persistence boundary</h2>
+            <p>
+              This network-free example derives an API write from the same immutable candidate the
+              controlled store adopts. Retry, rollback, server revision, ID reconciliation, and
+              conflict handling belong to a later application adapter.
+            </p>
+          </div>
+          <button onClick={() => dispatch({ type: 'clear-log' })} type="button">
+            Clear log
+          </button>
+        </div>
+        <label htmlFor="example-api-change-log">Example API change log</label>
+        <textarea
+          id="example-api-change-log"
+          readOnly
+          rows={14}
+          value={JSON.stringify(state.apiLog, null, 2)}
+        />
+      </section>
+
       <p className="page-note">
         Drag task bodies or edges, or use arrows to navigate and Space to select. Press M to move,
         S/E to resize, N to create, Delete to remove, Enter to commit or activate, Escape to cancel,
-        and the platform undo/redo shortcuts for history. Focus or hover for task details, press
-        Shift+F10 or right-click for the task menu, and use Edit task for title/start/end changes.
+        and the platform undo/redo shortcuts for history. Persisted cross-lane movement becomes one
+        transaction and therefore one API batch.
       </p>
     </div>
   );
