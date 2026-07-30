@@ -152,12 +152,13 @@ playground remain unchanged and all repository gates pass.
   outside the local engine.
 - M1 permits cross-family ID reuse, so the original raw affected-ID sketch is replaced
   by deterministic collection-qualified entity references.
-- No M2 runtime, test, package, or browser behavior is complete from planning alone.
+- Slice 2 provides the atomic six-collection patch interpreter, strict final-state
+  integrity check, ready-to-apply inverses, and fixed-seed property evidence.
 
 **Next action**
 
-Implement Slice 2's atomic domain patch interpreter and seeded inversion properties
-before adding command reducers.
+Implement Slice 3's typed non-delete command normalization and reducers through the
+verified patch interpreter.
 
 ## Later Milestone Outcomes
 
@@ -247,6 +248,20 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 Slice 2 atomic domain patches
+
+- Added one versioned collection-plus-ID patch interpreter for add, replace, and
+  remove across all six canonical collections.
+- Atomic final-state integrity validation rejects malformed, stale, duplicate, or
+  referentially invalid batches while retaining the original document by identity.
+- Ready-to-apply inverses restore byte-identical stable serialization and preserve
+  collection order, revision, metadata, and untouched identities.
+- Added exact development dependency `fast-check@4.9.0`; the inversion property ran
+  200 examples with seed `20260730` and replay seed/path reporting on failure.
+- Focused verification passed 3 files and 5 tests. `vp check` passed formatting for
+  50 files and lint/type checking for 39 files with no warnings or errors.
+- Selected typed non-delete command normalization and reduction as Slice 3.
 
 ### 2026-07-30 — Community and Pro distribution contract
 

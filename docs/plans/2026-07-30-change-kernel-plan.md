@@ -413,7 +413,7 @@ Verification passed on 2026-07-30:
 
 ### Slice 2: Domain patch application and inversion properties
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -462,6 +462,19 @@ ordering bugs.
 
 Record the property-test seed/configuration, example count, test count, and exact
 outcomes.
+
+Verification passed on 2026-07-30:
+
+- `vp test run packages/gantt/src/commands/patches.test.ts packages/gantt/src/commands/patches.property.test.ts packages/gantt/src/model/document-round-trip.test.ts`
+  passed 3 test files and 5 tests.
+- `vp check` passed formatting for 50 files and lint/type checking for 39 files with
+  no warnings or errors.
+- The patch property ran 200 examples with fixed seed `20260730` and
+  `endOnFailure: true`; fast-check failure output reports the replay `seed` and
+  `path`, which can be copied into the `fc.assert` parameters.
+- `fast-check@4.9.0` was added as an exact root development dependency. Installation
+  completed with the existing peer-dependency summary warning and no supply-chain
+  policy failure.
 
 **Dependencies**
 
@@ -856,10 +869,30 @@ These questions do not block Slice 2:
   decision, plan, and roadmap consistency read passed. Slice 1 is complete and Slice 2
   is the actionable next checkpoint.
 
+### 2026-07-30 — Slice 2 patch interpreter and inversion
+
+- Added the collection-qualified patch type map and one atomic interpreter for all six
+  canonical collections.
+- Patch input is defensively cloned and frozen. Version, operation, target, add index,
+  record family, duplicate target, missing target, and final strict integrity failures
+  reject the whole batch while retaining the base document by identity.
+- Final-state validation runs after the complete batch, allowing coordinated
+  relationship changes without exposing an invalid intermediate document.
+- Touched collections are cloned once; untouched collections and untouched records
+  retain identity. Root schema version, revision, and metadata remain unchanged.
+- Inverses are returned in direct application order. Cross-family duplicate IDs,
+  task-owned segment replacement, stale batches, coordinated reference updates, and
+  byte-identical stable serialization after inversion are covered.
+- Added exact development dependency `fast-check@4.9.0`. The fixed-seed property uses
+  seed `20260730`, 200 runs, and `endOnFailure: true`; fast-check reports replay seed
+  and path on failure.
+- Focused verification passed 3 files and 5 tests. `vp check` passed 50 formatted
+  files and 39 lint/type-checked files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the change-kernel contract and decision record
-- [ ] Slice 2: Domain patch application and inversion properties
+- [x] Slice 2: Domain patch application and inversion properties
 - [ ] Slice 3: Typed command normalization, validation, and core reducers
 - [ ] Slice 4: Referential deletion and deterministic cascade
 - [ ] Slice 5: Atomic ordered transactions
@@ -870,9 +903,8 @@ These questions do not block Slice 2:
 
 ## Next Slice
 
-Begin Slice 2 in `packages/gantt/src/commands/types.ts` and
-`packages/gantt/src/commands/patches.ts`. Add the focused patch example/property tests
-and the `fast-check` development dependency, then run the exact Slice 2 test command
-and `vp check`. Do not begin command reducers until atomic patch application,
-collection order, cross-family identity, strict final integrity, and byte-identical
-inversion are recorded as passing.
+Begin Slice 3 in `packages/gantt/src/commands/normalize.ts` and
+`packages/gantt/src/commands/reduce.ts`. Extract private scalar, schedule, record, and
+JSON normalization helpers without changing M1 codec diagnostics, then implement the
+typed non-delete command set through `applyGanttPatches`. Run the exact Slice 3 test
+command and `vp check` before beginning referential deletion.
