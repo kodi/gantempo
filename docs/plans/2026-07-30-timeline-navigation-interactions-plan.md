@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: In progress; Slice 1 complete, Slice 2 next
+Status: In progress; Slice 2 complete, Slice 3 next
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -398,7 +398,7 @@ Verification:
 
 ### Slice 2: Add a viewport-independent occurrence catalog
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Stop treating viewport exclusion as occurrence deletion and make offscreen
 geometry addressable without exposing layout internals.
@@ -439,6 +439,33 @@ Verification:
 - `git diff --check`.
 
 Dependencies: Slice 1.
+
+Completed in this slice:
+
+- added one private frozen occurrence catalog projected from completed absolute
+  layout before viewport filtering;
+- retained stable target provenance, lane order/key and bounds, task bounds, and
+  scheduled interval for every resolved occurrence;
+- reconciled selection/logical focus against the full catalog while leaving public
+  visible occurrences, scene primitives, and pointer hit testing viewport-only;
+- preserved full-catalog identity across horizontal and vertical queries without
+  rebuilding topology, intervals, lane stacks, or the catalog;
+- updated `focusTask` and `scrollToTask` to resolve known offscreen targets, with
+  atomic failure when a required horizontal or controlled vertical request cannot be
+  acknowledged;
+- preserved missing-target failure and deterministic session reconciliation after
+  actual document removal.
+
+Verification:
+
+- `vp test run packages/gantt/src/render/scene-pipeline.test.ts packages/gantt/src/render/scene-pipeline.property.test.ts packages/gantt/src/runtime/store.test.ts packages/gantt/src/react/runtime.test.ts`
+  passed 4 files / 35 tests;
+- fixed-seed property coverage passed cached/cold full-catalog parity and proved
+  every visible task maps to one full occurrence;
+- horizontal and vertical work-counter assertions passed with zero topology,
+  interval, lane-stack, and occurrence-catalog rebuilds;
+- `vp check`, `git diff --check`, and `mise run ci` passed on the completed Slice 2
+  tree.
 
 ### Slice 3: Implement pure pan intent and controlled proposal orchestration
 
@@ -930,6 +957,22 @@ during implementation.
 - `git diff --check`, exact cross-document link/status checks, and `mise run ci`
   passed on the completed slice.
 
+### 2026-07-30 Slice 2 full occurrence catalog
+
+- The scene pipeline now returns a private catalog beside the public scene. It is
+  derived only when completed layout identity changes and is reused across ordinary
+  range/scroll queries.
+- The React runtime converts the full catalog to internal session occurrences while
+  continuing to derive the public `GanttVisibleOccurrence` list from visible task
+  primitives.
+- A direct runtime regression proves selected/logically focused occurrences survive
+  both-axis exclusion and reconcile only after actual task deletion.
+- Known offscreen `scrollToTask` now requests aligned semantic time and vertical
+  session intent, while missing callbacks reject the combined reveal before either
+  request is published.
+- Focused tests passed 4 files / 35 tests; `vp check`, `git diff --check`, and
+  `mise run ci` passed on the completed slice.
+
 ## Deviations
 
 ### 2026-07-30 — Base-M4 “scrolling” evidence did not include ordinary time panning
@@ -968,11 +1011,11 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 2 by auditing the completed layout return/cache boundary in
-`packages/gantt/src/render/scene-pipeline.ts` and the occurrence reconciliation in
-`packages/gantt/src/runtime/session.ts`, `packages/gantt/src/runtime/store.ts`, and
-`packages/gantt/src/react/runtime.ts`. Add one private immutable full occurrence
-catalog before viewport filtering, use it for session existence and known-target
-`scrollToTask`, preserve viewport-only primitives/hit testing/public selectors, and
-verify focused parity/removal/cache tests plus `vp check`, `git diff --check`, and
-`mise run ci`.
+Start Slice 3 by adding renderer-independent navigation math under
+`packages/gantt/src/interaction/` and one instance-owned controlled range proposal
+orchestrator in the React-free/runtime boundary. Cover finite delta normalization,
+pixel-to-time conversion, duration preservation, vertical page clamping,
+acknowledgement/rebase/external replacement, frame coalescing, disposal, and
+multi-instance behavior without binding DOM wheel or pointer events yet. Verify the
+focused navigation, edge-auto-pan, imperative runtime, and fixed-seed property suites
+plus `vp check`, `git diff --check`, and `mise run ci`.

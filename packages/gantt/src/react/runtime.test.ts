@@ -27,6 +27,42 @@ function documentFixture(title = 'Task A'): GanttDocument {
   };
 }
 
+function navigationDocumentFixture(): GanttDocument {
+  return {
+    schemaVersion: 1,
+    tasks: [
+      {
+        id: 'task-a',
+        kind: 'task',
+        title: 'Task A',
+        segments: [],
+        schedule: { mode: 'instant', start: START + DAY, end: START + 2 * DAY },
+      },
+      {
+        id: 'task-b',
+        kind: 'task',
+        title: 'Task B',
+        segments: [],
+        schedule: { mode: 'instant', start: START + 20 * DAY, end: START + 22 * DAY },
+      },
+    ],
+    resources: [],
+    lanes: [
+      { id: 'lane-a', title: 'Lane A' },
+      { id: 'lane-1', title: 'Lane 1' },
+      { id: 'lane-2', title: 'Lane 2' },
+      { id: 'lane-3', title: 'Lane 3' },
+      { id: 'lane-b', title: 'Lane B' },
+    ],
+    assignments: [],
+    placements: [
+      { id: 'placement-a', taskId: 'task-a', laneId: 'lane-a' },
+      { id: 'placement-b', taskId: 'task-b', laneId: 'lane-b' },
+    ],
+    dependencies: [],
+  };
+}
+
 function commonProps() {
   return {
     range: { start: START, end: START + 7 * DAY },
@@ -174,6 +210,105 @@ describe('React runtime adapter', () => {
     expect(sessions.length).toBeGreaterThan(0);
     first.dispose();
     second.dispose();
+  });
+
+  it('retains offscreen session targets and reveals a known full-catalog occurrence', async () => {
+    const ranges: { readonly end: number; readonly start: number }[] = [];
+    const props: GanttProps = {
+      ...commonProps(),
+      defaultDocument: navigationDocumentFixture(),
+      onRangeChange(range) {
+        ranges.push(range);
+      },
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    runtime.measure({ clientHeight: 58, clientWidth: 700, verticalStart: 0 });
+    const firstTarget = runtime.getSnapshot().selector.occurrences[0]!.target;
+    const geometry = {
+      height: 58,
+      verticalStart: 0,
+      width: 700,
+      x: 160,
+      y: 0,
+    };
+
+    expect(runtime.getSnapshot().occurrenceCatalog).toHaveLength(2);
+    expect(runtime.getHandle().focusTask(firstTarget)).toBe(true);
+    expect(
+      runtime.keyboardAction({
+        action: { type: 'toggle-selection' },
+        geometry,
+      }),
+    ).toBe(true);
+    runtime.measure({ clientHeight: 58, clientWidth: 700, verticalStart: 232 });
+    expect(runtime.getSnapshot().selector.occurrences).toEqual([]);
+    expect(runtime.getHandle().getSession()).toMatchObject({
+      focused: { viewKey: firstTarget.viewKey },
+      selection: [{ viewKey: firstTarget.viewKey }],
+    });
+
+    const offscreen = runtime
+      .getSnapshot()
+      .occurrenceCatalog.find((occurrence) => occurrence.taskId === 'task-b')!;
+    const offscreenTarget = {
+      kind: 'task' as const,
+      laneViewKey: offscreen.laneViewKey,
+      ...(offscreen.laneId === undefined ? {} : { laneId: offscreen.laneId }),
+      ...(offscreen.placementId === undefined ? {} : { placementId: offscreen.placementId }),
+      taskId: offscreen.taskId,
+      viewKey: offscreen.viewKey,
+    };
+    expect(runtime.getHandle().scrollToTask(offscreenTarget, { align: 'start' })).toBe(true);
+    expect(ranges).toEqual([
+      {
+        start: START + 20 * DAY,
+        end: START + 27 * DAY,
+      },
+    ]);
+    expect(runtime.getHandle().getSession().viewport.verticalStart).toBe(232);
+
+    await runtime.getHandle().dispatch({
+      type: 'task.delete',
+      id: 'task-a',
+      cascade: true,
+    });
+    expect(runtime.getHandle().getSession().selection).toEqual([]);
+    expect(runtime.getHandle().getSession().focused?.viewKey).toBe(offscreenTarget.viewKey);
+    runtime.dispose();
+  });
+
+  it('rejects an offscreen task reveal atomically when horizontal range cannot be acknowledged', () => {
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: navigationDocumentFixture(),
+    });
+    runtime.activate();
+    runtime.measure({ clientHeight: 58, clientWidth: 700, verticalStart: 0 });
+    const offscreen = runtime
+      .getSnapshot()
+      .occurrenceCatalog.find((occurrence) => occurrence.taskId === 'task-b')!;
+
+    expect(
+      runtime.getHandle().scrollToTask({
+        kind: 'task',
+        laneViewKey: offscreen.laneViewKey,
+        ...(offscreen.laneId === undefined ? {} : { laneId: offscreen.laneId }),
+        ...(offscreen.placementId === undefined ? {} : { placementId: offscreen.placementId }),
+        taskId: offscreen.taskId,
+        viewKey: offscreen.viewKey,
+      }),
+    ).toBe(false);
+    expect(runtime.getHandle().getSession().viewport.verticalStart).toBe(0);
+    expect(
+      runtime.getHandle().scrollToTask({
+        kind: 'task',
+        laneViewKey: 'missing-lane',
+        taskId: 'missing-task',
+        viewKey: 'missing-occurrence',
+      }),
+    ).toBe(false);
+    runtime.dispose();
   });
 
   it('reports controlled session proposals through semantic observation callbacks', () => {

@@ -102,8 +102,20 @@ describe(`scene pipeline cached/cold parity seed=${PROPERTY_SEED}`, () => {
             const cached = pipeline.build(options, {
               kind: 'affected',
               affected: outcome.affected,
-            }).scene;
-            expect(cached).toEqual(buildChartScene(options));
+            });
+            const cold = createChartScenePipeline().build(options);
+            expect(cached.scene).toEqual(buildChartScene(options));
+            expect(cached.occurrences).toEqual(cold.occurrences);
+            for (const visible of cached.scene.taskBars) {
+              expect(
+                cached.occurrences.some(
+                  (occurrence) =>
+                    occurrence.viewKey === visible.viewKey &&
+                    occurrence.taskId === visible.taskId &&
+                    occurrence.laneViewKey === visible.laneViewKey,
+                ),
+              ).toBe(true);
+            }
           }
         },
       ),

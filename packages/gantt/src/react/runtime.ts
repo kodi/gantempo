@@ -26,7 +26,7 @@ import type {
 import type { Diagnostic } from '../model/diagnostics';
 import type { EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences } from '../model/validate';
-import { createChartScenePipeline } from '../render/scene-pipeline';
+import { createChartScenePipeline, type ChartSceneOccurrence } from '../render/scene-pipeline';
 import type { ChartScene, TaskBarPrimitive } from '../render/primitives';
 import {
   createGanttCommandBus,
@@ -60,6 +60,7 @@ import type {
 } from './types';
 
 export interface GanttReactRuntimeSnapshot {
+  readonly occurrenceCatalog: readonly ChartSceneOccurrence[];
   readonly scene: ChartScene;
   readonly selector: GanttSelectorSnapshot;
   readonly version: number;
@@ -178,7 +179,7 @@ function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
   );
 }
 
-function taskTarget(task: TaskBarPrimitive): GanttTaskTarget {
+function taskTarget(task: TaskBarPrimitive | ChartSceneOccurrence): GanttTaskTarget {
   return Object.freeze({
     ...(task.assignmentId === undefined ? {} : { assignmentId: task.assignmentId }),
     kind: 'task',
@@ -192,11 +193,13 @@ function taskTarget(task: TaskBarPrimitive): GanttTaskTarget {
   });
 }
 
-function occurrences(scene: ChartScene): {
+function occurrences(
+  scene: ChartScene,
+  catalog: readonly ChartSceneOccurrence[],
+): {
   readonly runtime: readonly GanttRuntimeOccurrence[];
   readonly visible: readonly GanttVisibleOccurrence[];
 } {
-  const lanes = new Map(scene.lanes.map((lane, index) => [lane.viewKey, index]));
   const visible = scene.taskBars.map((task) =>
     Object.freeze({
       end: task.end,
@@ -206,11 +209,11 @@ function occurrences(scene: ChartScene): {
   );
   return Object.freeze({
     runtime: Object.freeze(
-      scene.taskBars.map((task, index) =>
+      catalog.map((task) =>
         Object.freeze({
-          horizontalCenter: task.x + task.width / 2,
-          laneIndex: lanes.get(task.laneViewKey) ?? index,
-          target: visible[index]!.target,
+          horizontalCenter: task.start + (task.end - task.start) / 2,
+          laneIndex: task.laneIndex,
+          target: taskTarget(task),
         }),
       ),
     ),
@@ -412,6 +415,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     }
     publish(
       Object.freeze({
+        occurrenceCatalog: snapshot.occurrenceCatalog,
         scene: snapshot.scene,
         selector: Object.freeze({
           ...snapshot.selector,
@@ -507,7 +511,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             verticalStart: storeSnapshot.viewport.queryVerticalStart,
           }
         : undefined;
-    const derivedScene = pipeline.build(
+    const derived = pipeline.build(
       {
         document: storeSnapshot.document,
         range: display.range,
@@ -519,7 +523,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         ...(viewport === undefined ? {} : { viewport }),
       },
       invalidation,
-    ).scene;
+    );
+    const derivedScene = derived.scene;
     const scene =
       inputDiagnostics.length === 0
         ? derivedScene
@@ -528,10 +533,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             diagnostics: Object.freeze([...inputDiagnostics, ...derivedScene.diagnostics]),
           });
     lastDocument = storeSnapshot.document;
-    const sceneOccurrences = occurrences(scene);
+    const sceneOccurrences = occurrences(scene, derived.occurrences);
     store.setOccurrences(sceneOccurrences.runtime);
     const reconciledStore = store.getSnapshot();
     return Object.freeze({
+      occurrenceCatalog: derived.occurrences,
       scene,
       selector: createSelectorSnapshot(
         reconciledStore,
@@ -591,7 +597,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     )?.target;
   }
 
-  function alignedVerticalStart(task: TaskBarPrimitive, options?: GanttScrollOptions): number {
+  function catalogOccurrence(target: GanttTaskTarget): ChartSceneOccurrence | undefined {
+    return snapshot.occurrenceCatalog.find((occurrence) => occurrence.viewKey === target.viewKey);
+  }
+
+  function alignedVerticalStart(
+    task: Pick<ChartSceneOccurrence, 'height' | 'y'>,
+    options?: GanttScrollOptions,
+  ): number {
     const extent =
       snapshot.selector.viewport.status === 'measured'
         ? snapshot.selector.viewport.clientHeight
@@ -604,6 +617,21 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           ? task.y + task.height - extent
           : task.y + task.height / 2 - extent / 2;
     return Math.max(0, Math.min(start, Math.max(0, snapshot.scene.bounds.timelineHeight - extent)));
+  }
+
+  function alignedTaskRange(
+    task: Pick<ChartSceneOccurrence, 'end' | 'start'>,
+    options?: GanttScrollOptions,
+  ): TimeRange {
+    const duration = display.range.end - display.range.start;
+    const align = options?.align ?? 'center';
+    const start =
+      align === 'start'
+        ? task.start
+        : align === 'end'
+          ? task.end - duration
+          : task.start + (task.end - task.start) / 2 - duration / 2;
+    return Object.freeze({ start, end: start + duration });
   }
 
   function interactionOptions(geometry: GanttPointerGeometry): InteractionGestureOptions {
@@ -935,10 +963,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     canUndo: () => store.getSnapshot().history.canUndo,
     dispatch: (command, options) => bus.dispatch(command, options),
     focusTask(target) {
-      const current = visibleTarget(target);
-      if (current === undefined) {
+      const occurrence = catalogOccurrence(target);
+      if (occurrence === undefined) {
         return false;
       }
+      const current = taskTarget(occurrence);
       return updateSession(
         Object.freeze({
           focused: current,
@@ -952,20 +981,33 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     getSession: () => store.getSnapshot().session,
     redo: () => bus.redo(),
     scrollToTask(target, options) {
-      const task = snapshot.scene.taskBars.find(
-        (candidate) => candidate.viewKey === target.viewKey,
-      );
+      const task = catalogOccurrence(target);
       if (task === undefined) {
         return false;
       }
       const session = store.getSnapshot().session;
+      const verticalStart = alignedVerticalStart(task, options);
+      const verticalChanged = verticalStart !== session.viewport.verticalStart;
+      const horizontalChanged = task.start < display.range.start || task.end > display.range.end;
+      if (
+        (horizontalChanged && callbacks.onRangeChange === undefined) ||
+        (verticalChanged && sessionControlled && callbacks.onSessionChange === undefined)
+      ) {
+        return false;
+      }
+      if (horizontalChanged) {
+        const range = alignedTaskRange(task, options);
+        const event = Object.freeze({ source: 'imperative' as const });
+        emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
+      }
+      if (!verticalChanged) {
+        return true;
+      }
       return updateSession(
         Object.freeze({
           ...(session.focused === undefined ? {} : { focused: session.focused }),
           selection: session.selection,
-          viewport: Object.freeze({
-            verticalStart: alignedVerticalStart(task, options),
-          }),
+          viewport: Object.freeze({ verticalStart }),
         }),
       );
     },

@@ -167,7 +167,7 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Navigation contract accepted; Slice 2 next
+**Status:** `[-]` Full occurrence catalog complete; Slice 3 next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
@@ -189,9 +189,12 @@ Slice 1 accepted the durable
 [timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md),
 including the axis/modifier/pointer matrix, controlled-range proposal lifecycle,
 private full-occurrence lifetime, focus handoff, browser-zoom exclusion, and
-keyboard paging. It requires no public API expansion. Slice 2 will add the private
-viewport-independent occurrence catalog and correct offscreen session/reveal
-behavior before input adapters change.
+keyboard paging. Slice 2 added the private viewport-independent occurrence catalog,
+switched session existence and known-target imperative reveal to it, preserved
+viewport-only public/render/hit-test data, and proved catalog/layout reuse across
+ordinary range and scroll changes. No public API expanded. Slice 3 will add pure
+navigation math and the instance-owned controlled range proposal lifecycle before
+DOM input adapters change.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -357,6 +360,14 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed timeline-navigation Slice 2. A private immutable full
+  occurrence catalog now projects from completed layout and carries target, lane,
+  absolute geometry, and time data independent of viewport-filtered primitives.
+  Session reconciliation and known-target `focusTask`/`scrollToTask` use the catalog;
+  public visible occurrences and hit testing remain viewport-only. Focused
+  catalog/session/runtime/property tests passed 4 files / 35 tests, range/scroll work
+  counters proved topology/layout/catalog reuse, and the complete CI gate passed.
+  Pure navigation math and controlled proposal orchestration are Slice 3.
 - 2026-07-30: Accepted the post-M4
   [timeline navigation interaction contract](decisions/2026-07-30-timeline-navigation-interaction-contract.md).
   It keeps `range` controlled, makes accepted wheel/grab/page input pan semantic

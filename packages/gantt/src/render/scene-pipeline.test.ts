@@ -284,6 +284,74 @@ describe('staged chart scene pipeline', () => {
     expect(vertical.scene.lanes.every((lane) => lane.y >= 64)).toBe(true);
   });
 
+  it('keeps a frozen full occurrence catalog across horizontal and vertical viewport queries', () => {
+    const pipeline = createChartScenePipeline();
+    const document = fixture();
+    const first = pipeline.build({
+      ...options(document),
+      range: { start: START, end: START + 3 * DAY },
+      viewport: { verticalStart: 0, verticalExtent: 58 },
+    });
+
+    expect(first.scene.taskBars.map((task) => task.taskId)).toEqual(['task-a']);
+    expect(first.occurrences).toHaveLength(2);
+    expect(first.occurrences.map((occurrence) => occurrence.taskId)).toEqual(['task-a', 'task-b']);
+    expect(first.occurrences[1]).toMatchObject({
+      laneId: 'lane-b',
+      laneIndex: 1,
+      laneViewKey: expect.any(String),
+      laneY: 58,
+      placementId: 'placement-b',
+      start: START + 4 * DAY,
+      taskId: 'task-b',
+    });
+    expect(Object.isFrozen(first.occurrences)).toBe(true);
+    expect(Object.isFrozen(first.occurrences[1])).toBe(true);
+    expect(first.work.occurrenceCatalogBuilds).toBe(1);
+
+    const horizontal = pipeline.build({
+      ...options(document),
+      range: { start: START + 3 * DAY, end: START + 7 * DAY },
+      viewport: { verticalStart: 0, verticalExtent: 58 },
+    });
+    expect(horizontal.occurrences).toBe(first.occurrences);
+    expect(horizontal.work).toMatchObject({
+      intervalBuilds: 0,
+      laneStackBuilds: 0,
+      occurrenceCatalogBuilds: 0,
+      topologyBuilds: 0,
+      viewportQueries: 1,
+    });
+
+    const vertical = pipeline.build({
+      ...options(document),
+      range: { start: START + 3 * DAY, end: START + 7 * DAY },
+      viewport: { verticalStart: 58, verticalExtent: 72 },
+    });
+    expect(vertical.occurrences).toBe(first.occurrences);
+    expect(vertical.scene.taskBars.map((task) => task.taskId)).toEqual(['task-b']);
+    expect(vertical.work).toMatchObject({
+      intervalBuilds: 0,
+      laneStackBuilds: 0,
+      occurrenceCatalogBuilds: 0,
+      topologyBuilds: 0,
+      viewportQueries: 1,
+    });
+
+    const removed = commit(document, {
+      type: 'task.delete',
+      id: 'task-a',
+      cascade: true,
+    });
+    const afterRemoval = pipeline.build(options(removed.document), {
+      kind: 'affected',
+      affected: removed.affected,
+    });
+    expect(afterRemoval.occurrences.map((occurrence) => occurrence.taskId)).toEqual(['task-b']);
+    expect(afterRemoval.occurrences).not.toBe(first.occurrences);
+    expect(afterRemoval.work.occurrenceCatalogBuilds).toBe(1);
+  });
+
   it('fails closed to a full rebuild for external documents without trusted affected metadata', () => {
     const pipeline = createChartScenePipeline();
     const document = fixture();

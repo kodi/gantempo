@@ -57,6 +57,7 @@ export interface ChartScenePipelineWork {
   readonly lanePrimitiveBuilds: number;
   readonly laneStackBuilds: number;
   readonly mode: 'cold' | 'fallback' | 'reused' | 'selective';
+  readonly occurrenceCatalogBuilds: number;
   readonly taskPrimitiveBuilds: number;
   readonly tickBuilds: number;
   readonly topologyBuilds: number;
@@ -67,8 +68,27 @@ export interface ChartScenePipelineWork {
 }
 
 export interface ChartScenePipelineResult {
+  readonly occurrences: readonly ChartSceneOccurrence[];
   readonly scene: ChartScene;
   readonly work: ChartScenePipelineWork;
+}
+
+export interface ChartSceneOccurrence {
+  readonly assignmentId?: string;
+  readonly end: number;
+  readonly height: number;
+  readonly laneHeight: number;
+  readonly laneId?: string;
+  readonly laneIndex: number;
+  readonly laneViewKey: string;
+  readonly laneY: number;
+  readonly placementId?: string;
+  readonly resourceId?: string;
+  readonly segmentId?: string;
+  readonly start: number;
+  readonly taskId: string;
+  readonly viewKey: string;
+  readonly y: number;
 }
 
 export interface ChartSceneDependencyMap {
@@ -93,6 +113,7 @@ interface MutableWork {
   lanePrimitiveBuilds: number;
   laneStackBuilds: number;
   mode: ChartScenePipelineWork['mode'];
+  occurrenceCatalogBuilds: number;
   taskPrimitiveBuilds: number;
   tickBuilds: number;
   topologyBuilds: number;
@@ -117,6 +138,7 @@ interface PipelineCache {
   readonly layout?: StackLayout;
   readonly localLanes?: readonly LaidOutLane[];
   readonly metrics: ChartLayoutMetrics;
+  readonly occurrences: readonly ChartSceneOccurrence[];
   readonly options: BuildChartSceneOptions;
   readonly scene: ChartScene;
   readonly taskPrimitiveByKey: ReadonlyMap<string, TaskBarPrimitive>;
@@ -135,6 +157,7 @@ function createWork(mode: MutableWork['mode']): MutableWork {
     lanePrimitiveBuilds: 0,
     laneStackBuilds: 0,
     mode,
+    occurrenceCatalogBuilds: 0,
     taskPrimitiveBuilds: 0,
     tickBuilds: 0,
     topologyBuilds: 0,
@@ -551,7 +574,7 @@ function lanePrimitive(lane: LaidOutLane): LaneRowPrimitive {
 
 function placementProvenance(
   placement: ResolvedViewPlacement,
-  lane: LaneRowPrimitive,
+  lane: Pick<LaneRowPrimitive, 'laneId' | 'resourceId'>,
 ): Pick<TaskBarPrimitive, 'assignmentId' | 'laneId' | 'placementId' | 'resourceId' | 'segmentId'> {
   const placementId =
     placement.source.kind === 'document-placement' ? placement.source.placementId : undefined;
@@ -562,6 +585,34 @@ function placementProvenance(
     ...(placement.assignmentId === undefined ? {} : { assignmentId: placement.assignmentId }),
     ...(placement.segmentId === undefined ? {} : { segmentId: placement.segmentId }),
   };
+}
+
+/**
+ * Projects the completed layout into stable offscreen-addressable occurrence data.
+ * The React runtime consumes this catalog for identity and reveal, while scene
+ * primitives remain bounded by the viewport query.
+ */
+function buildOccurrenceCatalog(layout: StackLayout): readonly ChartSceneOccurrence[] {
+  return Object.freeze(
+    layout.lanes.flatMap((lane, laneIndex) => {
+      const laneMetadata = lanePrimitive(lane);
+      return lane.placements.map((placement) =>
+        Object.freeze({
+          viewKey: placement.key,
+          laneViewKey: placement.laneKey,
+          ...placementProvenance(placement, laneMetadata),
+          taskId: placement.taskId,
+          laneIndex,
+          laneY: lane.y,
+          laneHeight: lane.height,
+          start: placement.start,
+          end: placement.end,
+          y: placement.y,
+          height: placement.height,
+        }),
+      );
+    }),
+  );
 }
 
 function reusablePrimitive<T>(
@@ -648,7 +699,11 @@ export function createChartScenePipeline(): ChartScenePipeline {
           viewportSignature(options, cache.layout?.totalHeight ?? 0)
       ) {
         work.mode = 'reused';
-        return Object.freeze({ scene: cache.scene, work: freezeWork(work) });
+        return Object.freeze({
+          occurrences: cache.occurrences,
+          scene: cache.scene,
+          work: freezeWork(work),
+        });
       }
 
       const validation =
@@ -708,6 +763,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
       }
 
       if (topology.status === 'rejected') {
+        const occurrences = Object.freeze([]) as readonly ChartSceneOccurrence[];
         const scene = rejectedScene(options, metrics, ticks, [
           ...validation.diagnostics,
           ...topology.diagnostics,
@@ -718,6 +774,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
           lanePrimitiveByKey: new Map(),
           laneStacks: new Map(),
           metrics,
+          occurrences,
           options,
           scene,
           taskPrimitiveByKey: new Map(),
@@ -725,7 +782,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
           topology,
           validation,
         };
-        return Object.freeze({ scene, work: freezeWork(work) });
+        return Object.freeze({ occurrences, scene, work: freezeWork(work) });
       }
 
       const shouldBuildIntervals =
@@ -753,6 +810,13 @@ export function createChartScenePipeline(): ChartScenePipeline {
             layout: cache!.layout!,
             localLanes: cache!.localLanes!,
           };
+      const occurrences =
+        layoutStage.layout === cache?.layout
+          ? cache!.occurrences
+          : buildOccurrenceCatalog(layoutStage.layout);
+      if (occurrences !== cache?.occurrences) {
+        work.occurrenceCatalogBuilds += 1;
+      }
       const kernel = buildViewportKernel(layoutStage.layout, cache, forceAll, work);
       const viewportKey = viewportSignature(options, layoutStage.layout.totalHeight);
       const viewport =
@@ -860,6 +924,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         layout: layoutStage.layout,
         localLanes: layoutStage.localLanes,
         metrics,
+        occurrences,
         options,
         scene,
         taskPrimitiveByKey,
@@ -868,7 +933,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         validation,
         ...(viewport === undefined ? {} : { viewport }),
       };
-      return Object.freeze({ scene, work: freezeWork(work) });
+      return Object.freeze({ occurrences, scene, work: freezeWork(work) });
     },
 
     getDependencies() {
