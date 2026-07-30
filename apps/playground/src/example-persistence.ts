@@ -18,6 +18,8 @@ const ENTITY_BY_COLLECTION = {
 type ExampleEntity = (typeof ENTITY_BY_COLLECTION)[DocumentCollection];
 type ExampleRecord = Readonly<Record<string, unknown>>;
 
+export const EXAMPLE_API_LOG_LIMIT = 10;
+
 interface ExampleEntityReference {
   readonly id: string;
   readonly title?: string;
@@ -241,4 +243,11 @@ export function createExampleApiWrite(
     changes: Object.freeze(change.entityChanges.map(exampleChange)),
     operationId,
   });
+}
+
+export function appendExampleApiWrite(
+  entries: readonly ExampleApiWrite[],
+  write: ExampleApiWrite,
+): readonly ExampleApiWrite[] {
+  return Object.freeze([...entries, write].slice(-EXAMPLE_API_LOG_LIMIT));
 }

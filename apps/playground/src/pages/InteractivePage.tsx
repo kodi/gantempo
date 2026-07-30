@@ -14,7 +14,12 @@ import {
   type TimeRange,
 } from '@gantempo/gantt';
 import { useMemo, useReducer, useRef, type ReactElement } from 'react';
-import { createExampleApiWrite, type ExampleApiWrite } from '../example-persistence';
+import { ExampleApiLog } from '../ExampleApiLog';
+import {
+  appendExampleApiWrite,
+  createExampleApiWrite,
+  type ExampleApiWrite,
+} from '../example-persistence';
 
 const DAY = 24 * 60 * 60 * 1000;
 const RANGE_START = Date.UTC(2026, 6, 29);
@@ -173,7 +178,7 @@ function interactiveReducer(state: InteractiveState, action: InteractiveAction):
       const request = createExampleApiWrite(action.change, operationId);
       return {
         ...state,
-        apiLog: [...state.apiLog, request],
+        apiLog: appendExampleApiWrite(state.apiLog, request),
         document: action.change.document,
         nextOperation: state.nextOperation + 1,
         nextSerial: state.nextSerial + addedTasks,
@@ -485,22 +490,20 @@ export function InteractivePage(): ReactElement {
           <div>
             <h2 id="api-log-title">Persistence boundary</h2>
             <p>
-              Each accepted hook call becomes one row-oriented API request with explicit
-              create/update/delete changes. Internal proposals, pointer details, lifecycle phases,
+              The newest ten accepted writes appear as concise row events. Expand any event for
+              request metadata and raw JSON; internal proposals, pointer details, lifecycle phases,
               and patches stay out of this primary log.
             </p>
           </div>
-          <button onClick={() => dispatch({ type: 'clear-log' })} type="button">
+          <button
+            disabled={state.apiLog.length === 0}
+            onClick={() => dispatch({ type: 'clear-log' })}
+            type="button"
+          >
             Clear log
           </button>
         </div>
-        <label htmlFor="example-api-change-log">Example API change log</label>
-        <textarea
-          id="example-api-change-log"
-          readOnly
-          rows={14}
-          value={JSON.stringify(state.apiLog, null, 2)}
-        />
+        <ExampleApiLog entries={state.apiLog} />
       </section>
 
       <p className="page-note">

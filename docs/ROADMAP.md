@@ -167,7 +167,7 @@ post-M4 work.
 
 ### Post-M4 persistence entity-change projection
 
-**Status:** `[x]` Complete and verified
+**Status:** `[-]` Structured log implemented; narrow live gate pending
 
 The
 [persistence entity-change projection plan](plans/2026-07-31-persistence-entity-change-projection-plan.md)
@@ -186,7 +186,12 @@ The final correction passes 60 test files / 294 tests, full formatting/lint/type
 package and production playground builds, and live desktop/narrow drag,
 accessibility, overflow, and console checks. Full task create/delete DTOs retain
 schedule `mode`, while the short date-only form is limited to same-mode updates. The
-item-properties appendix is again the next action.
+accepted data contract remains complete. A presentational follow-up now replaces the
+raw textarea with a ten-entry expandable event stream. Focused tests, full CI, the
+production playground build, and a live desktop drag/retention/disclosure check pass.
+Chrome DevTools remains profile-locked, and the fallback cannot resize or provide a
+console ledger, so the narrow and console gates remain unclaimed before the
+item-properties appendix resumes.
 
 ### Post-M4 timeline navigation interactions
 
@@ -668,7 +673,21 @@ more than one implementation plan.
 - Repeated final CI passed 60 test files / 294 tests, formatting across 147 files,
   lint/types across 136 files, and the package build. The production playground again
   transformed 1,914 modules, final diff checks passed, and the correction is complete.
-- Appendix Slice A1 is again the next action.
+- A user-requested presentational follow-up replaces the raw textarea with a bounded
+  Sentry/Grafana-style event stream. It keeps the newest ten writes, summarizes each
+  operation, and reveals metadata plus raw JSON through native disclosure without
+  changing the accepted persistence contract.
+- The follow-up passes two focused files / six tests with axe, final CI across 149
+  formatted files, 138 lint/type-checked files, 61 test files / 297 tests, the
+  four-artifact package build, the 1,915-module production playground build, and
+  final diff checks.
+- Live in-app Browser verification moved `Work item 1`, expanded its concise row,
+  preserved keyboard focus/toggle, retained operations 004–013 after 13 writes,
+  bounded the stream at 430 pixels with real overflow, and kept page overflow at
+  zero. Chrome DevTools remained profile-locked, while the fallback could not run
+  the 560 × 900 or console gates; the active plan records that verification-only
+  deviation.
+- Appendix Slice A1 remains next after the structured-log follow-up.
 
 ### 2026-07-30 — Default-surface modernization started
 

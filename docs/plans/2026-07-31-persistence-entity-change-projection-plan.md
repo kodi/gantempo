@@ -1,6 +1,6 @@
 # Persistence Entity-Change Projection Plan
 
-Status: Complete
+Status: Active
 Date: 2026-07-31
 Owners: Post-M4 persistence ergonomics
 
@@ -134,6 +134,28 @@ Verification:
 
 Dependencies: Slices 1–3.
 
+### Slice 5: Add a structured expandable playground log
+
+Status: `[-]` Implemented; narrow live verification pending
+
+- replace the read-only textarea with a bounded structured event stream;
+- retain at most the newest ten API writes and show newest first;
+- summarize event type, entity/task identity, schedule movement, operation ID, and
+  batch size;
+- use native `details`/`summary` disclosure for keyboard-accessible expansion;
+- show base revision, operation ID, change count, and formatted raw JSON when open;
+- preserve the clear action and responsive persistence boundary.
+
+Verification:
+
+- focused projection retention and DOM disclosure tests;
+- complete repository and playground production gates;
+- live desktop and narrow checks for drag output, newest-first ordering, bounded
+  scrolling, mouse/keyboard disclosure, accessibility structure, overflow, and
+  console state.
+
+Dependencies: Slice 4 and the accepted entity-change projection.
+
 ## Working Notes
 
 ### 2026-07-31 — User-reported persistence opacity
@@ -204,6 +226,26 @@ Dependencies: Slices 1–3.
   Full task rows and mode-changing updates retain `mode`; focused coverage and final
   gates must be repeated before completion.
 
+### 2026-07-31 — Structured log display requested
+
+- The verified textarea remains useful for copying but makes every write look like
+  one undifferentiated JSON document.
+- The follow-up keeps persistence data unchanged and replaces only the playground
+  presentation with a Sentry/Grafana-style expandable event stream.
+- Native disclosure preserves keyboard and assistive-technology behavior without
+  adding chart or package API surface. The stream retains ten writes maximum and
+  keeps raw JSON inside each entry.
+
+### 2026-07-31 — Narrow browser gate blocked
+
+- Chrome DevTools remained unavailable because its dedicated profile was already
+  locked by another running browser instance.
+- The in-app Browser fallback verified the live desktop surface but exposes no
+  viewport-resize or console ledger. Its security policy rejected a temporary
+  narrow iframe harness, so the 560 × 900 and console checks remain unclaimed.
+- This is a verification-only deviation. The responsive CSS is implemented, focused
+  DOM/axe coverage passes, and no package or persistence contract changed.
+
 ## Verification Evidence
 
 - Slice 1 documentation passed `git diff --check`, exact linked-file existence checks,
@@ -233,10 +275,23 @@ Dependencies: Slices 1–3.
 - Final `mise run build-playground` transformed 1,914 modules and emitted 425.25 kB
   JavaScript / 27.83 kB CSS before compression. All pre- and post-gate
   `git diff --check` runs passed.
+- Slice 5 focused retention/disclosure coverage passed two files / six tests,
+  including an axe scan with no reported violations.
+- Live in-app Browser verification at 1,338 × 1,268 moved `Work item 1` from
+  July 29–August 2 to July 31–August 4, showed one concise
+  `task.schedule.updated` row, expanded its operation/base-revision/raw request,
+  preserved summary focus with a three-pixel visible outline, and closed through
+  keyboard activation.
+- Repeating live creates produced 13 operations total while the stream retained
+  exactly operations 004–013 newest-first. Its 430-pixel viewport had a 729-pixel
+  scroll extent, and page-level horizontal overflow remained zero.
+- Final `mise run ci` passed formatting across 149 files, lint/types across 138
+  files, 61 test files / 297 tests, and the four-artifact package build. Final
+  `mise run build-playground` transformed 1,915 modules, and `git diff --check`
+  passed.
 
 ## Next Slice
 
-This correction is complete. Execute Appendix Slice A1 in
-[`2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md`](2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md):
-freeze the canonical appearance, description, and progress contract before changing
-the model or renderer.
+Retry Chrome DevTools when its dedicated profile is available and close Slice 5 with
+the 560 × 900 responsive and console gates. No additional implementation is expected.
+After that verification, return Appendix Slice A1 as the next action.

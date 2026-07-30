@@ -538,8 +538,8 @@ renderer. It has five routes:
 - `/matrix` shows project, resource, custom, segment, overlap, density, theme,
   clipping, and empty variants together, with independent local ranges;
 - `/interactive` is a controlled application store with one shared command/history
-  path, explicit range acknowledgement, and an inspectable network-free API-shaped
-  row-change log;
+  path, explicit range acknowledgement, and a ten-entry expandable network-free
+  API-shaped row-change log;
 - `/uncontrolled` owns its default document/session while demonstrating async
   allow/reject/replace interception, derived resource mapping, lifecycle events, and
   imperative focus/scroll with an acknowledged controlled range;

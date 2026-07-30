@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import type { GanttEntityChange, PlacementRecord, TaskRecord } from '@gantempo/gantt';
-import { createExampleApiWrite } from './example-persistence';
+import {
+  appendExampleApiWrite,
+  createExampleApiWrite,
+  EXAMPLE_API_LOG_LIMIT,
+  type ExampleApiWrite,
+} from './example-persistence';
 
 function task(start: number, end: number, title = 'Work item 1'): TaskRecord {
   return Object.freeze({
@@ -123,5 +128,21 @@ describe('example persistence projection', () => {
         title: 'Work item 1',
       },
     });
+  });
+
+  it('retains only the newest ten API writes', () => {
+    let entries: readonly ExampleApiWrite[] = [];
+    for (let serial = 1; serial <= EXAMPLE_API_LOG_LIMIT + 2; serial += 1) {
+      entries = appendExampleApiWrite(entries, {
+        baseRevision: null,
+        changes: [],
+        operationId: `operation-${serial}`,
+      });
+    }
+
+    expect(entries).toHaveLength(EXAMPLE_API_LOG_LIMIT);
+    expect(entries[0]?.operationId).toBe('operation-3');
+    expect(entries.at(-1)?.operationId).toBe('operation-12');
+    expect(Object.isFrozen(entries)).toBe(true);
   });
 });
