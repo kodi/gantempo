@@ -85,7 +85,7 @@ Detailed completion evidence is recorded in
 | M0: Read-only chart primitives | First vertical subset of Slice 2 | Real time-based lanes and task bars render through one public React path | `[x]` | [Completed plan](plans/2026-07-30-simplest-chart-primitives-plan.md) |
 | M1: Document kernel | Slice 1 foundation | Canonical records can be normalized, validated, indexed, migrated, and serialized without React | `[x]` | [Completed plan](plans/2026-07-30-document-kernel-foundation-plan.md) |
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
-| M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | Not yet created |
+| M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[ ]` | [Active plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[ ]` | Not yet created |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[ ]` Not started; detailed plan not yet created
+**Status:** `[ ]` Not started; detailed plan created
 
 **Target outcome**
 
@@ -145,10 +145,12 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Create `docs/plans/YYYY-MM-DD-view-layout-viewport-kernel-plan.md` before
-implementation. Fix the resolved-view, overlap, lane-height, and two-dimensional
-viewport contracts and their performance evidence, then select the smallest first
-implementation slice. Keep M3 `[ ]` until that slice is verified.
+Execute Slice 1 of the
+[M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md):
+freeze the resolved-view identity/provenance, interval source, overlap stack,
+lane-height, two-dimensional viewport, performance-evidence, and minimum React-facade
+contracts in a focused decision record before adding runtime modules. Keep M3 `[ ]`
+until that contract slice is verified.
 
 ## Later Milestone Outcomes
 
@@ -229,6 +231,27 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 implementation plan created
+
+- Added the active
+  [view, layout, and viewport kernel plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
+- Kept M3 not started while ordering nine reviewable slices: contract, view topology,
+  interval resolution, overlap/variable-height layout, viewport indexing/query,
+  performance evidence, scene composition, React/playground integration, and final
+  facade/evidence.
+- Scoped M3 to immutable React-free kernels plus read-only integration. Viewport
+  session state, hit testing, interaction, hierarchy/filtering, calendar conversion,
+  alternate overlap policies, and stable release thresholds remain later milestones.
+- Selected a reproducible fixed-seed 10,000-task/2,000-lane benchmark and brute-force
+  query parity as M3 performance evidence without making an unverified frame-rate or
+  cross-machine CI-threshold claim.
+- Planning-document verification passed `vp check` across 61 formatted and 50
+  lint/type-checked files, `git diff --check`, and the focused linked-file existence
+  checks.
+- This documentation-only planning pass ran no source tests, benchmark, package build,
+  playground build, or browser verification. Slice 1 contract evidence is the next
+  action.
 
 ### 2026-07-30 — M2 change kernel complete
 
