@@ -66,3 +66,8 @@
   DevTools MCP is unavailable, or Chrome DevTools lacks a capability the task needs.
 - For plan-driven visual gates, record the inspected routes, viewport sizes,
   accessibility findings, console state, and any live issues fixed in the plan.
+
+## Code
+
+- Write comments explaining the code logic and reasoning - but only when it is not
+  immediately obvious from the code itself.
