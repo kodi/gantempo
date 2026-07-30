@@ -136,16 +136,16 @@ M7 hardening/release
 
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
-viewport, and read-only rendering foundations. M4 is in progress: its public contract
-semantic task-command foundation, React-free ownership store, and async
-command/history lifecycle are complete; staged derivation and measured viewport work
-are next.
+viewport, and read-only rendering foundations. M4 is in progress: its public contract,
+semantic task-command foundation, React-free ownership store, async command/history
+lifecycle, staged derivation, and measured viewport model are complete;
+renderer-independent hit testing and interaction intent are next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–4 complete, Slice 5 next
+**Status:** `[-]` In progress; Slices 1–5 complete, Slice 6 next
 
 **Target outcome**
 
@@ -165,14 +165,15 @@ persistence.
 
 **Next action**
 
-Execute Slice 5 of the
+Execute Slice 6 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
 pure instant-only `task.move`/`task.resize` foundation, React-free ownership store,
-and async command/history lifecycle are verified. Stage the private derived pipeline,
-add affected-reference invalidation/work observations, and model measured vertical
-viewport/overscan publication before hit testing or React integration.
+async command/history lifecycle, private derived pipeline, affected-reference
+invalidation/work observations, and measured vertical viewport/overscan publication
+are verified. Add renderer-independent hit testing, navigation, gesture intent,
+command mapping, and previews before React integration.
 
 **Adjacent proof complete**
 
@@ -261,6 +262,29 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 derived pipeline and measured viewport complete
+
+- Added a private staged scene composer with exact cold compatibility, canonical
+  dependency maps, selective topology/interval/lane/index/tick/primitive reuse,
+  fixed work observations, safe external fallback, and fixed-seed cached/cold parity.
+- Added lane-local/cumulative geometry reuse and DOM-free runtime measurement with
+  asymmetric overscan, focus-range retention, session-intent reconciliation,
+  injectable coalescing, flush/clear, and disposal safety.
+- Kept reference validation/shared document indexing conservative for every changed
+  document because M1 sanitization can cross collection boundaries; recorded this
+  broader safe boundary in the active plan without changing milestone scope or order.
+- Focused tests passed 5 files/29 tests; the M3 layout/scene refactor subset passed 5
+  files/23 tests. The `m4-scene-v1` benchmark used seed `20260730`, 2,000 tasks, 400
+  lanes, sparse distribution, and 45/40 visible tasks on an arm64 Apple M3 Pro
+  (12 cores, 18 GB), with no CI timing threshold.
+- `vp check` passed all 99 formatted and 88 lint/type-checked files,
+  `vp build apps/playground` transformed 46 modules, `vp pack` built four artifacts,
+  and `git diff --check` plus framework-boundary inspection passed.
+- `mise run ci` passed the complete check, 38-test-file/180-test, and four-artifact
+  package build gates.
+- No React, CSS, scenario, or playground source changed, so no browser claim was
+  added.
 
 ### 2026-07-30 — M4 async command bus and history orchestration complete
 

@@ -126,6 +126,115 @@ describe('Gantt runtime store', () => {
     expect(observed).toEqual([10]);
   });
 
+  it('coalesces measured scroll and resize input while publishing the final numeric state', () => {
+    const scheduled: { cancelled: boolean; run: () => void }[] = [];
+    const store = createGanttRuntimeStore({
+      document: { kind: 'uncontrolled', value: createPatchTestDocument() },
+      viewport: {
+        overscanBefore: 10,
+        overscanAfter: 20,
+        schedule(update) {
+          const item = { cancelled: false, run: update };
+          scheduled.push(item);
+          return () => {
+            item.cancelled = true;
+          };
+        },
+      },
+    });
+    let publications = 0;
+    store.subscribe(() => {
+      publications += 1;
+    });
+    const mutable = {
+      clientHeight: 100,
+      clientWidth: 600,
+      verticalStart: 20,
+    };
+
+    store.scheduleViewportMeasurement(mutable);
+    store.scheduleViewportMeasurement({
+      clientHeight: 180,
+      clientWidth: 900,
+      verticalStart: 40,
+    });
+    mutable.verticalStart = 9_999;
+
+    expect(scheduled).toHaveLength(1);
+    expect(store.getSnapshot().viewport.status).toBe('unmeasured');
+    scheduled[0]?.run();
+    expect(publications).toBe(1);
+    expect(store.getSnapshot().viewport).toEqual({
+      clientHeight: 180,
+      clientWidth: 900,
+      overscanAfter: 20,
+      overscanBefore: 10,
+      queryVerticalExtent: 210,
+      queryVerticalStart: 30,
+      status: 'measured',
+      verticalStart: 40,
+    });
+  });
+
+  it('flushes or clears scheduled measurement deterministically and follows session intent', () => {
+    let scheduled: (() => void) | undefined;
+    let cancelled = 0;
+    const store = createGanttRuntimeStore({
+      document: { kind: 'uncontrolled', value: createPatchTestDocument() },
+      viewport: {
+        overscanBefore: 5,
+        overscanAfter: 15,
+        schedule(update) {
+          scheduled = update;
+          return () => {
+            cancelled += 1;
+          };
+        },
+      },
+    });
+
+    store.scheduleViewportMeasurement({
+      clientHeight: 80,
+      clientWidth: 400,
+      verticalStart: 25,
+      retainedRange: { start: 200, end: 224 },
+    });
+    expect(store.flushViewportMeasurement()).toBe(true);
+    expect(cancelled).toBe(1);
+    expect(store.flushViewportMeasurement()).toBe(false);
+    expect(store.getSnapshot().viewport).toMatchObject({
+      queryVerticalStart: 20,
+      queryVerticalExtent: 204,
+      status: 'measured',
+    });
+
+    store.updateUncontrolledSession({
+      selection: [],
+      viewport: { verticalStart: 40 },
+    });
+    expect(store.getSnapshot().viewport).toMatchObject({
+      verticalStart: 40,
+      queryVerticalStart: 35,
+      queryVerticalExtent: 100,
+    });
+
+    store.scheduleViewportMeasurement({
+      clientHeight: 50,
+      clientWidth: 300,
+      verticalStart: 12,
+    });
+    expect(store.clearViewportMeasurement()).toBe(true);
+    expect(cancelled).toBe(2);
+    expect(store.getSnapshot().viewport).toMatchObject({
+      status: 'unmeasured',
+      verticalStart: 40,
+      queryVerticalExtent: 0,
+    });
+    scheduled?.();
+    expect(store.getSnapshot().viewport.status).toBe('unmeasured');
+    expect(store.clearViewportMeasurement()).toBe(false);
+  });
+
   it('handles unsubscribe and reentrant updates safely during publication', () => {
     const store = createGanttRuntimeStore({
       document: { kind: 'uncontrolled', value: createPatchTestDocument() },

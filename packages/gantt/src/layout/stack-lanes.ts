@@ -91,6 +91,93 @@ function assignTracks(
 }
 
 /**
+ * Produces lane-local stack geometry. The scene pipeline uses this boundary to cache
+ * unaffected lanes before applying cumulative document-space offsets.
+ */
+export function stackLane(
+  lane: ResolvedViewLane,
+  placements: readonly ResolvedIntervalPlacement[],
+  metricOverrides?: Partial<StackLayoutMetrics>,
+): LaidOutLane {
+  const metrics = resolveStackLayoutMetrics(metricOverrides);
+  const minimumHeight = lane.minimumHeight ?? metrics.defaultMinimumLaneHeight;
+  if (!Number.isFinite(minimumHeight) || minimumHeight <= 0) {
+    throw new RangeError(`Lane "${lane.key}" minimum height must be positive and finite.`);
+  }
+  const tracks = assignTracks(placements);
+  const stackCount = tracks.size === 0 ? 0 : Math.max(...tracks.values()) + 1;
+  const contentHeight =
+    metrics.paddingTop +
+    metrics.paddingBottom +
+    stackCount * metrics.barHeight +
+    Math.max(0, stackCount - 1) * metrics.stackGap;
+  const height = Math.max(minimumHeight, contentHeight);
+  return Object.freeze({
+    ...lane,
+    source: Object.freeze({ ...lane.source }),
+    y: 0,
+    height,
+    stackCount,
+    placements: Object.freeze(
+      placements.map((placement) => {
+        const track = tracks.get(placement.key)!;
+        return Object.freeze({
+          ...placement,
+          source: Object.freeze({ ...placement.source }),
+          track,
+          y: metrics.paddingTop + track * (metrics.barHeight + metrics.stackGap),
+          height: metrics.barHeight,
+        });
+      }),
+    ),
+  });
+}
+
+/**
+ * Converts lane-local stacks into contiguous absolute geometry while retaining
+ * previously positioned lane objects whose local stack and offset are unchanged.
+ */
+export function positionStackedLanes(
+  localLanes: readonly LaidOutLane[],
+  previous?: {
+    readonly absolute: StackLayout;
+    readonly local: readonly LaidOutLane[];
+  },
+): StackLayout {
+  let laneY = 0;
+  const lanes = localLanes.map((local, index): LaidOutLane => {
+    const previousLocal = previous?.local[index];
+    const previousAbsolute = previous?.absolute.lanes[index];
+    if (
+      previousLocal === local &&
+      previousAbsolute !== undefined &&
+      previousAbsolute.key === local.key &&
+      previousAbsolute.y === laneY
+    ) {
+      laneY += previousAbsolute.height;
+      return previousAbsolute;
+    }
+    const positioned = Object.freeze({
+      ...local,
+      source: Object.freeze({ ...local.source }),
+      y: laneY,
+      placements: Object.freeze(
+        local.placements.map((placement) =>
+          Object.freeze({
+            ...placement,
+            source: Object.freeze({ ...placement.source }),
+            y: laneY + placement.y,
+          }),
+        ),
+      ),
+    });
+    laneY += positioned.height;
+    return positioned;
+  });
+  return Object.freeze({ lanes: Object.freeze(lanes), totalHeight: laneY });
+}
+
+/**
  * Assigns the lowest available deterministic track and emits absolute, contiguous
  * lane and bar geometry without changing resolved-view output order.
  */
@@ -118,47 +205,6 @@ export function stackLanes(
     group.push(placement);
   }
 
-  let laneY = 0;
-  const laidOutLanes: LaidOutLane[] = [];
-  for (const lane of lanes) {
-    const minimumHeight = lane.minimumHeight ?? metrics.defaultMinimumLaneHeight;
-    if (!Number.isFinite(minimumHeight) || minimumHeight <= 0) {
-      throw new RangeError(`Lane "${lane.key}" minimum height must be positive and finite.`);
-    }
-    const lanePlacements = placementsByLane.get(lane.key)!;
-    const tracks = assignTracks(lanePlacements);
-    const stackCount = tracks.size === 0 ? 0 : Math.max(...tracks.values()) + 1;
-    const contentHeight =
-      metrics.paddingTop +
-      metrics.paddingBottom +
-      stackCount * metrics.barHeight +
-      Math.max(0, stackCount - 1) * metrics.stackGap;
-    const height = Math.max(minimumHeight, contentHeight);
-    const laidOutPlacements = lanePlacements.map((placement) => {
-      const track = tracks.get(placement.key)!;
-      return Object.freeze({
-        ...placement,
-        source: Object.freeze({ ...placement.source }),
-        track,
-        y: laneY + metrics.paddingTop + track * (metrics.barHeight + metrics.stackGap),
-        height: metrics.barHeight,
-      });
-    });
-    laidOutLanes.push(
-      Object.freeze({
-        ...lane,
-        source: Object.freeze({ ...lane.source }),
-        y: laneY,
-        height,
-        stackCount,
-        placements: Object.freeze(laidOutPlacements),
-      }),
-    );
-    laneY += height;
-  }
-
-  return Object.freeze({
-    lanes: Object.freeze(laidOutLanes),
-    totalHeight: laneY,
-  });
+  const local = lanes.map((lane) => stackLane(lane, placementsByLane.get(lane.key)!, metrics));
+  return positionStackedLanes(local);
 }

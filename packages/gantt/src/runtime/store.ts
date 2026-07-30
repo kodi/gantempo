@@ -7,6 +7,13 @@ import {
   reconcileSessionOccurrences,
   sessionEqual,
 } from './session';
+import {
+  createUnmeasuredViewport,
+  measureViewport,
+  resolveRuntimeViewportOptions,
+  viewportEqual,
+  viewportForIntent,
+} from './viewport';
 import type {
   CreateGanttRuntimeStoreOptions,
   GanttRuntimeDocumentCapture,
@@ -21,6 +28,7 @@ import type {
   GanttRuntimeStore,
   GanttRuntimeSubscriber,
   GanttSessionState,
+  GanttMeasuredViewportState,
   StageControlledDocumentProposalInput,
   StageControlledDocumentProposalResult,
   UpdateControlledDocumentResult,
@@ -74,6 +82,7 @@ export function createGanttRuntimeStore(
   const documentMode = options.document.kind;
   const sessionMode = options.session?.kind ?? 'uncontrolled';
   let sourceSession = normalizeSessionState(options.session?.value);
+  const viewportOptions = resolveRuntimeViewportOptions(options.viewport);
   let documentSerialization = initialDocument.serialization;
   let documentContentSerialization = initialDocument.contentSerialization;
   let previousOccurrences = Object.freeze([]) as readonly GanttRuntimeOccurrence[];
@@ -84,6 +93,9 @@ export function createGanttRuntimeStore(
   let publishPending = false;
   let batchDepth = 0;
   let dirty = false;
+  let pendingViewportMeasurement: GanttMeasuredViewportState | undefined;
+  let viewportUpdateScheduled = false;
+  let cancelViewportUpdate: (() => void) | undefined;
   const subscribers = new Set<GanttRuntimeSubscriber>();
 
   let snapshot: GanttRuntimeSnapshot = Object.freeze({
@@ -102,6 +114,7 @@ export function createGanttRuntimeStore(
     }),
     session: sourceSession,
     version: 0,
+    viewport: createUnmeasuredViewport(sourceSession.viewport.verticalStart, viewportOptions),
   });
 
   function assertActive(): void {
@@ -205,9 +218,15 @@ export function createGanttRuntimeStore(
     }
     const currentPending = snapshot.ownership.pendingSession;
     const nextPending = effective.pendingSession;
+    const viewport = viewportForIntent(
+      snapshot.viewport,
+      effective.session.viewport.verticalStart,
+      viewportOptions,
+    );
     if (
       sessionEqual(snapshot.session, effective.session) &&
-      pendingSessionEqual(currentPending, nextPending)
+      pendingSessionEqual(currentPending, nextPending) &&
+      viewport === snapshot.viewport
     ) {
       return;
     }
@@ -217,7 +236,37 @@ export function createGanttRuntimeStore(
           ? ownershipWith({}, { pendingSession: true })
           : ownershipWith({ pendingSession: nextPending }),
       session: effective.session,
+      viewport,
     });
+  }
+
+  function flushPendingViewportMeasurement(): boolean {
+    const measurement = pendingViewportMeasurement;
+    pendingViewportMeasurement = undefined;
+    if (measurement === undefined) {
+      return false;
+    }
+    const viewport = measurement;
+    if (viewportEqual(snapshot.viewport, viewport)) {
+      return false;
+    }
+    replaceSnapshot({ viewport });
+    return true;
+  }
+
+  function schedulePendingViewportMeasurement(): void {
+    if (viewportUpdateScheduled) {
+      return;
+    }
+    viewportUpdateScheduled = true;
+    const cancellation = viewportOptions.schedule(() => {
+      viewportUpdateScheduled = false;
+      cancelViewportUpdate = undefined;
+      flushPendingViewportMeasurement();
+    });
+    if (viewportUpdateScheduled && typeof cancellation === 'function') {
+      cancelViewportUpdate = cancellation;
+    }
   }
 
   const store: GanttRuntimeStore = {
@@ -257,6 +306,25 @@ export function createGanttRuntimeStore(
       });
     },
 
+    clearViewportMeasurement() {
+      assertActive();
+      pendingViewportMeasurement = undefined;
+      if (viewportUpdateScheduled) {
+        cancelViewportUpdate?.();
+        cancelViewportUpdate = undefined;
+        viewportUpdateScheduled = false;
+      }
+      const viewport = createUnmeasuredViewport(
+        snapshot.session.viewport.verticalStart,
+        viewportOptions,
+      );
+      if (viewportEqual(snapshot.viewport, viewport)) {
+        return false;
+      }
+      replaceSnapshot({ viewport });
+      return true;
+    },
+
     clearControlledDocumentProposal(proposalId) {
       assertActive();
       const pending = snapshot.ownership.pendingDocument;
@@ -275,7 +343,21 @@ export function createGanttRuntimeStore(
         return;
       }
       disposed = true;
+      pendingViewportMeasurement = undefined;
+      cancelViewportUpdate?.();
+      cancelViewportUpdate = undefined;
+      viewportUpdateScheduled = false;
       subscribers.clear();
+    },
+
+    flushViewportMeasurement() {
+      assertActive();
+      if (viewportUpdateScheduled) {
+        cancelViewportUpdate?.();
+        cancelViewportUpdate = undefined;
+        viewportUpdateScheduled = false;
+      }
+      return flushPendingViewportMeasurement();
     },
 
     getSnapshot() {
@@ -284,6 +366,13 @@ export function createGanttRuntimeStore(
 
     isDisposed() {
       return disposed;
+    },
+
+    scheduleViewportMeasurement(measurement) {
+      assertActive();
+      // Validate eagerly so scheduled publication cannot surface input errors later.
+      pendingViewportMeasurement = measureViewport(measurement, viewportOptions);
+      schedulePendingViewportMeasurement();
     },
 
     setHistoryCapabilities(canUndo, canRedo) {

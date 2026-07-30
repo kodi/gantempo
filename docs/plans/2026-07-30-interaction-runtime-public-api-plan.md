@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–4 complete, Slice 5 next
+Status: Active; Slices 1–5 complete, Slice 6 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -979,7 +979,7 @@ implementing async/stale/history behavior.
 
 ### Slice 5: Stage derived caches and add measured viewport subscriptions
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1769,7 +1769,73 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - No React, primitive, style, scenario, or playground file changed, so this pure
   runtime slice did not trigger a browser gate.
 
+### 2026-07-30 — Slice 5 staged derivation and measured viewport
+
+- Replaced the monolithic cold scene implementation with a private staged composer
+  covering reference validation/indexing, view topology, interval resolution,
+  lane-local stacking, cumulative geometry, viewport indexes/query, ticks, and
+  semantic primitives. `buildChartScene` remains the cold compatibility entry point
+  and exact cached-versus-cold parity is verified.
+- Added canonical affected-reference dependency maps from tasks, resources, lanes,
+  assignments, and placements to view occurrence and lane keys. Selective rebuilds
+  reuse unaffected topology, intervals, lane-local stacks, positioned suffixes,
+  interval indexes, ticks, and individual lane/task primitive objects; external
+  documents without trusted affected metadata use an observable full fallback.
+- Refactored M3 stacking into lane-local and cumulative positioning stages while
+  preserving the existing pure `stackLanes` result, validation behavior, ordering,
+  immutability, variable heights, and absolute placement geometry.
+- Extended the React-free runtime snapshot with deterministic unmeasured viewport
+  state, numeric client/scroll measurements, asymmetric overscan, retained
+  focus-range expansion, session-intent reconciliation, injectable scheduling,
+  coalesced final scroll/resize publication, explicit flush/clear, disposal
+  cancellation, and eager immutable input capture.
+- Focused invalidation examples cover task labels and schedules, placement lanes,
+  assignments and resources, layout metrics, view definitions, horizontal ranges,
+  vertical scroll, clipped/out-of-bounds queries, variable heights, retained focused
+  geometry, and unknown external documents. The fixed-seed property uses
+  `seed=20260730`, 80 runs, verbose counterexamples, and up to 30 mixed
+  label/schedule/placement/vertical-window operations per run.
+- The focused `m4-scene-v1` benchmark used seed `20260730`, 2,000 tasks, 400 lanes,
+  sparse instant intervals, and alternating viewports with 45/40 visible tasks.
+  Vitest `4.1.10` on Node `24.18.1`, arm64 Apple M3 Pro (12 cores, 18 GB) reported:
+  cold validation/view/layout/index/primitives 73.851 Hz, mean 13.5408 ms, 38 samples,
+  ±4.89%; affected task label 183.00 Hz, mean 5.4646 ms, 92 samples, ±1.85%; vertical
+  viewport query 42,058.65 Hz, mean 0.0238 ms, 21,030 samples, ±5.32%. These are local
+  structural/work baselines, not CI thresholds or portable speed claims.
+- Verification passed:
+  - focused pipeline, parity, runtime-store, measured-viewport, and fixed-seed
+    property tests passed 5 files and 29 tests;
+  - the existing M3 layout and scene subset passed 5 files and 23 tests during the
+    refactor;
+  - `vp check` reported all 99 files formatted and no warning, lint, or type error
+    across 88 checked files;
+  - `vp build apps/playground` transformed 46 modules and produced the production
+    HTML, CSS, and JavaScript artifacts;
+  - `vp pack` built all four package artifacts;
+  - `git diff --check` and React/browser import inspection passed;
+  - `mise run ci` passed the complete check, 38-test-file/180-test, and four-artifact
+    package build gates.
+- No React component, CSS, scenario, or playground source changed. Absolute lane/task
+  offsets and non-zero viewport queries remain pure scene geometry, while live
+  measurement starts in Slice 7; this slice therefore did not trigger a browser gate.
+
 ## Deviations
+
+### 2026-07-30 — Trusted affected changes retain a conservative validation/index stage
+
+- The initial invalidation matrix described affected index-entry replacement.
+  Inspection showed that M1 reference validation may rewrite or filter records across
+  collections, while the existing M3 view and interval resolvers intentionally build
+  their own complete indexes.
+- Slice 5 therefore rebuilds reference validation and the shared document index for
+  every changed document, then performs selective reuse from topology onward.
+  Trusted task-label changes still skip topology, intervals, lane geometry, viewport
+  indexes/query, ticks, and unaffected primitives; unknown external changes rebuild
+  every stage.
+- The fixed work counters and benchmark make this broader safe boundary visible.
+  This does not change a public contract, system boundary, milestone order, or release
+  acceptance criterion; later profiling may justify incremental M1 validation/index
+  APIs without exposing runtime caches.
 
 ### 2026-07-30 — Persistence-ready event boundary clarification
 
@@ -1790,7 +1856,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 2: Add pure semantic task move and resize commands
 - [x] Slice 3: Build the React-free runtime store and ownership state machine
 - [x] Slice 4: Add the async command bus, events, and bounded history orchestration
-- [ ] Slice 5: Stage derived caches and add measured viewport subscriptions
+- [x] Slice 5: Stage derived caches and add measured viewport subscriptions
 - [ ] Slice 6: Add renderer-independent hit testing and interaction intent
 - [ ] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
       handle
@@ -1803,7 +1869,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 5. Refactor the monolithic scene composer into reusable private derivation
-stages, add affected-reference invalidation and work observations, prove
-cached-versus-cold parity, and extend the pure runtime with measured vertical viewport,
-overscan, and deterministic coalesced publication without exposing M3 kernels.
+Start Slice 6. Build the renderer-independent visible hit-test index, coordinate/time
+mapping, visual-neighbor navigation, pure gesture intent states, command mapping, and
+immutable previews on the staged visible geometry without adding React or browser
+dependencies.

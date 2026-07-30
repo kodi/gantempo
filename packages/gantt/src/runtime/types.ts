@@ -27,6 +27,37 @@ export interface GanttViewportIntent {
   readonly verticalStart: number;
 }
 
+export interface GanttViewportRetainedRange {
+  readonly end: number;
+  readonly start: number;
+}
+
+export interface GanttViewportMeasurement {
+  readonly clientHeight: number;
+  readonly clientWidth: number;
+  readonly retainedRange?: GanttViewportRetainedRange;
+  readonly verticalStart: number;
+}
+
+export interface GanttMeasuredViewportState {
+  readonly clientHeight: number;
+  readonly clientWidth: number;
+  readonly overscanAfter: number;
+  readonly overscanBefore: number;
+  readonly queryVerticalExtent: number;
+  readonly queryVerticalStart: number;
+  readonly status: 'measured' | 'unmeasured';
+  readonly verticalStart: number;
+}
+
+export type GanttRuntimeUpdateScheduler = (update: () => void) => (() => void) | undefined | void;
+
+export interface GanttRuntimeViewportOptions {
+  readonly overscanAfter?: number;
+  readonly overscanBefore?: number;
+  readonly schedule?: GanttRuntimeUpdateScheduler;
+}
+
 export interface GanttSessionState {
   readonly focused?: GanttInteractionTarget;
   readonly selection: readonly GanttInteractionTarget[];
@@ -63,6 +94,7 @@ export interface CreateGanttRuntimeStoreOptions {
   readonly document: GanttRuntimeDocumentInput;
   readonly historyCapacity?: number;
   readonly session?: GanttRuntimeSessionInput;
+  readonly viewport?: GanttRuntimeViewportOptions;
 }
 
 export interface GanttRuntimePendingDocumentProposal {
@@ -111,6 +143,7 @@ export interface GanttRuntimeSnapshot {
   readonly ownership: GanttRuntimeOwnershipState;
   readonly session: GanttSessionState;
   readonly version: number;
+  readonly viewport: GanttMeasuredViewportState;
 }
 
 export interface GanttRuntimeDocumentCapture {
@@ -146,10 +179,13 @@ export interface GanttRuntimeStore {
   adoptUncontrolledDocument(document: GanttDocument): boolean;
   batch<T>(operation: () => T): T;
   captureDocument(): GanttRuntimeDocumentCapture;
+  clearViewportMeasurement(): boolean;
   clearControlledDocumentProposal(proposalId: string): boolean;
   dispose(): void;
+  flushViewportMeasurement(): boolean;
   getSnapshot(): GanttRuntimeSnapshot;
   isDisposed(): boolean;
+  scheduleViewportMeasurement(measurement: GanttViewportMeasurement): void;
   setHistoryCapabilities(canUndo: boolean, canRedo: boolean): void;
   setOccurrences(occurrences: readonly GanttRuntimeOccurrence[]): void;
   stageControlledDocumentProposal(
