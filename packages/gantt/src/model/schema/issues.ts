@@ -19,7 +19,7 @@ export function structuralIssueCode(issue: ZodIssue, fallback: DiagnosticCode): 
   if (field === 'id' || (typeof field === 'string' && field.endsWith('Id'))) {
     return 'value.invalid-id';
   }
-  if (field === 'title' || field === 'role') {
+  if (field === 'description' || field === 'role' || field === 'title' || field === 'variant') {
     return 'value.invalid-string';
   }
   if (typeof field === 'string' && ENUM_FIELDS.has(field)) {

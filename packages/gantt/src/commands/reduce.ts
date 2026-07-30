@@ -729,8 +729,18 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
           'tasks',
           command.id,
           command.changes,
-          new Set(['title', 'kind', 'parentId', 'schedule', 'progress', 'segments', 'fields']),
-          new Set(['parentId', 'schedule', 'progress', 'fields']),
+          new Set([
+            'title',
+            'description',
+            'kind',
+            'parentId',
+            'schedule',
+            'progress',
+            'appearance',
+            'segments',
+            'fields',
+          ]),
+          new Set(['description', 'parentId', 'schedule', 'progress', 'appearance', 'fields']),
         )
       );
     }
@@ -785,8 +795,8 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
           'lanes',
           command.id,
           command.changes,
-          new Set(['title', 'parentId', 'resourceId', 'order', 'height', 'fields']),
-          new Set(['parentId', 'resourceId', 'order', 'height', 'fields']),
+          new Set(['title', 'appearance', 'parentId', 'resourceId', 'order', 'height', 'fields']),
+          new Set(['appearance', 'parentId', 'resourceId', 'order', 'height', 'fields']),
         )
       );
     }

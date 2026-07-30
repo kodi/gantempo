@@ -440,7 +440,7 @@ ownership affect every later boundary.
 
 ### Appendix Slice A2: Add canonical task/lane properties and commands
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -804,7 +804,7 @@ Resolved in Appendix Slice A1:
 ## Progress
 
 - [x] Appendix Slice A1: Freeze the properties and appearance contract
-- [ ] Appendix Slice A2: Add canonical task/lane properties and commands
+- [x] Appendix Slice A2: Add canonical task/lane properties and commands
 - [ ] Appendix Slice A3: Resolve appearance and progress primitives
 - [ ] Appendix Slice A4: Render accessible semantic color and progress
 - [ ] Appendix Slice A5: Add task and lane properties surfaces
@@ -844,11 +844,32 @@ Resolved in Appendix Slice A1:
   `mise run ci` passed 61 test files / 297 tests and produced four package artifacts
   (`index.js`, source map, CSS, and declarations). This docs-only slice makes no
   runtime, rendering, browser, or package-surface implementation claim.
+- 2026-07-31: Appendix Slice A2 added canonical optional `description` and
+  `GanttAppearanceReference` fields to tasks plus canonical optional appearance to
+  lanes without changing schema version 1. Wire parsing trims valid unknown semantic
+  IDs; canonical validation enforces 1–64 Unicode code points with no control
+  characters. Serialization preserves deterministic record order and rejects
+  unchecked non-canonical appearance.
+- 2026-07-31: `task.update` and `lane.update` set or explicitly clear the new fields
+  through the existing whole-record patch boundary. Add inputs, inverses,
+  transactions, bounded history, affected references, and row-oriented controlled
+  entity-change envelopes inherit the same normalized frozen records; no alternate
+  reducer or envelope path was added.
+- 2026-07-31: A2 focused verification passed 10 files / 47 tests for schemas, codec,
+  stable round trips, serialization, strict update rejection, fixed-seed independent
+  task/lane variants, progress boundaries, unrelated collection identity, patch
+  replay/inversion, transactions, history, controlled entity rows, and root imports.
+  `vp check` passed 151 formatted files and 140 lint/type-checked files.
+  `mise run ci` passed 62 test files / 304 tests. `vp pack` produced four artifacts;
+  declaration inspection found only `GanttAppearanceReference` and the accepted
+  record/input/update members, with no private schema/normalizer leakage. Rendering
+  and browser behavior were not changed, so A2 makes no visual claim.
 
 ## Next Slice
 
-Begin Appendix Slice A2 in `packages/gantt/src/model/types.ts`,
-`packages/gantt/src/model/schema/records.ts`, codec/serialization fixtures, and
-`packages/gantt/src/commands/types.ts`. Add canonical description and appearance,
-extend task/lane updates with strict normalization, and prove patches, transactions,
-history, fixed-seed round trips, and packed declarations without changing rendering.
+Begin Appendix Slice A3 in `packages/gantt/src/render/primitives.ts`,
+`packages/gantt/src/render/scene-pipeline.ts`, and the scene tests. Add the pure
+registry/effective-appearance resolver, lane accent and task progress primitive data,
+and selective lane/task/progress/registry invalidation. Prove same-task/multiple-lane
+precedence, unknown fallback, clipped/virtualized progress, cold/cached parity, and
+legacy scene compatibility before changing DOM/SVG rendering.

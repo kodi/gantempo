@@ -21,7 +21,11 @@ describe('Gantt entity changes', () => {
     const outcome = committed(base, {
       commands: [
         {
-          changes: { title: 'Updated' },
+          changes: {
+            appearance: { variant: 'customer:blocked' },
+            description: 'Persistence-ready details',
+            title: 'Updated',
+          },
           id: 'task-1',
           type: 'task.update',
         },
@@ -35,6 +39,8 @@ describe('Gantt entity changes', () => {
     expect(changes).toEqual([
       {
         after: expect.objectContaining({
+          appearance: { variant: 'customer:blocked' },
+          description: 'Persistence-ready details',
           id: 'task-1',
           schedule: { end: 25, mode: 'instant', start: 15 },
           title: 'Updated',

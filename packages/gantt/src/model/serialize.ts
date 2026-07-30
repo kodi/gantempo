@@ -1,9 +1,11 @@
 import { CURRENT_SCHEMA_VERSION } from './migrations';
+import { isCanonicalAppearanceVariant } from './appearance';
 import type {
   AssignmentRecord,
   DependencyRecord,
   DurationValue,
   GanttDocument,
+  GanttAppearanceReference,
   LaneRecord,
   PlacementRecord,
   ResourceRecord,
@@ -32,6 +34,13 @@ function serializeString(input: unknown, path: string): string {
     return fail(path, 'expected a string');
   }
   return JSON.stringify(input);
+}
+
+function serializeAppearance(appearance: GanttAppearanceReference, path: string): string {
+  if (!isCanonicalAppearanceVariant(appearance.variant)) {
+    return fail(`${path}/variant`, 'expected a canonical semantic appearance variant');
+  }
+  return serializeObject([['variant', JSON.stringify(appearance.variant)]]);
 }
 
 function serializeId(input: unknown, path: string): string {
@@ -195,7 +204,19 @@ function serializeTask(task: TaskRecord, path: string): string {
   return serializeObject([
     ['id', serializeId(task.id, `${path}/id`)],
     ['title', serializeString(task.title, `${path}/title`)],
+    [
+      'description',
+      task.description === undefined
+        ? undefined
+        : serializeString(task.description, `${path}/description`),
+    ],
     ['kind', serializeEnum(task.kind, ['task', 'summary', 'milestone'], `${path}/kind`)],
+    [
+      'appearance',
+      task.appearance === undefined
+        ? undefined
+        : serializeAppearance(task.appearance, `${path}/appearance`),
+    ],
     [
       'parentId',
       task.parentId === undefined ? undefined : serializeId(task.parentId, `${path}/parentId`),
@@ -251,6 +272,12 @@ function serializeLane(lane: LaneRecord, path: string): string {
   return serializeObject([
     ['id', serializeId(lane.id, `${path}/id`)],
     ['title', serializeString(lane.title, `${path}/title`)],
+    [
+      'appearance',
+      lane.appearance === undefined
+        ? undefined
+        : serializeAppearance(lane.appearance, `${path}/appearance`),
+    ],
     [
       'parentId',
       lane.parentId === undefined ? undefined : serializeId(lane.parentId, `${path}/parentId`),

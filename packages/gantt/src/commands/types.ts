@@ -9,6 +9,7 @@ import type {
   EntityId,
   EpochMilliseconds,
   GanttDocument,
+  GanttAppearanceReference,
   LaneRecord,
   PlacementRecord,
   ResourceRecord,
@@ -96,6 +97,8 @@ export interface TaskSegmentInput {
 }
 
 export interface TaskInput {
+  readonly appearance?: GanttAppearanceReference;
+  readonly description?: string;
   readonly fields?: JsonObject;
   readonly id: EntityIdInput;
   readonly kind?: TaskRecord['kind'];
@@ -115,6 +118,7 @@ export interface ResourceInput {
 }
 
 export interface LaneInput {
+  readonly appearance?: GanttAppearanceReference;
   readonly fields?: JsonObject;
   readonly height?: number;
   readonly id: EntityIdInput;
@@ -161,6 +165,8 @@ export interface TaskAddCommand {
 
 export interface TaskUpdateCommand {
   readonly changes: Readonly<{
+    appearance?: GanttAppearanceReference | null;
+    description?: string | null;
     fields?: JsonObject | null;
     kind?: TaskRecord['kind'];
     parentId?: EntityIdInput | null;
@@ -227,6 +233,7 @@ export interface LaneAddCommand {
 
 export interface LaneUpdateCommand {
   readonly changes: Readonly<{
+    appearance?: GanttAppearanceReference | null;
     fields?: JsonObject | null;
     height?: number | null;
     order?: number | null;

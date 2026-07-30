@@ -11,6 +11,8 @@ describe('document kernel round trip', () => {
       revision: 7,
       tasks: [
         {
+          appearance: { variant: 'customer:blocked' },
+          description: 'Portable description.',
           id: 100,
           title: 'Build 🚀',
           kind: 'task',
@@ -48,6 +50,7 @@ describe('document kernel round trip', () => {
       lanes: [
         { id: 300, title: 'Portfolio' },
         {
+          appearance: { variant: 'customer:team-blue' },
           id: 'lane-a',
           title: 'Delivery',
           parentId: 300,
@@ -124,6 +127,9 @@ describe('document kernel round trip', () => {
       mode: 'instant',
       start: -60_000,
     });
+    expect(firstDocument.tasks[0]?.description).toBe('Portable description.');
+    expect(firstDocument.tasks[0]?.appearance).toEqual({ variant: 'customer:blocked' });
+    expect(firstDocument.lanes[1]?.appearance).toEqual({ variant: 'customer:team-blue' });
     expect(firstDocument.tasks[1]?.schedule).toEqual({
       endDate: '2026-07-30',
       mode: 'all-day',

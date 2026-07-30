@@ -125,7 +125,7 @@ Detailed completion evidence is recorded in
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
-| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A1 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
+| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A2 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -171,7 +171,7 @@ post-M4 work.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[-]` Appendix Slice A1 complete; A2 canonical data and commands next
+**Status:** `[-]` Appendix Slice A2 complete; A3 appearance/progress primitives next
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -184,9 +184,17 @@ recorded in the
 [item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md).
 The docs-only slice passed `vp check`, packed-declaration inspection, terminology and
 link review, `git diff --check`, and full `mise run ci` with 61 files / 297 tests and
-four package artifacts. Appendix Slice A2 now owns canonical schema, codec,
-serialization, command, patch, history, and facade implementation without rendering
-changes.
+four package artifacts.
+
+Appendix Slice A2 added normalized, frozen, serializable optional task description and
+task/lane semantic appearance to schema version 1. Existing `task.update` and
+`lane.update` now set and clear those fields through deterministic patches,
+transactions, history, entity-change envelopes, and the root facade. Focused
+model/command/facade properties passed 10 files / 47 tests; the complete gate passed
+62 files / 304 tests, formatting/lint/types, and four package artifacts. Packed
+declarations expose only `GanttAppearanceReference` plus the accepted record/input/
+command members. Rendering is unchanged. Appendix Slice A3 owns pure resolution,
+progress primitives, and selective invalidation.
 
 ### Post-M4 persistence entity-change projection
 

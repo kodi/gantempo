@@ -39,7 +39,13 @@ export interface TaskSegment {
   readonly fields?: JsonObject;
 }
 
+export interface GanttAppearanceReference {
+  readonly variant: string;
+}
+
 export interface TaskRecord {
+  readonly appearance?: GanttAppearanceReference;
+  readonly description?: string;
   readonly id: EntityId;
   readonly title: string;
   readonly kind: TaskKind;
@@ -59,6 +65,7 @@ export interface ResourceRecord {
 }
 
 export interface LaneRecord {
+  readonly appearance?: GanttAppearanceReference;
   readonly id: EntityId;
   readonly title: string;
   readonly parentId?: EntityId;

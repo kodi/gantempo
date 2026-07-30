@@ -102,12 +102,23 @@ describe('applyGanttCommand', () => {
   it('updates tasks, resources, lanes, assignments, and placements with explicit clears', () => {
     const base = createPatchTestDocument();
     const task = applyGanttCommand(base, {
-      changes: { fields: null, progress: 0.5, title: 'Changed task' },
+      changes: {
+        appearance: { variant: '  customer:blocked  ' },
+        description: 'Canonical details',
+        fields: null,
+        progress: 0.5,
+        title: 'Changed task',
+      },
       id: 'task-1',
       type: 'task.update',
     });
     expect(task.status).toBe('committed');
-    expect(task.document.tasks[0]).toMatchObject({ progress: 0.5, title: 'Changed task' });
+    expect(task.document.tasks[0]).toMatchObject({
+      appearance: { variant: 'customer:blocked' },
+      description: 'Canonical details',
+      progress: 0.5,
+      title: 'Changed task',
+    });
     expect(task.document.tasks[0]).not.toHaveProperty('fields');
 
     const resource = applyGanttCommand(task.document, {
@@ -119,12 +130,15 @@ describe('applyGanttCommand', () => {
     expect(resource.document.resources[0]).not.toHaveProperty('capacity');
 
     const lane = applyGanttCommand(resource.document, {
-      changes: { order: 4, resourceId: null },
+      changes: { appearance: { variant: '  customer:team-blue  ' }, order: 4, resourceId: null },
       id: 'shared',
       type: 'lane.update',
     });
     expect(lane.status).toBe('committed');
-    expect(lane.document.lanes[0]).toMatchObject({ order: 4 });
+    expect(lane.document.lanes[0]).toMatchObject({
+      appearance: { variant: 'customer:team-blue' },
+      order: 4,
+    });
     expect(lane.document.lanes[0]).not.toHaveProperty('resourceId');
 
     const assignment = applyGanttCommand(lane.document, {
@@ -151,6 +165,15 @@ describe('applyGanttCommand', () => {
     expect(placement.document.placements[0]).toMatchObject({ order: 2 });
     expect(placement.document.placements[0]).not.toHaveProperty('assignmentId');
     expect(placement.document.placements[0]).not.toHaveProperty('segmentId');
+
+    const cleared = applyGanttCommand(placement.document, {
+      changes: { appearance: null, description: null },
+      id: 'task-1',
+      type: 'task.update',
+    });
+    expect(cleared.status).toBe('committed');
+    expect(cleared.document.tasks[0]).not.toHaveProperty('appearance');
+    expect(cleared.document.tasks[0]).not.toHaveProperty('description');
   });
 
   it('returns frozen deterministic no-ops without retaining mutable payload references', () => {
@@ -206,6 +229,11 @@ describe('applyGanttCommand', () => {
         type: 'task.add',
         value: { id: 'unknown', title: 'Unknown', typo: true },
       } as unknown as GanttCommand,
+      {
+        changes: { appearance: { variant: 'bad\u0000variant' } },
+        id: 'task-1',
+        type: 'task.update',
+      },
     ];
 
     for (const command of cases) {

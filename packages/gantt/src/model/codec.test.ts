@@ -141,6 +141,67 @@ describe('parseGanttDocument', () => {
     });
   });
 
+  it('normalizes canonical descriptions and task/lane semantic appearance', () => {
+    const result = parseGanttDocument({
+      lanes: [
+        {
+          appearance: { variant: '  customer:team-blue  ' },
+          id: 'lane-a',
+          title: 'Lane A',
+        },
+      ],
+      schemaVersion: 1,
+      tasks: [
+        {
+          appearance: { variant: '  customer:blocked  ' },
+          description: 'Waiting for the external review.',
+          id: 'task-a',
+          title: 'Task A',
+        },
+      ],
+    });
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.document?.tasks[0]).toMatchObject({
+      appearance: { variant: 'customer:blocked' },
+      description: 'Waiting for the external review.',
+    });
+    expect(result.document?.lanes[0]).toMatchObject({
+      appearance: { variant: 'customer:team-blue' },
+    });
+    expect(Object.isFrozen(result.document?.tasks[0]?.appearance)).toBe(true);
+    expect(Object.isFrozen(result.document?.lanes[0]?.appearance)).toBe(true);
+  });
+
+  it('rejects malformed semantic appearance without losing unrelated records', () => {
+    const result = parseGanttDocument({
+      lanes: [
+        { appearance: { variant: 'bad\u0000variant' }, id: 'bad-lane', title: 'Bad' },
+        { id: 'good-lane', title: 'Good' },
+      ],
+      schemaVersion: 1,
+      tasks: [
+        { appearance: { variant: ' '.repeat(4) }, id: 'bad-task', title: 'Bad' },
+        { id: 'good-task', title: 'Good' },
+      ],
+    });
+
+    expect(result.document?.tasks.map((task) => task.id)).toEqual(['good-task']);
+    expect(result.document?.lanes.map((lane) => lane.id)).toEqual(['good-lane']);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'value.invalid-string',
+          path: '/tasks/0/appearance/variant',
+        }),
+        expect.objectContaining({
+          code: 'value.invalid-string',
+          path: '/lanes/0/appearance/variant',
+        }),
+      ]),
+    );
+  });
+
   it.each([
     { code: 'document.invalid-root', input: null },
     { code: 'schema.missing-version', input: {} },

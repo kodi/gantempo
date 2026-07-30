@@ -126,6 +126,7 @@ export type {
   DurationValue,
   EntityId,
   EpochMilliseconds,
+  GanttAppearanceReference,
   GanttDocument,
   InstantTaskSchedule,
   LaneRecord,

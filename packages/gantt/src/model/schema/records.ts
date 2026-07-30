@@ -3,6 +3,7 @@ import * as z from 'zod/mini';
 import type {
   AssignmentRecord,
   DependencyRecord,
+  GanttAppearanceReference,
   LaneRecord,
   PlacementRecord,
   ResourceRecord,
@@ -13,10 +14,12 @@ import { jsonObjectSchema } from './json';
 import { objectSchemaPair } from './object';
 import {
   boundedNumberSchema,
+  canonicalAppearanceVariantSchema,
   canonicalEntityIdSchema,
   dependencyTypeSchema,
   finiteNumberSchema,
   taskKindSchema,
+  wireAppearanceVariantSchema,
   wireEntityIdSchema,
 } from './scalars';
 import {
@@ -31,6 +34,18 @@ import {
 const wireOptionalId = z.exactOptional(wireEntityIdSchema);
 const canonicalOptionalId = z.exactOptional(canonicalEntityIdSchema);
 const optionalFields = z.exactOptional(jsonObjectSchema);
+
+export const wireAppearanceDefinition = objectSchemaPair({
+  variant: wireAppearanceVariantSchema,
+});
+export const canonicalAppearanceDefinition = objectSchemaPair({
+  variant: canonicalAppearanceVariantSchema,
+});
+export const wireAppearanceSchema =
+  wireAppearanceDefinition.wire satisfies z.ZodMiniType<GanttAppearanceReference>;
+export const canonicalAppearanceSchema = z.readonly(
+  canonicalAppearanceDefinition.canonical,
+) satisfies z.ZodMiniType<GanttAppearanceReference>;
 
 export const wireTaskSegmentDefinition = objectSchemaPair({
   fields: optionalFields,
@@ -54,6 +69,8 @@ export const canonicalTaskSegmentSchema = z.readonly(
  * independently. The final canonical task schema validates the reconstructed record.
  */
 export const wireTaskShellDefinition = objectSchemaPair({
+  appearance: z.exactOptional(wireAppearanceSchema),
+  description: z.exactOptional(z.string()),
   fields: optionalFields,
   id: wireEntityIdSchema,
   kind: z._default(taskKindSchema, 'task'),
@@ -65,6 +82,8 @@ export const wireTaskShellDefinition = objectSchemaPair({
 });
 
 export const canonicalTaskDefinition = objectSchemaPair({
+  appearance: z.exactOptional(canonicalAppearanceSchema),
+  description: z.exactOptional(z.string()),
   fields: optionalFields,
   id: canonicalEntityIdSchema,
   kind: taskKindSchema,
@@ -102,6 +121,7 @@ export const canonicalResourceSchema = z.readonly(
 ) satisfies z.ZodMiniType<ResourceRecord>;
 
 export const wireLaneDefinition = objectSchemaPair({
+  appearance: z.exactOptional(wireAppearanceSchema),
   fields: optionalFields,
   height: z.exactOptional(boundedNumberSchema({ minimum: Number.MIN_VALUE })),
   id: wireEntityIdSchema,
@@ -111,6 +131,7 @@ export const wireLaneDefinition = objectSchemaPair({
   title: z.string(),
 });
 export const canonicalLaneDefinition = objectSchemaPair({
+  appearance: z.exactOptional(canonicalAppearanceSchema),
   fields: optionalFields,
   height: z.exactOptional(boundedNumberSchema({ minimum: Number.MIN_VALUE })),
   id: canonicalEntityIdSchema,

@@ -9,6 +9,7 @@ import {
   undoGanttHistory,
   type GanttCommand,
   type GanttDocument,
+  type GanttAppearanceReference,
   type GanttPatch,
   type TaskMoveCommand,
   type TaskResizeCommand,
@@ -27,6 +28,7 @@ const document: GanttDocument = Object.freeze({
 
 describe('public change-kernel facade', () => {
   it('supports command, patch, transaction, and bounded history through root imports', () => {
+    const appearance: GanttAppearanceReference = { variant: 'customer:blocked' };
     const move: TaskMoveCommand = {
       delta: 5,
       id: '42',
@@ -43,6 +45,8 @@ describe('public change-kernel facade', () => {
         {
           type: 'task.add',
           value: {
+            appearance,
+            description: 'Public portable properties',
             fields: { source: 'facade' },
             id: 42,
             schedule: { end: 20, mode: 'instant', start: 10 },
@@ -64,6 +68,8 @@ describe('public change-kernel facade', () => {
     expect(outcome.status).toBe('committed');
     expect(outcome.document.revision).toBe('server-owned');
     expect(outcome.document.tasks[0]).toMatchObject({
+      appearance,
+      description: 'Public portable properties',
       fields: { source: 'facade' },
       id: '42',
       progress: 0.5,

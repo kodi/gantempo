@@ -4,6 +4,7 @@ import { CURRENT_SCHEMA_VERSION, migrateWireDocument } from './migrations';
 import { issuesToDiagnostics, pointer } from './schema/issues';
 import { jsonObjectSchema } from './schema/json';
 import {
+  wireAppearanceDefinition,
   recordKnownKeys,
   wireRecordSchemas,
   wireTaskSegmentDefinition,
@@ -210,6 +211,19 @@ function warnNestedRecordProperties(
   context: DecodeContext,
   entityId: EntityId,
 ): void {
+  if (
+    (collection === 'tasks' || collection === 'lanes') &&
+    Object.hasOwn(input, 'appearance') &&
+    isWireObject(input.appearance)
+  ) {
+    unknownProperties(
+      input.appearance,
+      wireAppearanceDefinition.knownKeys,
+      pointer(path, ['appearance']),
+      context,
+      entityId,
+    );
+  }
   if (collection === 'tasks' && Object.hasOwn(input, 'schedule')) {
     warnScheduleProperties(input.schedule, pointer(path, ['schedule']), context, entityId);
   }

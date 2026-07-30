@@ -24,7 +24,9 @@ import {
 } from './records';
 import {
   canonicalEntityIdSchema,
+  canonicalAppearanceVariantSchema,
   localDateSchema,
+  wireAppearanceVariantSchema,
   wireEntityIdSchema,
   wireInstantSchema,
 } from './scalars';
@@ -41,6 +43,19 @@ describe('private runtime schema foundations', () => {
     expect(wireEntityIdSchema.safeParse('').success).toBe(false);
     expect(wireInstantSchema.safeParse('2026-07-30T10:00:00Z').success).toBe(true);
     expect(wireInstantSchema.safeParse('2026-07-30T10:00:00').success).toBe(false);
+  });
+
+  it('normalizes bounded semantic appearance variants without losing unknown IDs', () => {
+    expect(wireAppearanceVariantSchema.safeParse('  customer:blocked  ')).toMatchObject({
+      data: 'customer:blocked',
+      success: true,
+    });
+    expect(canonicalAppearanceVariantSchema.safeParse('customer:blocked').success).toBe(true);
+    expect(canonicalAppearanceVariantSchema.safeParse(' customer:blocked ').success).toBe(false);
+    expect(wireAppearanceVariantSchema.safeParse(' \t ').success).toBe(false);
+    expect(wireAppearanceVariantSchema.safeParse('bad\u0000variant').success).toBe(false);
+    expect(wireAppearanceVariantSchema.safeParse('a'.repeat(65)).success).toBe(false);
+    expect(wireAppearanceVariantSchema.safeParse('🎨'.repeat(64)).success).toBe(true);
   });
 
   it('validates calendar dates and schedule ordering', () => {

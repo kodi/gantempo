@@ -29,6 +29,8 @@ describe('serializeGanttDocument', () => {
       revision: -1,
       tasks: [
         {
+          appearance: { variant: 'customer:blocked' },
+          description: 'Details',
           fields: { custom: true },
           id: 'task-a',
           kind: 'task',
@@ -41,9 +43,26 @@ describe('serializeGanttDocument', () => {
     };
 
     expect(serializeGanttDocument(document)).toContain(
-      '"revision":-1,"tasks":[{"id":"task-a","title":"Task A","kind":"task","schedule":{"mode":"instant","start":-1,"end":0},"progress":0,"segments":[],"fields":{"custom":true}}]',
+      '"revision":-1,"tasks":[{"id":"task-a","title":"Task A","description":"Details","kind":"task","appearance":{"variant":"customer:blocked"},"schedule":{"mode":"instant","start":-1,"end":0},"progress":0,"segments":[],"fields":{"custom":true}}]',
     );
     expect(serializeGanttDocument(document)).not.toContain('undefined');
+  });
+
+  it('defensively rejects non-canonical semantic appearance', () => {
+    const document = {
+      ...emptyDocument(),
+      tasks: [
+        {
+          appearance: { variant: ' not-trimmed ' },
+          id: 'task-a',
+          kind: 'task',
+          segments: [],
+          title: 'Task A',
+        },
+      ],
+    } as GanttDocument;
+
+    expect(() => serializeGanttDocument(document)).toThrow(/semantic appearance variant/);
   });
 
   it('sorts nested extension keys lexically without changing array order', () => {
