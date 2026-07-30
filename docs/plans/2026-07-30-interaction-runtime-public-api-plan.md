@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–5 complete, Slice 6 next
+Status: Active; Slices 1–6 complete, Slice 7 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -1038,7 +1038,7 @@ interaction design.
 
 ### Slice 6: Add renderer-independent hit testing and interaction intent
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1819,6 +1819,47 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
   offsets and non-zero viewport queries remain pure scene geometry, while live
   measurement starts in Slice 7; this slice therefore did not trigger a browser gate.
 
+### 2026-07-30 — Slice 6 renderer-independent interaction geometry and intent
+
+- Added a private immutable visible hit-test index that converts absolute scene
+  primitives and numeric timeline bounds into lane-grouped task geometry, copied
+  occurrence targets, and deterministic coordinate/time resolution.
+- Added task-body, start/end edge, and empty timeline-position hits with delegated
+  candidate preference, later-paint overlap priority, clipped-edge suppression,
+  mouse/pen edge geometry, and touch-expanded 44-pixel vertical/22-pixel edge targets.
+- Added explicit positive step/anchor snapping with ties toward the later epoch,
+  clamped coordinate-to-time conversion, visual left/right/up/down/home/end
+  navigation, empty-lane skipping, and occurrence summaries for runtime
+  reconciliation.
+- Added a pure pointer-agnostic gesture reducer with per-input movement thresholds,
+  press/move/resize/create/cancel/commit/reset states, snapped horizontal and
+  cross-lane intent, immutable previews, focus-independent destination resolution,
+  and deterministic user-facing descriptions without changing the document.
+- Added built-in mapping to `task.move`, `task.resize`, `placement.move`, or one
+  ordered transaction, plus frozen synchronous create/derived-occurrence mapper
+  inputs, cloned/frozen mapper commands, and fail-closed missing/thrown/invalid mapper
+  results.
+- Focused examples cover clipped bars, exact edge ties, dense overlaps, variable
+  lanes, non-zero vertical starts, expanded touch edges, repeated task occurrences,
+  cross-family same keys, offscreen targets, cross-lane moves, creation,
+  cancel/restart, ambiguous provenance, all-day schedules, segments, invalid resize
+  intervals, mapper immutability, and preview/document separation.
+- The hit-test property uses `seed=20260730`, 250 runs, verbose counterexamples, up to
+  eight variable-height lanes and 40 dense visible tasks, and matches indexed results
+  against an independent brute-force primitive oracle for mouse, pen, and touch.
+- Verification passed:
+  - focused hit-test, navigation, gesture, command-mapping, and property tests passed
+    5 files and 16 tests;
+  - `vp check` reported all 109 files formatted and no warning, lint, or type error
+    across 98 checked files;
+  - `vp pack` built all four package artifacts;
+  - `git diff --check` and React/browser-global import inspection passed;
+  - `mise run ci` passed the complete check, 43-test-file/196-test, and four-artifact
+    package build gates.
+- No React component, CSS, scenario, or playground source changed, and the new layer
+  contains no event listeners or browser globals. This slice did not trigger a
+  browser gate.
+
 ## Deviations
 
 ### 2026-07-30 — Trusted affected changes retain a conservative validation/index stage
@@ -1857,7 +1898,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 3: Build the React-free runtime store and ownership state machine
 - [x] Slice 4: Add the async command bus, events, and bounded history orchestration
 - [x] Slice 5: Stage derived caches and add measured viewport subscriptions
-- [ ] Slice 6: Add renderer-independent hit testing and interaction intent
+- [x] Slice 6: Add renderer-independent hit testing and interaction intent
 - [ ] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
       handle
 - [ ] Slice 8: Implement pointer, pen, and touch workflows
@@ -1869,7 +1910,7 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 
 ## Next Slice
 
-Start Slice 6. Build the renderer-independent visible hit-test index, coordinate/time
-mapping, visual-neighbor navigation, pure gesture intent states, command mapping, and
-immutable previews on the staged visible geometry without adding React or browser
-dependencies.
+Start Slice 7. Integrate one per-instance runtime with the React facade through
+external-store selectors, controlled/uncontrolled document and session ownership,
+semantic events, measurement scheduling, a narrow imperative handle, SSR-safe initial
+markup, and cleanup without duplicating command or interaction semantics.

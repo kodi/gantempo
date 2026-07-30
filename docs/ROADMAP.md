@@ -138,14 +138,14 @@ The completed M0 vertical slice proves the renderer direction, M1 and M2 complet
 architecture Slice 1, and M3 completes architecture Slice 2 with pure view, layout,
 viewport, and read-only rendering foundations. M4 is in progress: its public contract,
 semantic task-command foundation, React-free ownership store, async command/history
-lifecycle, staged derivation, and measured viewport model are complete;
-renderer-independent hit testing and interaction intent are next.
+lifecycle, staged derivation, measured viewport model, and renderer-independent
+interaction intent are complete; React facade integration is next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–5 complete, Slice 6 next
+**Status:** `[-]` In progress; Slices 1–6 complete, Slice 7 next
 
 **Target outcome**
 
@@ -165,15 +165,17 @@ persistence.
 
 **Next action**
 
-Execute Slice 6 of the
+Execute Slice 7 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
 pure instant-only `task.move`/`task.resize` foundation, React-free ownership store,
 async command/history lifecycle, private derived pipeline, affected-reference
-invalidation/work observations, and measured vertical viewport/overscan publication
-are verified. Add renderer-independent hit testing, navigation, gesture intent,
-command mapping, and previews before React integration.
+invalidation/work observations, measured vertical viewport/overscan publication,
+renderer-independent hit testing, navigation, gesture intent, command mapping, and
+previews are verified. Integrate the per-instance runtime and intentional public
+facade with React selectors, ownership props, semantic events, measurement, cleanup,
+SSR safety, and the narrow imperative handle.
 
 **Adjacent proof complete**
 
@@ -262,6 +264,25 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 renderer-independent interaction geometry complete
+
+- Added private immutable lane-grouped hit geometry for bodies, resize edges, and
+  empty timeline positions with clipped-edge suppression, deterministic overlap
+  priority, touch expansion, copied provenance, coordinate/time conversion, and
+  explicit snap ties.
+- Added visual occurrence navigation, pure threshold/gesture/cancel/commit states,
+  cross-lane/create/resize intent, immutable previews and descriptions, built-in
+  semantic command mapping, and frozen fail-closed application mapper seams.
+- Fixed-seed indexed/brute-force parity used seed `20260730`, 250 runs, up to eight
+  variable lanes and 40 dense tasks across mouse, pen, and touch.
+- Focused tests passed 5 files/16 tests; `vp check` passed all 109 formatted and 98
+  lint/type-checked files; `vp pack` built four artifacts; `git diff --check` and
+  framework-boundary inspection passed.
+- `mise run ci` passed the complete check, 43-test-file/196-test, and four-artifact
+  package build gates.
+- No React, CSS, scenario, or playground source changed, so no browser claim was
+  added.
 
 ### 2026-07-30 — M4 derived pipeline and measured viewport complete
 
