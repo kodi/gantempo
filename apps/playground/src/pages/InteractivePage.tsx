@@ -410,7 +410,8 @@ export function InteractivePage(): ReactElement {
           <h1>Interactive</h1>
           <p>
             One application store adopts runtime candidates immediately while every toolbar,
-            pointer, keyboard, menu, editor, and history action uses the chart command bus.
+            pointer, keyboard, menu, editor, and history action uses the chart command bus, and
+            every accepted navigation proposal updates its controlled time range.
           </p>
         </div>
         <div className="page-intro__meta">

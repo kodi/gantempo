@@ -226,6 +226,45 @@ Session ownership is independent from document ownership. Supply `session` plus
 `defaultSession` to keep them local. The horizontal `range` remains controlled in M4;
 handle `onRangeChange` when using `scrollToTime`.
 
+### Timeline navigation
+
+Horizontal navigation proposes a new semantic time range; it does not scroll a wide
+DOM canvas. Keep `range` in application state and acknowledge `onRangeChange` for
+wheel, trackpad, mouse-grab, keyboard-page, edge-auto-pan, and imperative navigation:
+
+```tsx
+const [range, setRange] = useState({
+  start: Date.UTC(2026, 0, 1),
+  end: Date.UTC(2026, 2, 26),
+});
+
+<Gantt
+  document={document}
+  onRangeChange={setRange}
+  range={range}
+  tickAnchor={range.start}
+  tickInterval={14 * 86_400_000}
+  timeZone="UTC"
+/>;
+```
+
+A horizontal wheel or trackpad gesture pans time. `Shift` plus a vertical wheel is
+the mouse-wheel fallback; diagonal trackpad input preserves its vertical component.
+Primary-button drag on the time header and middle-button drag on the timeline grab
+the viewport. Primary empty-body drag pans only when no creation mapper owns that
+gesture. `Ctrl`/`Meta` wheel input remains browser zoom and is not claimed.
+
+`PageUp`/`PageDown` move vertically with one lane of overlap.
+`Alt+PageUp`/`Alt+PageDown` move one time range with a small overlap. Arrow,
+`Home`, and `End` task navigation can reveal occurrences outside the current painted
+viewport while preserving logical focus and selection. Document read-only state
+still permits viewport navigation.
+
+Continuous wheel/grab proposals are coalesced per frame and do not create document
+commands, history entries, or per-frame live announcements. Each chart instance owns
+its proposed range independently. If `onRangeChange` is omitted, horizontal input
+passes through and imperative horizontal reveal fails closed.
+
 The public handle is occurrence-aware and intentionally narrow:
 `dispatch`, `undo`, `redo`, `canUndo`, `canRedo`, `focusTask`, `scrollToTask`,
 `scrollToTime`, `getDocument`, `getSelection`, and `getSession`. Occurrence targets
@@ -492,16 +531,20 @@ vp dev apps/playground
 
 The playground exercises the canonical model, pure change kernel, resolved
 view/layout/viewport pipeline, interaction runtime, public facade, and DOM/SVG
-renderer. It has four routes:
+renderer. It has five routes:
 
-- `/` keeps the default persisted document view at a large, useful size;
+- `/` keeps the default persisted document view at a large, useful size and
+  acknowledges navigation in local scenario state;
 - `/matrix` shows project, resource, custom, segment, overlap, density, theme,
-  clipping, and empty variants together;
+  clipping, and empty variants together, with independent local ranges;
 - `/interactive` is a controlled application store with one shared command/history
-  path and an inspectable network-free API-shaped change log;
+  path, explicit range acknowledgement, and an inspectable network-free API-shaped
+  change log;
 - `/uncontrolled` owns its default document/session while demonstrating async
   allow/reject/replace interception, derived resource mapping, lifecycle events, and
-  imperative focus/scroll.
+  imperative focus/scroll with an acknowledged controlled range;
+- `/navigation` is a deterministic two-axis stress surface with 144 scheduled events
+  across 36 lanes, a fixed 18-month UTC period, and a 12-week initial range.
 
 The equivalent mise command is `mise run dev`. To verify the standalone playground
 build, run `pnpm build:playground`.

@@ -297,7 +297,7 @@ export function UncontrolledPage(): ReactElement {
           <p>
             A parsed default document and session stay inside one instance. The application still
             observes changes, intercepts commands, maps derived resource gestures, and uses the
-            public handle.
+            public handle while acknowledging the required controlled time range.
           </p>
         </div>
         <div className="page-intro__meta">
@@ -547,7 +547,7 @@ export function UncontrolledPage(): ReactElement {
           }}
           onRangeChange={(nextRange) => {
             setRange(nextRange);
-            setStatus('The imperative handle requested a new controlled time range.');
+            setStatus('The consumer acknowledged a new controlled time range.');
           }}
           onSelectionChange={(selection) =>
             setStatus(

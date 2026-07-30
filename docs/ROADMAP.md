@@ -167,20 +167,20 @@ additive post-M4 work.
 
 ### Post-M4 timeline navigation interactions
 
-**Status:** `[-]` Keyboard/focus parity complete; Slice 7 next
+**Status:** `[-]` Public playground proof complete; Slice 8 final gates next
 
 The
 [timeline navigation interactions plan](plans/2026-07-30-timeline-navigation-interactions-plan.md)
 corrects a user-discovered base interaction gap before the queued item-properties
-appendix. The chart currently supports native vertical scrolling, drag-edge auto-pan,
-and imperative range requests, but ordinary wheel/trackpad or grab gestures do not
-move the horizontal time range.
+appendix. The chart now supports semantic horizontal wheel/trackpad, grab, paging,
+edge-auto-pan, and imperative range navigation alongside native vertical scrolling.
+Slice 8 is the remaining final-evidence gate.
 
 The selected plan adds a viewport-independent occurrence catalog before input
 adapters so panning cannot discard offscreen selection/focus. It then adds controlled
 range-pan orchestration, trackpad/wheel navigation, conflict-safe mouse grab panning,
 keyboard/focus parity, self-demonstrating playground consumers, and full automated
-and live gates. A required top-level `/navigation` example will contain 144
+and live gates. The top-level `/navigation` example contains 144
 deterministic scheduled events across 36 lanes and an 18-month UTC period, initially
 shown through a 12-week range. Zoom, pinch, default-range ownership, touch panning,
 and M5 project navigation policy remain out of scope.
@@ -208,8 +208,14 @@ announcements, accessible gesture guidance, focused hydration/axe regression
 coverage, and responsive live accessibility evidence. The existing four-lane
 consumer cannot provide the planned live offscreen-lane flow, so the automated
 vertical proof remains complete here and the live flow moves to Slice 7's required
-36-lane navigation fixture for the final gate. Slice 7 will prove the public
-consumer and playground experience.
+36-lane navigation fixture for the final gate. Slice 7 made scenario ranges
+independently controlled, added the deterministic
+top-level 144-event/36-lane/18-month `/navigation` route with a 12-week viewport,
+documented all navigation bindings, and proved the public facade and packed
+declaration boundary. Its live keyboard flow closed the deferred offscreen-lane
+evidence and exposed one read-only roving-stop mismatch; task navigation now remains
+available while document mutation stays disabled. Slice 8 will run and record the
+final automated, performance, artifact, and live gates.
 
 ### Post-M4 playground focus and theme refinement
 
@@ -375,6 +381,20 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Completed timeline-navigation Slice 7. `ScenarioGantt` now owns an
+  independent acknowledged range, the top-level menu includes `/navigation`, and
+  the deterministic route contains exactly 144 scheduled events/placements across
+  36 lanes over January 2025–July 2026 with a 12-week initial viewport, boundary
+  clipping, overlap, and work before/inside/after the range. README now documents
+  semantic range ownership and every gesture/modifier/conflict. The stress fixture
+  exposed that read-only tasks had lost roving stops despite the accepted navigation
+  contract; task focus and Arrow/Home/End navigation now remain available while
+  mutation stays guarded. Focused suites passed 5 files / 17 tests, the playground
+  and package built, private catalog/runtime names stayed out of packed declarations,
+  and complete CI passed 58 files / 287 tests. Live desktop/narrow checks found one
+  current link and zero page/menu overflow on all five routes; keyboard focus moved
+  from event 040 to event 077 across offscreen lanes/times while the range advanced
+  June–August to August–October with a clean console. Final gates are Slice 8.
 - 2026-07-30: Completed timeline-navigation Slice 6. Keyboard paging now moves
   vertical session state with one-lane overlap or controlled time with ten-percent
   overlap, including read-only charts. Arrow/Home/End navigation uses the full

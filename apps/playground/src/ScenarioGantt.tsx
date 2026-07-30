@@ -1,42 +1,53 @@
-import { Gantt } from '@gantempo/gantt';
-import type { ReactElement } from 'react';
+import { Gantt, type GanttDocumentChange } from '@gantempo/gantt';
+import { useState, type ReactElement } from 'react';
 
 import type { PlaygroundScenario, ScenarioTheme } from './scenarios';
 
 interface ScenarioGanttProps {
+  readonly editable?: boolean;
   readonly scenario: PlaygroundScenario;
-  readonly size: 'main' | 'matrix';
+  readonly size: 'main' | 'matrix' | 'navigation';
   readonly theme?: ScenarioTheme;
+  readonly onRangeChange?: (range: PlaygroundScenario['range']) => void;
 }
 
-function formatRange(scenario: PlaygroundScenario): string {
+function formatRange(range: PlaygroundScenario['range'], timeZone: string): string {
   const formatter = new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: 'short',
-    timeZone: scenario.timeZone,
+    timeZone,
   });
 
-  return `${formatter.format(scenario.range.start)} – ${formatter.format(scenario.range.end)}`;
+  return `${formatter.format(range.start)} – ${formatter.format(range.end)}`;
 }
 
 export function ScenarioGantt({
+  editable = false,
+  onRangeChange,
   scenario,
   size,
   theme = scenario.theme,
 }: ScenarioGanttProps): ReactElement {
+  const [document, setDocument] = useState(scenario.document);
+  const [range, setRange] = useState(scenario.range);
   const classes = ['chart-frame', `chart-frame--${size}`, `chart-frame--${scenario.density}`].join(
     ' ',
   );
 
   return (
-    <div className={classes} data-theme={theme}>
+    <div
+      className={classes}
+      data-theme={theme}
+      data-visible-range-end={range.end}
+      data-visible-range-start={range.start}
+    >
       <div className="chart-frame__toolbar">
         <div>
           <strong>{scenario.title}</strong>
-          <span>{formatRange(scenario)}</span>
+          <span>{formatRange(range, scenario.timeZone)}</span>
         </div>
         <div aria-label="Playground view options" className="chart-frame__actions">
-          <button disabled title="Timeline navigation is not implemented yet" type="button">
+          <button disabled title="Today jump is not implemented yet" type="button">
             Today
           </button>
           <button
@@ -52,9 +63,18 @@ export function ScenarioGantt({
 
       <Gantt
         className="chart-frame__chart"
-        document={scenario.document}
+        document={document}
         label={`${scenario.title} chart`}
-        range={scenario.range}
+        {...(editable
+          ? {
+              onDocumentChange: (change: GanttDocumentChange) => setDocument(change.document),
+            }
+          : {})}
+        onRangeChange={(nextRange) => {
+          setRange(nextRange);
+          onRangeChange?.(nextRange);
+        }}
+        range={range}
         taskVariants={scenario.taskVariants}
         tickAnchor={scenario.tickAnchor}
         tickInterval={scenario.tickInterval}

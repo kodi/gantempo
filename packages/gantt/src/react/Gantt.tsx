@@ -705,11 +705,7 @@ function GanttSurface({
       ? focused.viewKey
       : undefined;
   const logicalTaskFocused = focused?.kind === 'task';
-  const rovingViewKey = disabled
-    ? undefined
-    : logicalTaskFocused
-      ? focusedViewKey
-      : scene.taskBars[0]?.viewKey;
+  const rovingViewKey = logicalTaskFocused ? focusedViewKey : scene.taskBars[0]?.viewKey;
   const activeTooltipTask = tooltip === undefined ? undefined : taskByViewKey.get(tooltip.viewKey);
   const activeMenuTask = menu === undefined ? undefined : taskByViewKey.get(menu.viewKey);
   const activeEditorTask = editor === undefined ? undefined : taskByViewKey.get(editor.viewKey);
@@ -1399,7 +1395,7 @@ function GanttSurface({
         return;
       }
       const action = keyboardActionForEvent(event, interaction.status === 'keyboard');
-      if (disabled && action?.type !== 'page') {
+      if (disabled && action?.type !== 'navigate' && action?.type !== 'page') {
         return;
       }
       const bounds = geometry();

@@ -429,6 +429,23 @@ describe('Gantt keyboard and accessibility integration', () => {
     await expectNoSemanticViolations(mounted.container);
   });
 
+  it('keeps geometric task navigation focusable when document editing is read-only', async () => {
+    const user = userEvent.setup();
+    const mounted = render(<Gantt {...commonProps()} document={documentFixture()} />);
+    installGeometry(mounted.container, 116);
+    const taskA = mounted.container.querySelector<SVGGElement>('[data-task-id="task-a"]')!;
+    const taskB = mounted.container.querySelector<SVGGElement>('[data-task-id="task-b"]')!;
+
+    expect(taskA.tabIndex).toBe(0);
+    await user.tab();
+    expect(document.activeElement).toBe(taskA);
+    await user.keyboard('{ArrowRight}');
+    expect(document.activeElement).toBe(taskB);
+    expect(mounted.getByRole('region', { name: 'Gantt chart' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+  });
+
   it('hands browser focus to the root and restores it when logical focus is revealed', async () => {
     const user = userEvent.setup();
     const initialRange = commonProps().range;

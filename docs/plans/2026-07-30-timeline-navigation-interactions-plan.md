@@ -1,6 +1,6 @@
 # Timeline Navigation Interactions Plan
 
-Status: In progress; Slice 5 complete, Slice 6 next
+Status: In progress; Slice 7 complete, Slice 8 next
 Date: 2026-07-30
 Milestone: Post-M4 interaction correction
 
@@ -761,7 +761,7 @@ Verification:
 
 ### Slice 7: Prove the public consumer and playground experience
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Make the basic interaction visible in real examples and document its controlled
 ownership boundary.
@@ -815,6 +815,50 @@ Verification:
 - `git diff --check`.
 
 Dependencies: Slice 6.
+
+Completed in this slice:
+
+- made every `ScenarioGantt` own and acknowledge an independent local time range,
+  removed the stale timeline-navigation placeholder wording, and kept the controlled
+  `/interactive` and runtime-owned `/uncontrolled` acknowledgement boundaries
+  explicit;
+- added a top-level `Navigation` menu entry and `/navigation` page backed by exactly
+  144 deterministic instant events, 144 placements, and 36 lanes across
+  `2025-01-01T00:00:00.000Z`–`2026-07-01T00:00:00.000Z`;
+- started the route with an exact 12-week range and included stable IDs/timestamps,
+  events before/inside/after that range, both clipped edges, and overlapping work;
+- displayed event/lane/range metadata and concise wheel, trackpad, mouse, keyboard,
+  modifier, and controlled-ownership guidance;
+- documented the public controlled-range navigation contract and all bindings in
+  `README.md`;
+- retained keyboard occurrence navigation on read-only documents after the live
+  stress fixture exposed that the existing disabled roving-stop gate was broader
+  than the accepted contract.
+
+Verification:
+
+- focused playground, keyboard, and root-facade suites passed 5 files / 17 tests,
+  covering top-level current-page state, exact fixture shape/times, clipping,
+  overlap, 12-week range updates, sibling range isolation, read-only task navigation,
+  and public consumer/runtime imports;
+- `mise run build-playground` built 1,912 modules and emitted the standalone HTML,
+  CSS, and JavaScript assets;
+- `vp pack` rebuilt all four package artifacts, and packed-declaration inspection
+  found no `ChartSceneOccurrence`, `navigateRuntimeOccurrence`,
+  `occurrenceCatalog`, or `GanttReactRuntime` leak;
+- Chrome DevTools was attempted first and remained profile locked; the approved
+  in-app Browser inspected `/`, `/matrix`, `/interactive`, `/uncontrolled`, and
+  `/navigation` at 1,440 × 900 and 560 × 900;
+- every route selected exactly one current top-level link with zero page/menu
+  overflow; the `/navigation` accessibility tree exposed its 144-event/36-lane/
+  12-week/18-month summary and named chart hierarchy;
+- a live keyboard-only flow paged into initially offscreen lanes, then navigated from
+  `navigation-task-040` to `navigation-task-077`; the vertical viewport moved to
+  1,804 and the controlled range advanced from `Jun 01`–`Aug 24` to
+  `Aug 02`–`Oct 25` with task focus retained and no console warnings/errors;
+- temporary viewport emulation was reset and the scoped Browser tab was finalized;
+- `vp check`, `git diff --check`, and `mise run ci` passed with 58 files / 287 tests
+  and all four package artifacts.
 
 ### Slice 8: Run final automated, performance, and live gates
 
@@ -1188,7 +1232,48 @@ during implementation.
 - Focused tests passed 7 files / 65 tests; `vp check`, `git diff --check`, and
   `mise run ci` passed with 57 files / 283 tests and all four package artifacts.
 
+### 2026-07-30 Slice 7 public consumer and playground proof
+
+- `ScenarioGantt` now acknowledges an instance-local controlled range and reports
+  adopted changes to an optional consumer observer. Sibling scenario tests prove one
+  chart's time page does not move another.
+- The new top-level `/navigation` route owns 144 deterministic scheduled events and
+  placements across 36 lanes. Its fixed UTC period is exactly January 1, 2025 through
+  July 1, 2026, and its initial range is exactly 12 weeks.
+- Stable generated IDs/timestamps, explicit boundary-crossing events, overlapping
+  same-lane work, and events before/inside/after the initial range make horizontal
+  and vertical evidence reproducible without network or randomness.
+- The route displays covered and visible range metadata plus the complete input
+  summary. `README.md` now documents semantic range acknowledgement, gesture and
+  modifier bindings, edit conflicts, per-instance ownership, and fail-closed
+  callback absence.
+- Live testing used the new fixture to close Slice 6's deferred lane evidence:
+  keyboard focus advanced from event 040 to event 077 across offscreen lanes and
+  dates while the controlled range and vertical viewport adopted the reveal.
+- The stress flow exposed a real contract mismatch: read-only state still removed
+  task roving stops and blocked arrow navigation even though the accepted decision
+  disables only document mutation. Task navigation and paging now remain available;
+  edit/activation/selection commands retain their existing read-only guards.
+- Focused tests passed 5 files / 17 tests. The playground build, packed declaration
+  privacy check, `vp check`, `git diff --check`, and `mise run ci` passed with
+  58 files / 287 tests and all artifacts.
+
 ## Deviations
+
+### 2026-07-30 — Read-only task roving stops were broader than the navigation contract
+
+- The 36-lane live fixture showed that paging worked on a read-only scenario, but
+  its task occurrences had no roving stop and the DOM adapter rejected arrow
+  navigation solely because the document lacked `onDocumentChange`.
+- The accepted decision says read-only state disables document mutation rather than
+  viewport navigation. The adapter now keeps task roving focus and allows
+  Arrow/Home/End navigation alongside paging while retaining read-only guards for
+  selection, activation, editing, deletion, creation, context menus, and pointer
+  document gestures.
+- A focused DOM regression proves read-only task focus and geometric arrow movement.
+  The live `/navigation` flow then crossed offscreen lanes and times using the same
+  behavior.
+- No public type, document command, history, or architecture boundary changed.
 
 ### 2026-07-30 — Live offscreen-lane keyboard proof follows the stress fixture
 
@@ -1266,9 +1351,9 @@ Do not mark this plan complete until:
 
 ## Next Slice
 
-Start Slice 7 by making `ScenarioGantt` acknowledge a locally owned range, then add
-the deterministic 144-event, 36-lane, 18-month `/navigation` fixture and its
-top-level menu entry. Document the controlled navigation boundary and gestures,
-verify exact fixture metadata/range updates and public-facade consumption, build and
-pack the artifacts, and use the new long-range surface for responsive two-axis
-playground checks.
+Run Slice 8's final automated, performance, artifact, and live gates. Recheck proposal
+coalescing, cleanup, full-catalog reuse, selection/focus retention, public facade,
+SSR/hydration, fixed-seed work counters, all five routes, long-range two-axis input,
+responsive accessibility/overflow, console/network state, and physical-trackpad
+evidence status. Synchronize final plan/roadmap/decision/architecture/README wording
+before marking the correction complete.

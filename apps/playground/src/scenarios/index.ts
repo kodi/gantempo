@@ -339,3 +339,80 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     taskVariants: {},
   },
 ];
+
+export const NAVIGATION_EVENT_COUNT = 144;
+export const NAVIGATION_LANE_COUNT = 36;
+export const NAVIGATION_PERIOD_START = Date.UTC(2025, 0, 1);
+export const NAVIGATION_PERIOD_END = Date.UTC(2026, 6, 1);
+export const NAVIGATION_INITIAL_RANGE: TimeRange = Object.freeze({
+  start: Date.UTC(2025, 5, 1),
+  end: Date.UTC(2025, 5, 1) + 12 * 7 * DAY,
+});
+
+const navigationLanes = Array.from({ length: NAVIGATION_LANE_COUNT }, (_, index) => ({
+  id: `navigation-lane-${String(index + 1).padStart(2, '0')}`,
+  title: `Portfolio lane ${String(index + 1).padStart(2, '0')}`,
+}));
+
+const navigationTasks = Array.from({ length: NAVIGATION_EVENT_COUNT }, (_, index) => {
+  const distributedStart =
+    NAVIGATION_PERIOD_START +
+    Math.floor(
+      (index * ((NAVIGATION_PERIOD_END - NAVIGATION_PERIOD_START) / DAY - 21)) /
+        (NAVIGATION_EVENT_COUNT - 1),
+    ) *
+      DAY;
+  const start =
+    index === 40
+      ? NAVIGATION_INITIAL_RANGE.start - 5 * DAY
+      : index === 64
+        ? NAVIGATION_INITIAL_RANGE.end - 5 * DAY
+        : index === NAVIGATION_EVENT_COUNT - 1
+          ? NAVIGATION_PERIOD_END - 14 * DAY
+          : distributedStart;
+  const end =
+    index === NAVIGATION_EVENT_COUNT - 1
+      ? NAVIGATION_PERIOD_END
+      : start + (6 + (index % 5) * 2) * DAY;
+  return {
+    id: `navigation-task-${String(index + 1).padStart(3, '0')}`,
+    kind: 'task' as const,
+    schedule: { end, mode: 'instant' as const, start },
+    segments: [],
+    title: `Portfolio event ${String(index + 1).padStart(3, '0')}`,
+  };
+});
+
+const navigationDocument: GanttDocument = {
+  assignments: [],
+  dependencies: [],
+  lanes: navigationLanes,
+  placements: navigationTasks.map((task, index) => ({
+    id: `navigation-placement-${String(index + 1).padStart(3, '0')}`,
+    laneId: navigationLanes[Math.floor(index / 4)]!.id,
+    taskId: task.id,
+  })),
+  resources: [],
+  schemaVersion: 1,
+  tasks: navigationTasks,
+};
+
+export const navigationScenario: PlaygroundScenario = {
+  density: 'comfortable',
+  description:
+    'Deterministic long-range navigation across scheduled work before, inside, and after the initial viewport.',
+  document: navigationDocument,
+  id: 'long-range-navigation',
+  range: NAVIGATION_INITIAL_RANGE,
+  taskVariants: Object.fromEntries(
+    navigationTasks.map((task, index) => [
+      task.id,
+      (['accent', 'success', 'warning', 'neutral'] as const)[index % 4]!,
+    ]),
+  ),
+  theme: 'light',
+  tickAnchor: NAVIGATION_INITIAL_RANGE.start,
+  tickInterval: 14 * DAY,
+  timeZone: 'UTC',
+  title: 'Long-range portfolio navigation',
+};
