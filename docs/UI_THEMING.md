@@ -152,6 +152,7 @@ CSS custom properties use the `--gt-` prefix and are scoped to an instance:
   --gt-task-radius: var(--app-radius-sm);
   --gt-dependency-stroke: var(--app-border-strong);
   --gt-row-height: 36px;
+  --gt-z-overlay: 1200;
 }
 ```
 
@@ -165,6 +166,10 @@ Token families include:
 - `selection-*`, `focus-*`, `drag-*`, and `validation-*`;
 - `capacity-*`, `critical-*`, and `variance-*`;
 - `radius-*`, `shadow-*`, and `motion-*`.
+
+`--gt-z-overlay` is the integration token for the instance-owned portal wrapper. It
+defaults to `1000`; applications should map it to their established overlay scale
+instead of escalating individual menu or dialog z-index values.
 
 Tokens are classified as:
 
@@ -399,10 +404,21 @@ fallback colors.
 ## 13. Portals, SSR, and Content Security Policy
 
 - Menus, tooltips, editors, and dialogs inherit the owning instance theme.
-- The default portal container stays within the themed root when clipping and stacking
-  allow it.
-- External portal containers receive the resolved theme through React context and
-  documented root attributes.
+- The default portal target is the owning document body. Each instance appends and
+  cleans up only its own fixed wrapper so ancestor overflow, containment, and stacking
+  contexts do not clip interactive surfaces.
+- `overlayContainer="root"` deliberately retains the chart-local boundary. A DOM
+  element, document fragment, or SSR-safe callback selects an application overlay
+  root or shadow root.
+- External wrappers receive the owning root's resolved `--gt-*` values, typography,
+  `data-gantempo`, `data-gt-part="overlay-host"`, boundary, and owner attributes.
+- Menus and tooltips use viewport coordinates in external wrappers and are measured
+  into an eight-pixel safe area. Root mode uses chart-local coordinates.
+- A document-body editor covers and isolates the document viewport. Custom targets
+  retain focus trapping and focus return without guessing which application
+  ancestors may be made inert.
+- A portal cannot cross an iframe document boundary; a parent-page surface requires
+  explicit host integration.
 - CSS media queries provide system theme selection without hydration-dependent
   JavaScript.
 - Computed-style resolution begins only after mounting.

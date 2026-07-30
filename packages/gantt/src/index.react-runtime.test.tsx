@@ -11,6 +11,7 @@ import {
   type GanttInteractionCommandMappers,
   type GanttInteractionState,
   type GanttLaneColumn,
+  type GanttOverlayContainer,
   type GanttProps,
   type GanttSelectorSnapshot,
   type GanttSessionState,
@@ -85,6 +86,7 @@ describe('public React runtime facade', () => {
     const slots = {
       TaskContent: ({ task }) => <span>{task.title}</span>,
     } satisfies GanttSlots;
+    const overlayContainer = (() => null) satisfies GanttOverlayContainer;
     const keyboardInteraction: GanttInteractionState = {
       action,
       announcement: 'Move mode.',
@@ -125,6 +127,7 @@ describe('public React runtime facade', () => {
     expect(columns[0]?.id).toBe('lane');
     expect(items[0]?.id).toBe('rename');
     expect(slots.TaskContent).toBeTypeOf('function');
+    expect(overlayContainer()).toBeNull();
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
   });

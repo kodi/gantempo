@@ -756,6 +756,15 @@ Use a hybrid DOM/SVG renderer initially:
 - CSS transforms for movement during drag;
 - React portals for tooltips and dialogs.
 
+Portals must cross accidental chart clipping and stacking boundaries by default.
+Each React instance owns a themed fixed overlay wrapper under its owning document
+body, while a public container contract supports application overlay roots, shadow
+roots, and an explicit chart-local mode. Menus and tooltips use collision-adjusted
+coordinates in the selected boundary; modal editors cover and isolate that boundary.
+An iframe remains a document boundary and requires host integration to present UI in
+its parent. The durable behavior is fixed in the
+[overlay boundary contract](decisions/2026-07-30-overlay-boundary-contract.md).
+
 SVG is the default because it offers easier customization, hit testing, text handling,
 and accessibility than canvas during the early releases.
 

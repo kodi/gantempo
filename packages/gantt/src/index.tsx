@@ -22,6 +22,7 @@ export type {
   GanttLaneSummary,
   GanttMoveOccurrenceIntent,
   GanttOverlayBindings,
+  GanttOverlayContainer,
   GanttScrollOptions,
   GanttSelector,
   GanttSelectorEquality,

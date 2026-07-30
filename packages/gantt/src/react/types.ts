@@ -273,6 +273,13 @@ export interface GanttFeatures {
   readonly tooltip?: boolean;
 }
 
+export type GanttOverlayContainer =
+  | 'document'
+  | 'root'
+  | Element
+  | DocumentFragment
+  | (() => Element | DocumentFragment | null);
+
 interface GanttBaseProps {
   readonly className?: string;
   readonly classNames?: GanttClassNames;
@@ -302,6 +309,7 @@ interface GanttBaseProps {
   readonly onSessionChange?: (session: GanttSessionState, event: GanttSemanticEvent) => void;
   readonly onTaskActivate?: (target: GanttTaskTarget, event: GanttSemanticEvent) => void;
   readonly onViewportChange?: (viewport: GanttViewportChange, event: GanttSemanticEvent) => void;
+  readonly overlayContainer?: GanttOverlayContainer;
   readonly range: TimeRange;
   readonly slots?: GanttSlots;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;

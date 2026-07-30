@@ -45,6 +45,7 @@ import type {
   GanttInteractionState,
   GanttLaneColumn,
   GanttLaneSummary,
+  GanttOverlayContainer,
   GanttProps,
   GanttTaskEditorValue,
   GanttTaskSummary,
@@ -60,6 +61,8 @@ interface GanttRootStyle extends CSSProperties {
 }
 
 interface TaskOverlayPosition {
+  // Collision measurement runs after the surface exists and only once per opening.
+  readonly adjusted?: boolean;
   readonly viewKey: string;
   readonly x: number;
   readonly y: number;
@@ -71,12 +74,112 @@ interface EditorOverlay {
   readonly viewKey: string;
 }
 
+type OverlayBoundary = 'root' | 'viewport';
+
 type GanttLaneStyle = CSSProperties & {
   readonly '--gt-lane-height-ratio': number;
 };
 
+const OVERLAY_SAFE_AREA = 8;
+const THEME_PROPERTIES = [
+  '--gt-color-border',
+  '--gt-color-empty',
+  '--gt-color-focus',
+  '--gt-color-grid',
+  '--gt-color-surface',
+  '--gt-color-surface-muted',
+  '--gt-color-task',
+  '--gt-color-task-text',
+  '--gt-color-text',
+  '--gt-color-text-muted',
+  '--gt-header-height',
+  '--gt-row-height',
+  '--gt-z-overlay',
+] as const;
+
 const DEVELOPMENT =
   (import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } }).env?.DEV === true;
+
+function resolveOverlayTarget(
+  container: GanttOverlayContainer | undefined,
+  root: HTMLElement,
+): Element | DocumentFragment | null {
+  const resolved = typeof container === 'function' ? container() : container;
+  if (resolved === 'root') {
+    return null;
+  }
+  if (resolved === undefined || resolved === 'document') {
+    return root.ownerDocument.body;
+  }
+  return resolved;
+}
+
+function syncOverlayTheme(root: HTMLElement, host: HTMLElement): void {
+  const view = root.ownerDocument.defaultView;
+  if (view === null) {
+    return;
+  }
+  const computed = view.getComputedStyle(root);
+  // A body-level portal leaves the root's inheritance tree, so mirror only the
+  // instance-scoped theme contract and typography onto its owned wrapper.
+  const properties = new Set<string>(THEME_PROPERTIES);
+  for (let index = 0; index < computed.length; index += 1) {
+    const property = computed.item(index);
+    if (property.startsWith('--gt-')) {
+      properties.add(property);
+    }
+  }
+  for (const property of properties) {
+    const value = computed.getPropertyValue(property);
+    if (value !== '') {
+      host.style.setProperty(property, value);
+    }
+  }
+  host.style.fontFamily = computed.fontFamily;
+  host.style.fontSize = computed.fontSize;
+  host.style.lineHeight = computed.lineHeight;
+}
+
+function adjustedOverlayPosition(
+  position: TaskOverlayPosition,
+  surface: HTMLElement,
+  host: HTMLElement,
+  boundary: OverlayBoundary,
+): TaskOverlayPosition {
+  const surfaceRect = surface.getBoundingClientRect();
+  const hostRect = host.getBoundingClientRect();
+  const view = host.ownerDocument.defaultView;
+  const hasMeasuredHost = hostRect.width > 0 && hostRect.height > 0;
+  const bounds =
+    boundary === 'viewport'
+      ? {
+          bottom: hasMeasuredHost ? hostRect.bottom : (view?.innerHeight ?? hostRect.bottom),
+          left: hasMeasuredHost ? hostRect.left : 0,
+          right: hasMeasuredHost ? hostRect.right : (view?.innerWidth ?? hostRect.right),
+          top: hasMeasuredHost ? hostRect.top : 0,
+        }
+      : hostRect;
+  let x = position.x;
+  let y = position.y;
+  if (surfaceRect.right > bounds.right - OVERLAY_SAFE_AREA) {
+    x -= surfaceRect.right - (bounds.right - OVERLAY_SAFE_AREA);
+  }
+  if (surfaceRect.left < bounds.left + OVERLAY_SAFE_AREA) {
+    x += bounds.left + OVERLAY_SAFE_AREA - surfaceRect.left;
+  }
+  if (surfaceRect.bottom > bounds.bottom - OVERLAY_SAFE_AREA) {
+    y -= surfaceRect.bottom - (bounds.bottom - OVERLAY_SAFE_AREA);
+  }
+  if (surfaceRect.top < bounds.top + OVERLAY_SAFE_AREA) {
+    y += bounds.top + OVERLAY_SAFE_AREA - surfaceRect.top;
+  }
+  return {
+    ...position,
+    adjusted: true,
+    x: Math.max(OVERLAY_SAFE_AREA, x),
+    y: Math.max(OVERLAY_SAFE_AREA, y),
+  };
+}
 
 function percent(value: number): string {
   return `${value * 100}%`;
@@ -465,6 +568,7 @@ function GanttSurface({
   features,
   interactionMappers,
   label,
+  overlayContainer,
   runtime,
   scene,
   slots,
@@ -481,6 +585,7 @@ function GanttSurface({
   readonly features?: GanttProps['features'];
   readonly interactionMappers?: GanttProps['interactionMappers'];
   readonly label: string;
+  readonly overlayContainer?: GanttProps['overlayContainer'];
   readonly runtime: GanttReactRuntime;
   readonly scene: GanttReactRuntimeSnapshot['scene'];
   readonly slots?: GanttProps['slots'];
@@ -496,10 +601,13 @@ function GanttSurface({
   const menuSurfaceRef = useRef<HTMLDivElement | null>(null);
   const editorSurfaceRef = useRef<HTMLDivElement | null>(null);
   const tooltipSurfaceRef = useRef<HTMLDivElement | null>(null);
-  const [overlayHost, setOverlayHost] = useState<HTMLDivElement | null>(null);
+  const [localOverlayHost, setLocalOverlayHost] = useState<HTMLDivElement | null>(null);
+  const [externalOverlayHost, setExternalOverlayHost] = useState<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TaskOverlayPosition | undefined>();
   const [menu, setMenu] = useState<TaskOverlayPosition | undefined>();
   const [editor, setEditor] = useState<EditorOverlay | undefined>();
+  const overlayBoundary: OverlayBoundary = overlayContainer === 'root' ? 'root' : 'viewport';
+  const overlayHost = overlayBoundary === 'root' ? localOverlayHost : externalOverlayHost;
   const helpId = `${accessibilityId}-keyboard-help`;
   const tooltipId = `${accessibilityId}-tooltip`;
   const menuId = `${accessibilityId}-context-menu`;
@@ -559,6 +667,42 @@ function GanttSurface({
   const activeTooltipTask = tooltip === undefined ? undefined : taskByViewKey.get(tooltip.viewKey);
   const activeMenuTask = menu === undefined ? undefined : taskByViewKey.get(menu.viewKey);
   const activeEditorTask = editor === undefined ? undefined : taskByViewKey.get(editor.viewKey);
+  const editorOpen = editor !== undefined;
+
+  useLayoutEffect(() => {
+    if (overlayBoundary === 'root') {
+      setExternalOverlayHost(null);
+      return;
+    }
+    const root = rootRef.current;
+    if (root === null) {
+      return;
+    }
+    const target = resolveOverlayTarget(overlayContainer, root);
+    if (target === null) {
+      setExternalOverlayHost(null);
+      return;
+    }
+    const host = root.ownerDocument.createElement('div');
+    host.className = 'gt-gantt gt-gantt__overlays gt-gantt__overlays--viewport';
+    host.dataset.gantempo = '';
+    host.dataset.gtOverlayBoundary = 'viewport';
+    host.dataset.gtOverlayOwner = accessibilityId;
+    host.dataset.gtPart = 'overlay-host';
+    target.append(host);
+    syncOverlayTheme(root, host);
+    setExternalOverlayHost(host);
+    return () => {
+      setExternalOverlayHost((current) => (current === host ? null : current));
+      host.remove();
+    };
+  }, [accessibilityId, overlayBoundary, overlayContainer]);
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (root !== null && externalOverlayHost !== null) {
+      syncOverlayTheme(root, externalOverlayHost);
+    }
+  }, [className, externalOverlayHost]);
 
   useLayoutEffect(() => {
     const body = bodyRef.current;
@@ -576,7 +720,7 @@ function GanttSurface({
       const task = Array.from(root.querySelectorAll<SVGGElement>('[data-gt-part="task"]')).find(
         (element) => element.dataset.viewKey === focusedViewKey,
       );
-      if (task !== undefined && document.activeElement !== task) {
+      if (task !== undefined && root.ownerDocument.activeElement !== task) {
         task.focus();
       }
       return;
@@ -631,18 +775,83 @@ function GanttSurface({
     if (menu === undefined) {
       return;
     }
+    const surface = menuSurfaceRef.current;
+    const ownerDocument = surface?.ownerDocument ?? rootRef.current?.ownerDocument;
+    if (ownerDocument === undefined) {
+      return;
+    }
     const dismiss = (event: PointerEvent) => {
       if (
-        event.target instanceof Node &&
+        event.target !== null &&
         menuSurfaceRef.current !== null &&
-        !menuSurfaceRef.current.contains(event.target)
+        !menuSurfaceRef.current.contains(event.target as Node)
       ) {
         closeMenu();
       }
     };
-    document.addEventListener('pointerdown', dismiss);
-    return () => document.removeEventListener('pointerdown', dismiss);
+    ownerDocument.addEventListener('pointerdown', dismiss);
+    return () => ownerDocument.removeEventListener('pointerdown', dismiss);
   }, [closeMenu, menu]);
+  useEffect(() => {
+    if (menu === undefined && tooltip === undefined) {
+      return;
+    }
+    const ownerDocument = rootRef.current?.ownerDocument;
+    const view = ownerDocument?.defaultView;
+    if (ownerDocument === undefined || view === null || view === undefined) {
+      return;
+    }
+    const dismissTransientSurface = () => {
+      setTooltip(undefined);
+      if (menu !== undefined) {
+        closeMenu();
+      }
+    };
+    ownerDocument.addEventListener('scroll', dismissTransientSurface, true);
+    view.addEventListener('resize', dismissTransientSurface);
+    return () => {
+      ownerDocument.removeEventListener('scroll', dismissTransientSurface, true);
+      view.removeEventListener('resize', dismissTransientSurface);
+    };
+  }, [closeMenu, menu, tooltip]);
+  useLayoutEffect(() => {
+    if (
+      tooltip === undefined ||
+      tooltip.adjusted === true ||
+      tooltipSurfaceRef.current === null ||
+      overlayHost === null
+    ) {
+      return;
+    }
+    const adjusted = adjustedOverlayPosition(
+      tooltip,
+      tooltipSurfaceRef.current,
+      overlayHost,
+      overlayBoundary,
+    );
+    if (adjusted.x !== tooltip.x || adjusted.y !== tooltip.y) {
+      setTooltip(adjusted);
+    }
+  }, [overlayBoundary, overlayHost, tooltip]);
+  useLayoutEffect(() => {
+    if (
+      menu === undefined ||
+      menu.adjusted === true ||
+      menuSurfaceRef.current === null ||
+      overlayHost === null
+    ) {
+      return;
+    }
+    const adjusted = adjustedOverlayPosition(
+      menu,
+      menuSurfaceRef.current,
+      overlayHost,
+      overlayBoundary,
+    );
+    if (adjusted.x !== menu.x || adjusted.y !== menu.y) {
+      setMenu(adjusted);
+    }
+  }, [menu, overlayBoundary, overlayHost]);
   useLayoutEffect(() => {
     if (menu !== undefined) {
       const firstItem = menuSurfaceRef.current?.querySelector<HTMLElement>(
@@ -659,6 +868,78 @@ function GanttSurface({
       (firstField ?? editorSurfaceRef.current)?.focus();
     }
   }, [editor?.viewKey]);
+  useLayoutEffect(() => {
+    if (!editorOpen || overlayBoundary !== 'viewport' || overlayHost === null) {
+      return;
+    }
+    const ownerDocument = overlayHost.ownerDocument;
+    const body = ownerDocument.body;
+    if (overlayHost.parentElement !== body) {
+      return;
+    }
+    const previous = new Map<
+      Element,
+      {
+        readonly ariaHidden: string | null;
+        readonly inert: boolean;
+      }
+    >();
+    const isolate = (element: Element) => {
+      if (element === overlayHost || previous.has(element)) {
+        return;
+      }
+      previous.set(element, {
+        ariaHidden: element.getAttribute('aria-hidden'),
+        inert: element.hasAttribute('inert'),
+      });
+      element.setAttribute('aria-hidden', 'true');
+      element.setAttribute('inert', '');
+    };
+    for (const element of body.children) {
+      isolate(element);
+    }
+    // Application portals can append new body siblings while the editor is open.
+    // Observe only direct children so the modal boundary stays isolated and cleanup
+    // can restore every element's exact prior state.
+    const MutationObserverConstructor = ownerDocument.defaultView?.MutationObserver;
+    const observer =
+      MutationObserverConstructor === undefined
+        ? undefined
+        : new MutationObserverConstructor((records) => {
+            for (const record of records) {
+              for (const node of record.addedNodes) {
+                if (node.nodeType === 1) {
+                  isolate(node as Element);
+                }
+              }
+            }
+          });
+    observer?.observe(body, { childList: true });
+    const previousOverflow = body.style.overflow;
+    const previousPaddingRight = body.style.paddingRight;
+    const view = ownerDocument.defaultView;
+    const scrollbarWidth =
+      view === null ? 0 : Math.max(0, view.innerWidth - ownerDocument.documentElement.clientWidth);
+    const computedPadding =
+      view === null ? 0 : Number.parseFloat(view.getComputedStyle(body).paddingRight) || 0;
+    body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${computedPadding + scrollbarWidth}px`;
+    }
+    return () => {
+      observer?.disconnect();
+      for (const [element, { ariaHidden, inert }] of previous) {
+        if (ariaHidden === null) {
+          element.removeAttribute('aria-hidden');
+        } else {
+          element.setAttribute('aria-hidden', ariaHidden);
+        }
+        element.toggleAttribute('inert', inert);
+      }
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPaddingRight;
+    };
+  }, [editorOpen, overlayBoundary, overlayHost]);
   useLayoutEffect(() => {
     if (!DEVELOPMENT) {
       return;
@@ -735,13 +1016,15 @@ function GanttSurface({
     ): TaskOverlayPosition => {
       const rootRect = rootRef.current?.getBoundingClientRect();
       const taskRect = element.getBoundingClientRect();
+      const rootLeft = overlayBoundary === 'root' ? (rootRect?.left ?? 0) : 0;
+      const rootTop = overlayBoundary === 'root' ? (rootRect?.top ?? 0) : 0;
       return {
         viewKey,
-        x: Math.max(8, (clientX ?? taskRect.left + taskRect.width / 2) - (rootRect?.left ?? 0)),
-        y: Math.max(8, (clientY ?? taskRect.bottom + 6) - (rootRect?.top ?? 0)),
+        x: Math.max(OVERLAY_SAFE_AREA, (clientX ?? taskRect.left + taskRect.width / 2) - rootLeft),
+        y: Math.max(OVERLAY_SAFE_AREA, (clientY ?? taskRect.bottom + 6) - rootTop),
       };
     },
-    [],
+    [overlayBoundary],
   );
   const showTooltip = useCallback(
     (element: Element, task: TaskBarPrimitive) => {
@@ -1112,7 +1395,7 @@ function GanttSurface({
       surface.focus();
       return;
     }
-    const current = focusable.indexOf(document.activeElement as HTMLElement);
+    const current = focusable.indexOf(surface.ownerDocument.activeElement as HTMLElement);
     const next = event.shiftKey
       ? current <= 0
         ? focusable.length - 1
@@ -1539,12 +1822,14 @@ function GanttSurface({
             ? 'Chart update pending.'
             : ''}
       </div>
-      <div
-        aria-hidden={overlayHost === null ? 'true' : undefined}
-        className="gt-gantt__overlays"
-        data-gt-part="overlay-host"
-        ref={setOverlayHost}
-      />
+      {overlayBoundary === 'root' ? (
+        <div
+          className="gt-gantt__overlays gt-gantt__overlays--root"
+          data-gt-overlay-boundary="root"
+          data-gt-part="overlay-host"
+          ref={setLocalOverlayHost}
+        />
+      ) : null}
       {overlays}
     </div>
   );
@@ -1582,6 +1867,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     label = 'Gantt chart',
     locale = 'en-US',
     onDiagnostics,
+    overlayContainer,
     slots,
     taskVariants,
   } = props;
@@ -1678,6 +1964,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         features={features}
         interactionMappers={interactionMappers}
         label={label}
+        overlayContainer={overlayContainer}
         runtime={runtime}
         scene={scene}
         slots={slots}

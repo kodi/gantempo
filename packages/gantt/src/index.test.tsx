@@ -133,6 +133,7 @@ describe('Gantt', () => {
           ],
         }}
         features={{ contextMenu: true, editor: true, tooltip: true }}
+        overlayContainer="root"
         range={{ end: START + 7 * DAY, start: START }}
         slots={{ TaskContent: ({ task }) => <span>Custom {task.title}</span> }}
         tickAnchor={START}
@@ -147,6 +148,7 @@ describe('Gantt', () => {
     expect(markup).not.toContain('role="tooltip"');
     expect(markup).not.toContain('role="menu"');
     expect(markup).not.toContain('role="dialog"');
+    expect(markup).toContain('data-gt-overlay-boundary="root"');
   });
 
   it('renders derived resource and explicit segment provenance through the public view prop', () => {

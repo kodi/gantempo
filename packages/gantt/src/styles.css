@@ -10,6 +10,7 @@
     --gt-color-task-text: #fff;
     --gt-color-focus: #005fcc;
     --gt-color-empty: #778078;
+    --gt-z-overlay: 1000;
     --gt-row-height: 58px;
     --gt-header-height: 40px;
     position: relative;
@@ -298,11 +299,23 @@
   }
 
   :where(.gt-gantt__overlays) {
-    position: absolute;
-    z-index: 20;
-    inset: 0;
     overflow: visible;
     pointer-events: none;
+  }
+
+  :where(.gt-gantt__overlays--root) {
+    position: absolute;
+    z-index: var(--gt-z-overlay);
+    inset: 0;
+  }
+
+  :where(.gt-gantt__overlays--viewport) {
+    position: fixed;
+    z-index: var(--gt-z-overlay);
+    inset: 0;
+    min-width: 0;
+    color: var(--gt-color-text);
+    background: transparent;
   }
 
   :where(.gt-gantt__tooltip, .gt-gantt__context-menu) {
@@ -331,7 +344,7 @@
 
   :where(.gt-gantt__context-menu) {
     display: grid;
-    min-width: 190px;
+    min-width: min(190px, calc(100% - 16px));
     padding: 5px;
   }
 

@@ -163,6 +163,27 @@ queued after that additive post-M4 work.
 
 ## Current Focus
 
+### Post-M4 overlay-boundary hardening
+
+**Status:** `[x]` Complete and verified
+
+The [overlay boundary plan](plans/2026-07-30-overlay-boundary-plan.md) fixes the
+discovered mismatch between the promised external portal contract and the internal
+chart-local implementation. Default tooltips, menus, and editors will use an
+instance-owned document-level overlay wrapper with viewport collision handling,
+theme isolation, and page-modal behavior. Explicit chart-local, application overlay,
+shadow-root, SSR, and iframe boundaries remain documented.
+
+The package now exposes document-default, explicit-root, and custom overlay targets;
+owns and cleans up one themed fixed wrapper per external target; collision-adjusts
+menus/tooltips; and gives document-body editors full-viewport, scroll-lock,
+background-isolation, and exact restoration behavior. Focused and full tests,
+format/lint/types, package/playground builds, packed declarations, and desktop/narrow
+Chrome gates pass. Detailed evidence is in the completed plan.
+
+Appendix Slice A1 of the item-properties, semantic-color, and progress plan is again
+the next action.
+
 ### Cross-cutting M1/M2 document-kernel hardening
 
 **Status:** `[x]` Complete and verified
@@ -275,6 +296,17 @@ chart-owned interaction, session, or imperative contracts.
 
 ## Change Log
 
+- 2026-07-30: Started post-M4 overlay-boundary hardening after Chrome DevTools
+  reproduced a 74-pixel clipped context menu and chart-confined modal on
+  `/interactive`. Accepted the document-default, explicit-root/custom-container,
+  themed-wrapper, collision, modal-isolation, SSR, shadow-root, and iframe contract;
+  Slice 1 documentation verification passed and runtime implementation is active.
+- 2026-07-30: Completed overlay-boundary hardening. The exported document/root/custom
+  target contract, themed wrapper lifecycle, eight-pixel collision handling, and
+  full-viewport modal isolation/restoration pass 248 tests, the complete local CI and
+  production playground builds, packed declaration inspection, and Chrome gates at
+  1,440 × 900 and 560 × 900. A live-discovered dynamic body-child case is covered by
+  an observer regression test. The M4 item-properties appendix is next.
 - 2026-07-30: Started the cross-cutting Zod runtime-schema migration. The document
   codec decision now selects private Zod 4 Mini schemas while retaining Gantempo-owned
   migrations, recovery, diagnostics, graph policy, freezing, and serialization.
@@ -305,6 +337,9 @@ viewport-query, benchmark, and read-only React-facade decisions are recorded in 
 The M4 ownership, acknowledgement, event, interaction-target, viewport, accessibility,
 and minimum customization decisions are recorded in the
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md).
+The post-M4 document/root/custom-container portal default, overlay lifecycle,
+collision, modal-isolation, shadow-root, SSR, and iframe decisions are recorded in
+the [overlay boundary contract](decisions/2026-07-30-overlay-boundary-contract.md).
 The repository, package, activation, release, deployment, and update-entitlement
 decisions for Community and Pro are recorded in the
 [Community and Pro distribution and licensing decision](decisions/2026-07-30-community-pro-distribution-licensing.md).
@@ -317,6 +352,24 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — Overlay-boundary hardening started
+
+- Recorded the `/interactive` clipping deviation: an ordinary rounded overflow
+  container cut 74 pixels from the context menu, and the modal backdrop matched only
+  the chart's 1,308 × 272 pixel root.
+- Accepted the overlay boundary contract and created the active implementation plan.
+- Updated architecture to make an instance-owned document-level wrapper the default,
+  retain explicit chart-local and custom-container targets, preserve per-instance
+  themes, and state the iframe boundary.
+- Slice 1 passed diff, linked-file, and cross-document contract checks.
+- Slices 2 and 3 then added the exported target, wrapper/theme lifecycle, coordinate
+  correction, full-viewport modal isolation/restoration, dynamic-child hardening,
+  public docs, and focused coverage.
+- Final evidence passed 51 files/248 tests, 132-file formatting, 121-file lint/type
+  checking, package and playground builds, packed declarations, and live 1,440 × 900
+  plus 560 × 900 Chrome gates with zero page overflow or failed request.
+- The hardening plan is complete; Appendix Slice A1 is again the next action.
 
 ### 2026-07-30 — Base M4 interaction runtime and public API complete
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -8,7 +8,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import type { GanttDocument } from '../model/types';
 import type { GanttCommandInterception } from '../runtime/types';
 import { Gantt } from './Gantt';
-import type { GanttLaneHeaderProps, GanttTaskContentProps, GanttTooltipProps } from './types';
+import type {
+  GanttContextMenuProps,
+  GanttLaneHeaderProps,
+  GanttTaskContentProps,
+  GanttTooltipProps,
+} from './types';
 
 const DAY = 24 * 60 * 60 * 1_000;
 const START = Date.UTC(2026, 6, 29);
@@ -179,6 +184,15 @@ describe('Gantt customization surfaces', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Edit Task A' });
     expect(screen.queryByRole('tooltip')).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Title'));
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(view.container.hasAttribute('inert')).toBe(true);
+    expect(view.container.getAttribute('aria-hidden')).toBe('true');
+    const lateBodyChild = document.createElement('div');
+    document.body.append(lateBodyChild);
+    await waitFor(() => {
+      expect(lateBodyChild.hasAttribute('inert')).toBe(true);
+      expect(lateBodyChild.getAttribute('aria-hidden')).toBe('true');
+    });
     await user.clear(screen.getByLabelText('Title'));
     await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
     expect((await within(dialog).findByRole('alert')).textContent).toBe('Title is required.');
@@ -201,6 +215,12 @@ describe('Gantt customization surfaces', () => {
     expect(updated.getAttribute('aria-label')).toMatch(/Jul 31, 2026.*Aug 2, 2026/);
     expect(document.activeElement).toBe(updated);
     expect(screen.getByText('Edit committed.')).not.toBeNull();
+    expect(document.body.style.overflow).toBe('');
+    expect(view.container.hasAttribute('inert')).toBe(false);
+    expect(view.container.hasAttribute('aria-hidden')).toBe(false);
+    expect(lateBodyChild.hasAttribute('inert')).toBe(false);
+    expect(lateBodyChild.hasAttribute('aria-hidden')).toBe(false);
+    lateBodyChild.remove();
     await expectNoAxeViolations(view.container);
   });
 
@@ -258,7 +278,7 @@ describe('Gantt customization surfaces', () => {
     await expectNoAxeViolations(view.container);
   });
 
-  it('keeps custom portalled surfaces inside their owning instance', async () => {
+  it('keeps document-portalled surfaces isolated by owning instance', async () => {
     const Tooltip = ({ bindings, task }: GanttTooltipProps) => (
       <div {...bindings} data-testid={`tooltip-${task.target.viewKey}`}>
         Custom {task.title}
@@ -284,13 +304,133 @@ describe('Gantt customization surfaces', () => {
 
     const tooltip = await screen.findByRole('tooltip');
     expect(tooltip.textContent).toBe('Custom First task');
-    expect(within(screen.getByRole('region', { name: 'First chart' })).getByRole('tooltip')).toBe(
-      tooltip,
+    expect(within(screen.getByRole('region', { name: 'First chart' })).queryByRole('tooltip')).toBe(
+      null,
+    );
+    expect(tooltip.closest('[data-gt-overlay-boundary="viewport"]')?.parentElement).toBe(
+      document.body,
     );
     expect(
       within(screen.getByRole('region', { name: 'Second chart' })).queryByRole('tooltip'),
     ).toBeNull();
+    expect(document.querySelectorAll('[data-gt-overlay-boundary="viewport"]')).toHaveLength(2);
     await expectNoAxeViolations(view.container);
+  });
+
+  it('retains an explicit chart-local overlay boundary', async () => {
+    const view = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        overlayContainer="root"
+        features={{ tooltip: true }}
+      />,
+    );
+    screen.getByRole('button', { name: /Task A/ }).focus();
+
+    const tooltip = await screen.findByRole('tooltip');
+    const region = screen.getByRole('region', { name: 'Gantt chart' });
+    expect(within(region).getByRole('tooltip')).toBe(tooltip);
+    expect(view.container.querySelector('[data-gt-overlay-boundary="viewport"]')).toBeNull();
+    expect(
+      region.querySelector('[data-gt-overlay-boundary="root"]')?.getAttribute('aria-hidden'),
+    ).toBeNull();
+  });
+
+  it('owns and cleans up a wrapper in a supplied overlay container', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const view = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        overlayContainer={() => target}
+      />,
+    );
+
+    expect(target.querySelectorAll('[data-gt-overlay-boundary="viewport"]')).toHaveLength(1);
+    expect(target.querySelector('[data-gt-overlay-owner]')).not.toBeNull();
+
+    view.unmount();
+    expect(target.childElementCount).toBe(0);
+    target.remove();
+  });
+
+  it('adjusts a context menu into the viewport safe area', async () => {
+    const previousWidth = window.innerWidth;
+    const previousHeight = window.innerHeight;
+    Object.defineProperties(window, {
+      innerHeight: { configurable: true, value: 240 },
+      innerWidth: { configurable: true, value: 320 },
+    });
+    const ContextMenu = ({ bindings, items, onSelect }: GanttContextMenuProps) => {
+      const { ref, ...attributes } = bindings;
+      return (
+        <div
+          {...attributes}
+          ref={(element) => {
+            if (element !== null) {
+              element.getBoundingClientRect = () => {
+                const left = Number.parseFloat(element.style.left);
+                const top = Number.parseFloat(element.style.top);
+                return {
+                  bottom: top + 80,
+                  height: 80,
+                  left,
+                  right: left + 100,
+                  top,
+                  width: 100,
+                  x: left,
+                  y: top,
+                  toJSON() {},
+                } as DOMRect;
+              };
+            }
+            ref(element);
+          }}
+        >
+          {items.map((item) => (
+            <button key={item.id} onClick={() => onSelect(item)} role="menuitem" type="button">
+              {item.label}
+            </button>
+          ))}
+        </div>
+      );
+    };
+    const view = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        features={{ contextMenu: true }}
+        slots={{ ContextMenu }}
+      />,
+    );
+    const task = screen.getByRole('button', { name: /Task A/ });
+    task.getBoundingClientRect = () =>
+      ({
+        bottom: 230,
+        height: 20,
+        left: 280,
+        right: 300,
+        top: 210,
+        width: 20,
+        x: 280,
+        y: 210,
+        toJSON() {},
+      }) as DOMRect;
+    fireEvent.contextMenu(task, { clientX: 290, clientY: 228 });
+
+    const menu = await screen.findByRole('menu');
+    await waitFor(() => {
+      expect(menu.style.left).toBe('212px');
+      expect(menu.style.top).toBe('152px');
+    });
+
+    view.unmount();
+    Object.defineProperties(window, {
+      innerHeight: { configurable: true, value: previousHeight },
+      innerWidth: { configurable: true, value: previousWidth },
+    });
   });
 
   it('retains the editor with labelled rejection details while an interceptor settles', async () => {

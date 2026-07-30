@@ -305,6 +305,34 @@ All-day schedules remain canonical model records but do not produce instant bars
 are never coerced into instants; calendar-aware rendering and all-day interaction
 belong to a later scheduling layer.
 
+### Overlay boundaries
+
+Tooltips, context menus, and the task editor portal to one instance-owned fixed
+wrapper under the Gantt root's owning document body by default. This lets them cross
+rounded cards, scrolling containers, and ancestor stacking contexts while preserving
+the owning instance's resolved Gantt theme.
+
+Use the existing chart boundary only when confinement is intentional:
+
+```tsx
+<Gantt {...props} overlayContainer="root" />
+```
+
+Supply an application overlay element or an SSR-safe callback to integrate with a
+design-system layer or shadow root:
+
+```tsx
+const applicationOverlays = document.querySelector('#application-overlays');
+
+<Gantt {...props} overlayContainer={() => applicationOverlays} />;
+```
+
+The package owns and cleans up only the wrapper it appends; it does not change the
+consumer container. Set `--gt-z-overlay` on the Gantt theme to align the wrapper with
+the application's layer scale. A portal covers only its owning document, so a Gantt
+inside an iframe cannot present over the parent page without explicit host messaging
+and a parent-owned modal.
+
 ## Views and layout
 
 `Gantt` defaults to persisted document lanes and placements. Its optional data-only
