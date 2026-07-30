@@ -121,23 +121,44 @@ function findRecord<C extends DocumentCollection>(
   );
 }
 
-function commitPatch(
+function freezeAffected(affected: readonly EntityReference[]): readonly EntityReference[] {
+  const seen = new Set<string>();
+  const result: EntityReference[] = [];
+  for (const reference of affected) {
+    const key = `${reference.collection}\u0000${reference.id}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(Object.freeze({ ...reference }));
+    }
+  }
+  return Object.freeze(result);
+}
+
+function commitPatches(
   document: GanttDocument,
-  patch: GanttPatch,
+  patches: readonly GanttPatch[],
   affected: readonly EntityReference[],
 ): CommandOutcome {
-  const result = applyGanttPatches(document, [patch]);
+  const result = applyGanttPatches(document, patches);
   if (result.status === 'rejected') {
     return rejected(document, result.diagnostics);
   }
   return Object.freeze({
-    affected: Object.freeze(affected.map((reference) => Object.freeze({ ...reference }))),
+    affected: freezeAffected(affected),
     diagnostics: Object.freeze([]),
     document: result.document,
     inversePatches: result.inversePatches,
     patches: result.patches,
     status: 'committed',
   });
+}
+
+function commitPatch(
+  document: GanttDocument,
+  patch: GanttPatch,
+  affected: readonly EntityReference[],
+): CommandOutcome {
+  return commitPatches(document, [patch], affected);
 }
 
 function addRecord<C extends DocumentCollection>(
@@ -243,6 +264,180 @@ function updateRecord<C extends DocumentCollection>(
   );
 }
 
+function requireDeleteTarget<C extends DocumentCollection>(
+  document: GanttDocument,
+  collection: C,
+  id: unknown,
+): DomainRecordByCollection[C] | CommandOutcome {
+  if (typeof id !== 'string' || id.length === 0) {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'A delete target must be a canonical string ID.',
+        '/command/id',
+      ),
+    ]);
+  }
+  const record = findRecord(document, collection, id);
+  if (!record) {
+    return rejected(document, [
+      diagnostic(
+        'command.missing-target',
+        `Cannot delete missing ${collection} ID "${id}".`,
+        '/command/id',
+        [id],
+      ),
+    ]);
+  }
+  return record;
+}
+
+function isCommandOutcome(
+  input: CommandOutcome | DomainRecordByCollection[DocumentCollection],
+): input is CommandOutcome {
+  return Object.hasOwn(input, 'status');
+}
+
+function removePatch<C extends DocumentCollection>(collection: C, id: EntityId): GanttPatch {
+  return Object.freeze({
+    op: 'remove',
+    patchVersion: 1,
+    target: Object.freeze({ collection, id }),
+  });
+}
+
+function deleteTask(document: GanttDocument, id: unknown, cascade: unknown): CommandOutcome {
+  const target = requireDeleteTarget(document, 'tasks', id);
+  if (isCommandOutcome(target)) {
+    return target;
+  }
+  if (cascade !== undefined && typeof cascade !== 'boolean') {
+    return rejected(document, [
+      diagnostic(
+        'command.invalid-payload',
+        'Task delete cascade must be a boolean when supplied.',
+        '/command/cascade',
+        [target.id],
+      ),
+    ]);
+  }
+
+  const taskIds = new Set<EntityId>([target.id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const task of document.tasks) {
+      if (task.parentId !== undefined && taskIds.has(task.parentId) && !taskIds.has(task.id)) {
+        taskIds.add(task.id);
+        changed = true;
+      }
+    }
+  }
+  const tasks = document.tasks.filter((task) => taskIds.has(task.id));
+  const assignments = document.assignments.filter((assignment) => taskIds.has(assignment.taskId));
+  const assignmentIds = new Set(assignments.map((assignment) => assignment.id));
+  const placements = document.placements.filter(
+    (placement) =>
+      taskIds.has(placement.taskId) ||
+      (placement.assignmentId !== undefined && assignmentIds.has(placement.assignmentId)),
+  );
+  const dependencies = document.dependencies.filter(
+    (dependency) => taskIds.has(dependency.fromTaskId) || taskIds.has(dependency.toTaskId),
+  );
+  const dependentCount =
+    tasks.length - 1 + assignments.length + placements.length + dependencies.length;
+  if (cascade !== true && dependentCount > 0) {
+    return rejected(document, [
+      diagnostic(
+        'command.strict-reference',
+        `Task "${target.id}" has descendants or incident relationships; set cascade to true to delete them.`,
+        '/command/cascade',
+        [target.id],
+      ),
+    ]);
+  }
+
+  const patches: GanttPatch[] = [
+    ...tasks.map((task) => removePatch('tasks', task.id)),
+    ...assignments.map((assignment) => removePatch('assignments', assignment.id)),
+    ...placements.map((placement) => removePatch('placements', placement.id)),
+    ...dependencies.map((dependency) => removePatch('dependencies', dependency.id)),
+  ];
+  const affected: EntityReference[] = patches.map((patch) => patch.target);
+  if (target.parentId !== undefined && !taskIds.has(target.parentId)) {
+    affected.push({ collection: 'tasks', id: target.parentId });
+  }
+  for (const assignment of assignments) {
+    affected.push(
+      { collection: 'resources', id: assignment.resourceId },
+      { collection: 'tasks', id: assignment.taskId },
+    );
+  }
+  for (const placement of placements) {
+    affected.push(
+      { collection: 'lanes', id: placement.laneId },
+      { collection: 'tasks', id: placement.taskId },
+    );
+  }
+  return commitPatches(document, patches, affected);
+}
+
+function deleteAssignment(document: GanttDocument, id: unknown): CommandOutcome {
+  const target = requireDeleteTarget(document, 'assignments', id);
+  if (isCommandOutcome(target)) {
+    return target;
+  }
+  const placements = document.placements.filter(
+    (placement) => placement.assignmentId === target.id,
+  );
+  const patches: GanttPatch[] = [removePatch('assignments', target.id)];
+  for (const placement of placements) {
+    const replacement = { ...placement };
+    delete replacement.assignmentId;
+    patches.push({
+      op: 'replace',
+      patchVersion: 1,
+      target: { collection: 'placements', id: placement.id },
+      value: replacement,
+    });
+  }
+  return commitPatches(document, patches, [
+    ...patches.map((patch) => patch.target),
+    { collection: 'tasks', id: target.taskId },
+    { collection: 'resources', id: target.resourceId },
+    ...placements.flatMap((placement) => [
+      { collection: 'tasks' as const, id: placement.taskId },
+      { collection: 'lanes' as const, id: placement.laneId },
+    ]),
+  ]);
+}
+
+function deleteDirect<C extends 'dependencies' | 'placements'>(
+  document: GanttDocument,
+  collection: C,
+  id: unknown,
+): CommandOutcome {
+  const target = requireDeleteTarget(document, collection, id);
+  if (isCommandOutcome(target)) {
+    return target;
+  }
+  const affected: EntityReference[] = [{ collection, id: target.id }];
+  if (collection === 'placements') {
+    const placement = target as DomainRecordByCollection['placements'];
+    affected.push(
+      { collection: 'tasks', id: placement.taskId },
+      { collection: 'lanes', id: placement.laneId },
+    );
+  } else {
+    const dependency = target as DomainRecordByCollection['dependencies'];
+    affected.push(
+      { collection: 'tasks', id: dependency.fromTaskId },
+      { collection: 'tasks', id: dependency.toTaskId },
+    );
+  }
+  return commitPatches(document, [removePatch(collection, target.id)], affected);
+}
+
 export function applyGanttCommand(document: GanttDocument, command: GanttCommand): CommandOutcome {
   if (!isPlainObject(command) || typeof command.type !== 'string') {
     return rejected(document, [
@@ -272,6 +467,10 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
           new Set(['parentId', 'schedule', 'progress', 'fields']),
         )
       );
+    }
+    case 'task.delete': {
+      const invalid = commandShape(document, command, ['type', 'id', 'cascade']);
+      return invalid ?? deleteTask(document, command.id, command.cascade);
     }
     case 'resource.add': {
       const invalid = commandShape(document, command, ['type', 'value', 'index']);
@@ -336,6 +535,10 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
         [{ collection: 'assignments', id: existing.id }],
       );
     }
+    case 'assignment.delete': {
+      const invalid = commandShape(document, command, ['type', 'id']);
+      return invalid ?? deleteAssignment(document, command.id);
+    }
     case 'placement.add': {
       const invalid = commandShape(document, command, ['type', 'value', 'index']);
       return invalid ?? addRecord(document, 'placements', command.value, command.index);
@@ -367,9 +570,17 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
         new Set(['assignmentId', 'segmentId', 'order']),
       );
     }
+    case 'placement.delete': {
+      const invalid = commandShape(document, command, ['type', 'id']);
+      return invalid ?? deleteDirect(document, 'placements', command.id);
+    }
     case 'dependency.add': {
       const invalid = commandShape(document, command, ['type', 'value', 'index']);
       return invalid ?? addRecord(document, 'dependencies', command.value, command.index);
+    }
+    case 'dependency.delete': {
+      const invalid = commandShape(document, command, ['type', 'id']);
+      return invalid ?? deleteDirect(document, 'dependencies', command.id);
     }
     default:
       return rejected(document, [

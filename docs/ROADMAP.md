@@ -156,11 +156,13 @@ playground remain unchanged and all repository gates pass.
   integrity check, ready-to-apply inverses, and fixed-seed property evidence.
 - Slice 3 provides strict typed add/update/set/move commands across all six domains,
   sharing M1 record normalization without changing codec recovery behavior.
+- Slice 4 adds fail-closed referential deletion, deterministic task cascade, placement
+  assignment clearing, and exact restoration across relationship-heavy removals.
 
 **Next action**
 
-Implement Slice 4's deterministic referential deletion and task cascade through the
-verified command and patch boundaries.
+Implement Slice 5's ordered nested transaction boundary over the complete verified
+command set.
 
 ## Later Milestone Outcomes
 
@@ -250,6 +252,21 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M2 Slice 4 referential deletion
+
+- Added task, assignment, placement, and dependency deletion through the single
+  command and atomic patch authorities.
+- Task deletion rejects dependent state by default and `cascade: true` removes the
+  visited subtree plus owned or incident relationships in canonical document order.
+- Assignment deletion preserves placements by replacing them without the optional
+  assignment reference; direct inverses restore exact order and bytes.
+- Cross-family same-ID examples, cyclic malformed ancestry termination, untouched
+  identity, and generated wide/deep tree inversion are covered.
+- The cascade property ran 150 examples with seed `20260731`. Focused verification
+  passed 3 files and 9 tests; `vp check` passed 55 formatted and 44 lint/type-checked
+  files with no warnings or errors.
+- Selected ordered atomic transactions as Slice 5.
 
 ### 2026-07-30 — M2 Slice 3 typed non-delete commands
 

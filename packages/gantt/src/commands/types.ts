@@ -172,6 +172,12 @@ export interface TaskUpdateCommand {
   readonly type: 'task.update';
 }
 
+export interface TaskDeleteCommand {
+  readonly cascade?: boolean;
+  readonly id: EntityId;
+  readonly type: 'task.delete';
+}
+
 export interface ResourceAddCommand {
   readonly index?: number;
   readonly type: 'resource.add';
@@ -213,6 +219,11 @@ export interface AssignmentSetCommand {
   readonly value: AssignmentInput;
 }
 
+export interface AssignmentDeleteCommand {
+  readonly id: EntityId;
+  readonly type: 'assignment.delete';
+}
+
 export interface PlacementAddCommand {
   readonly index?: number;
   readonly type: 'placement.add';
@@ -228,22 +239,36 @@ export interface PlacementMoveCommand {
   readonly type: 'placement.move';
 }
 
+export interface PlacementDeleteCommand {
+  readonly id: EntityId;
+  readonly type: 'placement.delete';
+}
+
 export interface DependencyAddCommand {
   readonly index?: number;
   readonly type: 'dependency.add';
   readonly value: DependencyInput;
 }
 
+export interface DependencyDeleteCommand {
+  readonly id: EntityId;
+  readonly type: 'dependency.delete';
+}
+
 export type GanttCommand =
+  | AssignmentDeleteCommand
   | AssignmentSetCommand
   | DependencyAddCommand
+  | DependencyDeleteCommand
   | LaneAddCommand
   | LaneUpdateCommand
   | PlacementAddCommand
+  | PlacementDeleteCommand
   | PlacementMoveCommand
   | ResourceAddCommand
   | ResourceUpdateCommand
   | TaskAddCommand
+  | TaskDeleteCommand
   | TaskUpdateCommand;
 
 export type CommandOutcome =

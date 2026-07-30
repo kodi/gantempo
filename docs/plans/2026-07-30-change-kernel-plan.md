@@ -546,7 +546,7 @@ Verification passed on 2026-07-30:
 
 ### Slice 4: Referential deletion and deterministic cascade
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -590,6 +590,15 @@ history multiply the state paths.
 
 - `vp test run packages/gantt/src/commands/delete.test.ts packages/gantt/src/commands/delete.property.test.ts packages/gantt/src/model/validate.test.ts`
 - `vp check`
+
+Verification passed on 2026-07-30:
+
+- `vp test run packages/gantt/src/commands/delete.test.ts packages/gantt/src/commands/delete.property.test.ts packages/gantt/src/model/validate.test.ts`
+  passed 3 test files and 9 tests.
+- `vp check` passed formatting for 55 files and lint/type checking for 44 files with
+  no warnings or errors.
+- The cascade property ran 150 generated wide/deep trees with fixed seed `20260731`
+  and `endOnFailure: true`; fast-check reports replay seed and path on failure.
 
 **Dependencies**
 
@@ -916,12 +925,38 @@ These questions do not block Slice 2:
 - Focused verification passed 5 files and 25 tests. `vp check` passed 53 formatted
   files and 42 lint/type-checked files with no warnings or errors.
 
+### 2026-07-30 — Slice 4 referential deletion
+
+- Added task, assignment, placement, and dependency delete commands through the same
+  command and patch entry points.
+- Task deletion rejects by default when descendants or incident relationships exist.
+  `cascade: true` discovers descendants with a visited set and emits removals in
+  canonical task, assignment, placement, and dependency record order while preserving
+  resources and lanes.
+- The visited traversal terminates for malformed cyclic ancestry and can remove the
+  complete cycle when it includes the requested target; no architecture change was
+  needed because cycle rejection remains out of M2 scope.
+- Assignment deletion emits placement replacements that explicitly clear
+  `assignmentId`; inverse patches restore both the assignment and placement references
+  in direct application order.
+- Affected references are collection-qualified, de-duplicated in first-touch order,
+  and include direct patch targets plus task/resource/lane identities invalidated by
+  removed relationships.
+- Cross-family same-ID examples prove placement or dependency deletion cannot remove
+  assignments or lanes with the same ID. Unrelated collection and record identities
+  remain unchanged.
+- The fixed-seed cascade property uses seed `20260731`, 150 runs, and
+  `endOnFailure: true`; generated wide/deep trees delete deterministically and invert
+  to byte-identical stable JSON.
+- Focused verification passed 3 files and 9 tests. `vp check` passed 55 formatted
+  files and 44 lint/type-checked files with no warnings or errors.
+
 ## Progress
 
 - [x] Slice 1: Freeze the change-kernel contract and decision record
 - [x] Slice 2: Domain patch application and inversion properties
 - [x] Slice 3: Typed command normalization, validation, and core reducers
-- [ ] Slice 4: Referential deletion and deterministic cascade
+- [x] Slice 4: Referential deletion and deterministic cascade
 - [ ] Slice 5: Atomic ordered transactions
 - [ ] Slice 6: Bounded immutable local history
 - [ ] Slice 7: Intentional facade, documentation, and M2 completion evidence
@@ -930,7 +965,8 @@ These questions do not block Slice 2:
 
 ## Next Slice
 
-Begin Slice 4 in `packages/gantt/src/commands/reduce.ts` and focused delete test files.
-Implement deterministic task cascade plus assignment, placement, and dependency
-deletion through complete forward/inverse patch sets. Run the exact Slice 4 test
-command and `vp check` before beginning transactions.
+Begin Slice 5 by adding the ordered transaction command to
+`packages/gantt/src/commands/types.ts` and composing children through
+`applyGanttCommand`. Flatten nested transactions in encounter order, aggregate inverse
+groups in reverse child order, and reject atomically with stable child paths. Run the
+exact Slice 5 test command and `vp check` before beginning history.
