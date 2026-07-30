@@ -127,7 +127,7 @@ contracts before interaction or a broader public React API begins.
 
 ### M3: View, layout, and viewport kernel
 
-**Status:** `[-]` In progress; Slice 5 viewport query complete
+**Status:** `[-]` In progress; Slice 6 performance baseline complete
 
 **Target outcome**
 
@@ -145,8 +145,8 @@ only the horizontal and vertical primitives required by the viewport.
 
 **Next action**
 
-Add the fixed-seed 10,000-task/2,000-lane pure-kernel performance baseline in Slice 6
-of the
+Compose the existing semantic scene over the verified view, interval, layout, and
+viewport kernels in Slice 7 of the
 [M3 implementation plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md).
 
 ## Later Milestone Outcomes
@@ -231,6 +231,22 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M3 Slice 6 pure-kernel performance baseline
+
+- Added the `m3-v1`/seed `20260738` 10,000-task/2,000-lane document/resource,
+  sparse/dense fixed generator and exact viewport-adjacent Vitest benchmark.
+- On Node `v24.18.1`/Vitest `4.1.10`, arm64 Apple M2 Max/32 GiB, cold full-pipeline
+  means were `38.1043`–`39.2424` ms. Warm query means were `0.4711` ms horizontal,
+  `0.0033` ms vertical, and `0.0030` ms diagonal dense.
+- Warm structural observations were 2,000 lanes/4,326 nodes for the all-lane
+  horizontal case, 8/40 for vertical, and 8/34 for diagonal dense. All matched the
+  brute-force oracle outside timed sections.
+- Focused verification passed 8 files and 28 tests; `vp check` passed 80 formatted
+  and 69 lint/type-checked files. No timing threshold or frame-rate claim was added.
+- The per-slice `mise run ci` checkpoint passed 28 ordinary test files and 117 tests
+  plus the four-artifact package build.
+- Selected viewport-backed semantic scene composition as Slice 7.
 
 ### 2026-07-30 — M3 Slice 5 immutable viewport index and query
 

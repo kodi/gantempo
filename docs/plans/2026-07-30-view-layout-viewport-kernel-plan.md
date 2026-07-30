@@ -757,7 +757,7 @@ Record exact counts, seeds, run counts, query-work observations, and replay synt
 
 ### Slice 6: Performance fixture and M3 viewport baseline
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1359,6 +1359,38 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - The required per-slice `mise run ci` checkpoint passed 28 test files and 117 tests,
   all static checks, and the four-artifact package build.
 
+### 2026-07-30 — Slice 6 pure-kernel performance baseline
+
+- Added benchmark generator `m3-v1` with seed `20260738`, 10,000 tasks, 2,000 lanes,
+  document and resource views, sparse intervals, and dense five-way per-lane overlap.
+- The exact accepted command
+  `vp test bench packages/gantt/src/viewport/view-layout-viewport.bench.ts --run`
+  passed under Node `v24.18.1`, Vite+ CLI `0.2.6` (`vp` `0.2.3`), and Vitest
+  `4.1.10` on an arm64 Apple M2 Max with 32 GiB memory. Vitest identified benchmark
+  support as experimental.
+- Cold full view/interval/layout/index distributions in milliseconds were:
+  - document sparse: min `34.0697`, mean `38.1043`, p75 `39.8557`, p99/max
+    `45.4597`, 14 samples;
+  - resource sparse: min `37.4732`, mean `39.2155`, p75 `39.7972`, p99/max
+    `42.5623`, 13 samples;
+  - document dense: min `36.3929`, mean `39.2424`, p75 `39.7601`, p99/max
+    `41.6427`, 13 samples.
+- Warm query distributions in milliseconds and structural work were:
+  - horizontal sparse: 397 visible placements, 2,000 lanes/4,326 interval nodes
+    visited, min `0.4077`, mean `0.4711`, p75 `0.5021`, p99 `0.7276`, 1,062
+    samples;
+  - vertical sparse: 40 visible placements, 8 lanes/40 interval nodes visited, min
+    `0.0030`, mean `0.0033`, p75 `0.0033`, p99 `0.0055`, 150,847 samples;
+  - diagonal dense: 25 visible placements, 8 lanes/34 interval nodes visited, min
+    `0.0024`, mean `0.0030`, p75 `0.0032`, p99 `0.0065`, 163,955 samples.
+- Each warm scenario passed exact brute-force parity outside its timed section. The
+  benchmark records a local structural/timing baseline only; it adds no CI threshold
+  or browser performance claim.
+- Focused pure-kernel verification passed 8 files and 28 tests. `vp check` passed all
+  80 formatting files and 69 lint/type-checked files; `git diff --check` passed.
+- The required per-slice `mise run ci` checkpoint passed 28 ordinary test files and
+  117 tests, all static checks, and the four-artifact package build.
+
 ## Progress
 
 - [x] Slice 1: Freeze the M3 contract and decision record
@@ -1366,7 +1398,7 @@ None of these questions authorizes implementation before Slice 1 is complete.
 - [x] Slice 3: Resolve placement intervals
 - [x] Slice 4: Deterministic overlap stacks and variable lane geometry
 - [x] Slice 5: Immutable two-dimensional viewport index and query
-- [ ] Slice 6: Performance fixture and M3 viewport baseline
+- [x] Slice 6: Performance fixture and M3 viewport baseline
 - [ ] Slice 7: Compose viewport-backed scene primitives
 - [ ] Slice 8: Read-only React and playground integration
 - [ ] Slice 9: Intentional facade, documentation, and M3 completion evidence
@@ -1375,9 +1407,9 @@ None of these questions authorizes implementation before Slice 1 is complete.
 
 ## Next Slice
 
-Start Slice 6 beside the viewport code with the accepted versioned fixed-seed
-10,000-task/2,000-lane generator and benchmark. Cover document/resource views, sparse
-and dense overlap, cold build stages, repeated warm horizontal/vertical/diagonal
-queries, oracle parity outside timed sections, host/tool metadata, and structural
-query-work evidence without a timing threshold. Run the exact benchmark, focused pure
-suites, static checks, and required per-slice `mise run ci`.
+Start Slice 7 by refactoring `buildChartScene` into composition over view resolution,
+interval resolution, stack layout, viewport construction/query, and primitive
+translation. Preserve the document-view M0 baseline while adding stable view
+keys/provenance, variable heights, stacked bars, partial vertical visibility, and all
+view kinds in direct scene tests. Run both focused scene/pure-kernel and M0 regression
+suites plus the required per-slice `mise run ci`.
