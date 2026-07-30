@@ -1,6 +1,6 @@
 # M4 Interaction Runtime and Public API Implementation Plan
 
-Status: Active; Slices 1–8 complete, Slice 9 next
+Status: Active; Slices 1–9 complete, Slice 10 next
 Date: 2026-07-30
 Milestone: M4
 
@@ -1206,7 +1206,7 @@ enough that browser events can remain thin adapters.
 
 ### Slice 9: Add keyboard, focus, and accessibility parity
 
-Status: `[-]` In progress
+Status: `[x]` Complete
 
 **Goal**
 
@@ -1260,7 +1260,7 @@ and bus rather than encode a parallel interaction model.
 
 ### Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
 
-Status: `[ ]` Not started
+Status: `[-]` In progress
 
 **Goal**
 
@@ -1988,7 +1988,95 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
   deviation recorded below; neither change alters the accepted public type or
   architectural boundary.
 
+### 2026-07-30 — Slice 9 keyboard, focus, and accessibility parity
+
+- Added pure keyboard move, start/end resize, and create geometry over the same
+  occurrence navigation, snap policy, visible-lane geometry, preview, intent mapper,
+  transaction, and command-bus path used by pointer interaction.
+- Added roving task focus, visual left/right/up/down/Home/End navigation, Space
+  selection, Enter activation/commit, M move, S/E resize, N create,
+  Delete/Backspace removal, platform undo/redo, and Escape cancellation. Logical
+  focus survives controlled acknowledgement, viewport retention, deletion, undo,
+  redo, virtualization, and empty-chart fallback.
+- Added a public data-only `GanttInteractionAction` and keyboard interaction-state
+  branch without exporting private keyboard reducers, runtime/store classes, scene
+  caches, viewport indexes, or hit-test indexes.
+- Added a labeled hybrid region/treegrid surface with lane rows, row headers,
+  timeline cells, occurrence task buttons, `aria-owns` relationships, useful date
+  names, selected/disabled state, shortcut descriptions, one polite atomic
+  announcement, and one roving tab stop. The visible SVG remains presentational while
+  task controls remain exposed.
+- Added visible default and high-contrast focus, forced-colors focus/preview rules,
+  and reduced-motion transitions. Dependency-link and all-day editing remain
+  explicitly described as deferred.
+- Added Testing Library `16.3.2`, user-event `14.6.1`, and axe-core `4.12.1` as exact
+  workspace development dependencies with `vp add -Dw`. Six DOM keyboard/accessibility
+  cases cover empty, populated, selected, focused, moving/resizing/creating/deleting,
+  undo/redo, pending, rejected, dragging, virtualized, and empty-fallback states;
+  three pure keyboard-intent cases cover move/lane, resize bounds, and creation.
+  Axe's jsdom-unreliable color-contrast rule is disabled only in the synthetic DOM
+  suite, while live theme and forced-color presentation remain browser gates.
+- Updated the controlled `/interactive` proof with keyboard instructions and
+  interaction-runtime wording. The chart-owned keyboard history path is verified;
+  unifying the separate playground toolbar history remains selected for Slice 11.
+- Verification passed:
+  - focused keyboard intent and DOM suites passed 2 files and 9 tests;
+  - the final full test gate passed 48 files and 230 tests;
+  - `vp check` reported all 118 files formatted and no warning, lint, or type error
+    across 107 checked files;
+  - `vp pack` built the four public artifacts; declaration inspection found the
+    intentional action/state types and no private keyboard reducer, runtime store,
+    scene pipeline, command bus, or hit-test index;
+  - `vp build apps/playground` transformed 57 modules and produced the production
+    HTML, CSS, and JavaScript artifacts;
+  - `git diff --check` passed;
+  - `mise run ci` passed the complete check, 48-test-file/230-test, and four-artifact
+    package build gates.
+- Chrome DevTools verification passed on `/`, `/matrix`, and `/interactive` at
+  1440 × 900 and 560 × 900:
+  - accessibility snapshots exposed one labeled chart region, headers, lane
+    relationships, task buttons with dates/shortcuts, selected/focused/disabled
+    state, and single polite outcomes without duplicate visible SVG or empty-state
+    announcements;
+  - live desktop keyboard operation selected and activated a task, navigated between
+    occurrences, moved it across time and lane, cancelled and committed resize,
+    created and deleted a task, and completed undo/redo while preserving focus;
+  - the narrow chart retained focus and committed a keyboard move without page-level
+    horizontal overflow; main, five-scenario matrix, high-contrast, empty, and
+    interactive screenshots remained intact;
+  - every local request returned 200 or 304. No application-owned console error or
+    warning appeared; Vite and extension/DevTools CSP, deprecation, MaxListeners,
+    ObjectMultiplex, and content-script messages were recorded as environment noise.
+- Live verification found and fixed the duplicate visual empty-state announcement
+  recorded below. The media-preference tooling limitation and exact non-persistent
+  CSS-rule verification are also recorded below.
+
 ## Deviations
+
+### 2026-07-30 — Visual empty-state copy is presentational
+
+- The first narrow `/matrix` accessibility snapshot exposed both the semantic
+  treegrid empty row and the visually rendered empty-state copy, causing the same
+  title and description to be announced twice.
+- The visual empty-state container is now `aria-hidden`; the semantic treegrid row
+  remains the single accessible source and the rendered copy remains unchanged.
+- The repeated desktop/narrow accessibility snapshots and automated empty-state axe
+  case cover the correction. This changes no public type, system boundary, milestone
+  order, or release acceptance criterion.
+
+### 2026-07-30 — Native media-preference emulation was unavailable
+
+- Chrome DevTools exposed viewport and color-scheme emulation but not native
+  `forced-colors` or `prefers-reduced-motion` controls. The repository-required
+  built-in Browser fallback was checked and returned `No browser is available`.
+- The exact shipped nested media rules were therefore activated non-persistently
+  through recursive CSSOM inspection in the in-scope Chrome page. Computed styles
+  proved zero-second task/preview transitions, system `Canvas` fill,
+  system `Highlight` focus/preview outlines, and no preview shadow; a reload restored
+  the authored stylesheet before the final browser checks.
+- This is exact rule/computed-style evidence, not a claim of native operating-system
+  forced-color or reduced-motion emulation. It changes no implementation contract,
+  architecture boundary, milestone order, or release acceptance criterion.
 
 ### 2026-07-30 — Synchronous controlled acknowledgement wins the pointer continuation
 
@@ -2078,14 +2166,14 @@ Exact names may be refined after Slice 1, but the expected boundaries are:
 - [x] Slice 7: Integrate the React facade, selectors, semantic events, and imperative
       handle
 - [x] Slice 8: Implement pointer, pen, and touch workflows
-- [-] Slice 9: Add keyboard, focus, and accessibility parity
-- [ ] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
+- [x] Slice 9: Add keyboard, focus, and accessibility parity
+- [-] Slice 10: Add typed customization, menus, tooltip, columns, and basic editor
 - [ ] Slice 11: Prove consumers, harden the facade, and close M4
 - [ ] Final automated/package/SSR gate
 - [ ] Final browser/accessibility gate
 
 ## Next Slice
 
-Start Slice 9. Add keyboard, focus, and assistive-technology parity over the same
-occurrence navigation, interaction intent, command mapper, preview, and command-bus
-paths proven by pointer, pen, and touch.
+Start Slice 10. Add the bounded typed task-content/lane-header/class-name/column
+customization surface plus accessible tooltip, context menu, and instant-task editor
+over the same runtime, focus, announcement, and command-dispatch contracts.

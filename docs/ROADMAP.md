@@ -140,13 +140,14 @@ viewport, and read-only rendering foundations. M4 is in progress: its public con
 semantic task-command foundation, React-free ownership store, async command/history
 lifecycle, staged derivation, measured viewport model, renderer-independent
 interaction intent, runtime-backed React facade, and pointer/pen/touch direct
-manipulation are complete; keyboard and accessibility parity are next.
+manipulation plus keyboard/focus/accessibility parity are complete; bounded typed
+customization, menus, tooltip, columns, and instant-task editing are next.
 
 ## Current Focus
 
 ### M4: Interaction runtime and public API
 
-**Status:** `[-]` In progress; Slices 1–8 complete, Slice 9 next
+**Status:** `[-]` In progress; Slices 1–9 complete, Slice 10 next
 
 **Target outcome**
 
@@ -166,7 +167,7 @@ persistence.
 
 **Next action**
 
-Execute Slice 9 of the
+Execute Slice 10 of the
 [M4 interaction runtime and public API plan](plans/2026-07-30-interaction-runtime-public-api-plan.md).
 The
 [interaction-runtime and public-API contract](decisions/2026-07-30-interaction-runtime-public-api-contract.md)
@@ -174,9 +175,11 @@ pure instant-only `task.move`/`task.resize` foundation, React-free ownership sto
 async command/history lifecycle, private derived pipeline, affected-reference
 invalidation/work observations, measured vertical viewport/overscan publication,
 renderer-independent hit testing, navigation, gesture intent, command mapping,
-previews, the per-instance React facade, and pointer/pen/touch workflows are verified.
-Add keyboard, focus, and assistive-technology parity over the same occurrence and
-command paths without introducing a parallel interaction model.
+previews, the per-instance React facade, pointer/pen/touch workflows, and
+keyboard/focus/assistive-technology parity are verified. Add the bounded typed
+task-content/lane-header/class-name/column customization surface plus accessible
+tooltip, context menu, and instant-task editor over those same runtime and command
+paths.
 
 **Queued M4 appendix**
 
@@ -273,6 +276,42 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-30 — M4 keyboard, focus, and accessibility parity complete
+
+- Added roving occurrence focus, deterministic geometric navigation, selection and
+  activation, mode-based move/resize, create/delete, undo/redo, cancellation, focus
+  retention, and polite outcomes over the existing interaction intent, mapper,
+  preview, transaction, and command-bus path.
+- Added one labeled hybrid region/treegrid surface with lane relationships and
+  occurrence task buttons, useful date names, selected/disabled state, shortcut
+  descriptions, visible focus, forced-colors rules, reduced-motion behavior, and
+  explicit dependency-link/all-day deferrals.
+- Added exact Testing Library, user-event, and axe-core development dependencies
+  through `vp add -Dw`. Focused keyboard suites passed 2 files/9 tests; the final full
+  gate passed 48 files/230 tests. `vp check` passed all 118 formatted and 107
+  lint/type-checked files, `vp pack` built four artifacts with only the intentional
+  public action/state additions, and the production playground transformed 57
+  modules.
+- `mise run ci` passed the complete check, 48-test-file/230-test, and four-artifact
+  package build gates.
+- Chrome DevTools passed `/`, `/matrix`, and `/interactive` at 1440 × 900 and
+  560 × 900 with intact main, dark/high-contrast, empty, and interactive layouts,
+  coherent accessibility trees, one live outcome, no page-level horizontal overflow,
+  no failed local request, and no application-owned console error or warning.
+- Live keyboard operation covered selection, activation, occurrence navigation,
+  cross-time/lane movement, resize cancellation/commit, creation, deletion, undo, and
+  redo with retained focus; a narrow keyboard move passed as well.
+- Live accessibility inspection found duplicate visual empty-state copy. It is now
+  presentational while the semantic treegrid row remains the single accessible
+  source; the active plan records the exact deviation.
+- Chrome lacked native forced-colors/reduced-motion emulation and the built-in Browser
+  fallback reported `No browser is available`. Exact shipped nested media rules were
+  activated non-persistently for computed-style proof, then restored by reload; this
+  tooling deviation is recorded in the active plan and is not a native-OS emulation
+  claim.
+- Selected typed customization, menus, tooltip, columns, and instant-task editing as
+  Slice 10.
 
 ### 2026-07-30 — M4 pointer, pen, and touch workflows complete
 

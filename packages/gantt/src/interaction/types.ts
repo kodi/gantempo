@@ -77,6 +77,8 @@ export type InteractionHit =
   | InteractionTimelineHit;
 
 export type InteractionNavigationDirection = 'down' | 'end' | 'home' | 'left' | 'right' | 'up';
+export type InteractionKeyboardAdjustment = 'down' | 'left' | 'right' | 'up';
+export type InteractionKeyboardMode = 'move' | 'resize-end' | 'resize-start';
 
 interface InteractionIntentBase {
   readonly destination: GanttLaneTarget;
@@ -116,6 +118,13 @@ export type InteractionIntent =
   | InteractionCreateIntent
   | InteractionMoveIntent
   | InteractionResizeIntent;
+
+export interface InteractionKeyboardState {
+  readonly intent: InteractionMoveIntent | InteractionResizeIntent;
+  readonly mode: InteractionKeyboardMode;
+  readonly preview: InteractionPreviewPrimitive;
+  readonly status: 'active';
+}
 
 export interface InteractionPreviewPrimitive {
   readonly description: string;

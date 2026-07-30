@@ -1,10 +1,24 @@
 import type { EntityReference } from '../commands/types';
 import { mapInteractionIntent } from '../interaction/command-mapping';
-import { IDLE_INTERACTION_GESTURE, reduceInteractionGesture } from '../interaction/gesture';
+import {
+  createInteractionPreview,
+  IDLE_INTERACTION_GESTURE,
+  reduceInteractionGesture,
+} from '../interaction/gesture';
 import { createInteractionHitTestIndex } from '../interaction/hit-test';
+import {
+  adjustKeyboardInteraction,
+  beginKeyboardInteraction,
+  keyboardCreationIntent,
+} from '../interaction/keyboard';
+import { navigateInteractionOccurrence } from '../interaction/navigation';
 import type {
   InteractionGestureOptions,
   InteractionGestureState,
+  InteractionKeyboardAdjustment,
+  InteractionKeyboardMode,
+  InteractionKeyboardState,
+  InteractionNavigationDirection,
   InteractionPoint,
   InteractionPointerType,
   InteractionPreviewPrimitive,
@@ -33,6 +47,7 @@ import type {
 } from '../runtime/types';
 import type {
   GanttHandle,
+  GanttInteractionAction,
   GanttInteractionPreview,
   GanttInteractionState,
   GanttProps,
@@ -55,6 +70,8 @@ export interface GanttReactRuntime {
   dispose(): void;
   getHandle(): GanttHandle;
   getSnapshot(): GanttReactRuntimeSnapshot;
+  keyboardAction(input: GanttKeyboardActionInput): boolean;
+  keyboardFocus(viewKey: string): boolean;
   measure(measurement: GanttViewportMeasurement): void;
   pointerCancel(pointerId: number): boolean;
   pointerDown(input: GanttPointerInput): boolean;
@@ -86,6 +103,19 @@ export interface GanttPointerMoveInput {
   readonly geometry: GanttPointerGeometry;
   readonly point: InteractionPoint;
   readonly pointerId: number;
+}
+
+export type GanttKeyboardAction =
+  | { readonly direction: InteractionKeyboardAdjustment; readonly type: 'adjust' }
+  | { readonly mode: InteractionKeyboardMode; readonly type: 'begin' }
+  | { readonly type: 'activate' | 'cancel' | 'commit' | 'create' | 'delete' }
+  | { readonly direction: InteractionNavigationDirection; readonly type: 'navigate' }
+  | { readonly action: 'redo' | 'undo'; readonly type: 'history' }
+  | { readonly type: 'toggle-selection' };
+
+export interface GanttKeyboardActionInput {
+  readonly action: GanttKeyboardAction;
+  readonly geometry?: GanttPointerGeometry;
 }
 
 interface DisplayInputs {
@@ -232,6 +262,10 @@ function runtimeDiagnostic(callback: GanttRuntimeErrorEvent['callback']): Diagno
   });
 }
 
+function interactionActionLabel(action: GanttInteractionAction | 'interaction'): string {
+  return `${action[0]!.toUpperCase()}${action.slice(1)}`;
+}
+
 function derivationInvalidation(snapshot: GanttRuntimeSnapshot):
   | { readonly affected: readonly EntityReference[]; readonly kind: 'affected' }
   | {
@@ -258,6 +292,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let lastDocument: GanttDocument | undefined;
   let gesture: InteractionGestureState = IDLE_INTERACTION_GESTURE;
   let gestureGeometry: GanttPointerGeometry | undefined;
+  let keyboardGesture: InteractionKeyboardState | undefined;
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
   const pipeline = createChartScenePipeline();
@@ -285,12 +320,23 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     canProposeControlledDocument: () => callbacks.onDocumentChange !== undefined,
     ...(initialProps.interceptors === undefined ? {} : { interceptors: initialProps.interceptors }),
     onCommandCommitted(event) {
-      if (event.source.kind === 'pointer') {
-        const action = 'preview' in interaction ? interaction.preview?.kind : undefined;
-        const label = action ?? 'interaction';
+      if (
+        event.source.kind === 'pointer' ||
+        event.source.kind === 'keyboard' ||
+        event.source.kind === 'history'
+      ) {
+        const action =
+          event.source.kind === 'history'
+            ? event.source.action
+            : 'action' in interaction
+              ? interaction.action
+              : 'preview' in interaction
+                ? interaction.preview?.kind
+                : undefined;
+        const label = interactionActionLabel(action ?? 'interaction');
         setInteraction(
           Object.freeze({
-            announcement: `${label[0]!.toUpperCase()}${label.slice(1)} committed.`,
+            announcement: `${label} committed.`,
             status: 'idle',
           }),
         );
@@ -298,7 +344,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       callbacks.onCommandCommitted?.(event);
     },
     onCommandRejected(event) {
-      if (event.source.kind === 'pointer') {
+      if (
+        event.source.kind === 'pointer' ||
+        event.source.kind === 'keyboard' ||
+        event.source.kind === 'history'
+      ) {
         const target = 'target' in interaction ? interaction.target : undefined;
         setInteraction(
           Object.freeze({
@@ -329,7 +379,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     const pointerType = 'pointerType' in interaction ? interaction.pointerType : undefined;
     const preview = 'preview' in interaction ? interaction.preview : undefined;
     const target = 'target' in interaction ? interaction.target : undefined;
+    const action = 'action' in interaction ? interaction.action : undefined;
     return Object.freeze({
+      ...(action === undefined ? {} : { action }),
       ...(pointerType === undefined ? {} : { pointerType }),
       ...(preview === undefined ? {} : { preview }),
       proposalId: storeSnapshot.interaction.proposalId,
@@ -589,6 +641,191 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     });
   }
 
+  function pendingKeyboardInteraction(
+    action: GanttInteractionAction,
+    target: GanttInteractionTarget | undefined,
+    preview: GanttInteractionPreview | undefined,
+    proposalId?: string,
+  ): GanttInteractionState {
+    return Object.freeze({
+      action,
+      ...(preview === undefined ? {} : { preview }),
+      ...(proposalId === undefined ? {} : { proposalId }),
+      status: 'pending',
+      ...(target === undefined ? {} : { target }),
+    });
+  }
+
+  function rejectKeyboardInteraction(
+    diagnostic: Diagnostic,
+    target: GanttInteractionTarget | undefined,
+  ): void {
+    keyboardGesture = undefined;
+    setInteraction(
+      Object.freeze({
+        announcement: diagnostic.message,
+        status: 'rejected',
+        ...(target === undefined ? {} : { target }),
+      }),
+    );
+  }
+
+  async function dispatchKeyboardCommand(
+    command: Parameters<GanttCommandBus['dispatch']>[0],
+    action: GanttInteractionAction,
+    target: GanttInteractionTarget | undefined,
+    preview?: GanttInteractionPreview,
+  ): Promise<void> {
+    keyboardGesture = undefined;
+    setInteraction(pendingKeyboardInteraction(action, target, preview));
+    const result = await bus.dispatch(command, {
+      source: Object.freeze({ kind: 'keyboard' }),
+      ...(target === undefined ? {} : { target }),
+    });
+    if (disposed) {
+      return;
+    }
+    const pendingDocument = store.getSnapshot().ownership.pendingDocument;
+    if (result.status === 'proposed' && pendingDocument?.proposalId === result.proposalId) {
+      setInteraction(pendingKeyboardInteraction(action, target, preview, result.proposalId));
+    }
+  }
+
+  async function dispatchKeyboardHistory(
+    action: 'redo' | 'undo',
+    target: GanttTaskTarget | undefined,
+  ): Promise<void> {
+    keyboardGesture = undefined;
+    setInteraction(pendingKeyboardInteraction(action, target, undefined));
+    const result = await bus[action](target === undefined ? undefined : { target });
+    if (disposed) {
+      return;
+    }
+    const pendingDocument = store.getSnapshot().ownership.pendingDocument;
+    if (result.status === 'proposed' && pendingDocument?.proposalId === result.proposalId) {
+      setInteraction(pendingKeyboardInteraction(action, target, undefined, result.proposalId));
+    }
+  }
+
+  function dispatchKeyboardIntent(
+    intent: Parameters<typeof mapInteractionIntent>[0],
+    geometry: GanttPointerGeometry,
+  ): boolean {
+    const target = intent.kind === 'create' ? intent.destination : intent.source;
+    const preview = publicPreview(
+      createInteractionPreview(intent, interactionOptions(geometry)),
+      geometry,
+    );
+    const mapping = mapInteractionIntent(intent, {
+      document: store.getSnapshot().document,
+      ...(callbacks.interactionMappers === undefined
+        ? {}
+        : { mappers: callbacks.interactionMappers }),
+    });
+    if (mapping.status === 'rejected') {
+      rejectKeyboardInteraction(mapping.diagnostic, target);
+      return true;
+    }
+    const action: GanttInteractionAction = intent.kind === 'resize' ? 'resize' : intent.kind;
+    void dispatchKeyboardCommand(mapping.command, action, target, preview);
+    return true;
+  }
+
+  function focusedKeyboardTarget(): GanttTaskTarget | undefined {
+    const focused = store.getSnapshot().session.focused;
+    return focused?.kind === 'task' ? visibleTarget(focused) : undefined;
+  }
+
+  function taskTitle(target: GanttTaskTarget): string {
+    return (
+      snapshot.scene.taskBars.find((task) => task.viewKey === target.viewKey)?.title ??
+      target.taskId
+    );
+  }
+
+  function revealKeyboardTarget(target: GanttTaskTarget): void {
+    const task = snapshot.scene.taskBars.find((candidate) => candidate.viewKey === target.viewKey);
+    if (task === undefined) {
+      return;
+    }
+    const session = store.getSnapshot().session;
+    const extent =
+      snapshot.selector.viewport.status === 'measured'
+        ? snapshot.selector.viewport.clientHeight
+        : snapshot.scene.bounds.defaultLaneHeight;
+    const currentStart = session.viewport.verticalStart;
+    const currentEnd = currentStart + extent;
+    const verticalStart =
+      task.y < currentStart
+        ? task.y
+        : task.y + task.height > currentEnd
+          ? task.y + task.height - extent
+          : currentStart;
+    updateSession(
+      Object.freeze({
+        focused: target,
+        selection: session.selection,
+        viewport: Object.freeze({
+          verticalStart: Math.max(
+            0,
+            Math.min(verticalStart, Math.max(0, snapshot.scene.bounds.timelineHeight - extent)),
+          ),
+        }),
+      }),
+      'runtime',
+    );
+  }
+
+  function toggleKeyboardSelection(target: GanttTaskTarget): void {
+    const session = store.getSnapshot().session;
+    const identity = targetIdentity(target);
+    const selected = session.selection.some((candidate) => targetIdentity(candidate) === identity);
+    const selection = selected
+      ? session.selection.filter((candidate) => targetIdentity(candidate) !== identity)
+      : [...session.selection, target];
+    if (
+      updateSession(
+        Object.freeze({
+          focused: target,
+          selection: Object.freeze(selection),
+          viewport: session.viewport,
+        }),
+        'runtime',
+      )
+    ) {
+      setInteraction(
+        Object.freeze({
+          announcement: `${taskTitle(target)} ${selected ? 'deselected' : 'selected'}.`,
+          status: 'idle',
+        }),
+      );
+    }
+  }
+
+  function beginKeyboardMode(
+    target: GanttTaskTarget,
+    mode: InteractionKeyboardMode,
+    geometry: GanttPointerGeometry,
+  ): boolean {
+    const next = beginKeyboardInteraction(target, mode, interactionOptions(geometry));
+    if (next === undefined) {
+      return false;
+    }
+    keyboardGesture = next;
+    const action = mode === 'move' ? 'move' : 'resize';
+    setInteraction(
+      Object.freeze({
+        action,
+        announcement: `${interactionActionLabel(action)} mode. Use arrow keys, Enter to commit, or Escape to cancel.`,
+        mode,
+        preview: publicPreview(next.preview, geometry),
+        status: 'keyboard',
+        target,
+      }),
+    );
+    return true;
+  }
+
   function hitTarget(
     state: Extract<InteractionGestureState, { readonly status: 'pressed' }>,
   ): GanttInteractionTarget {
@@ -754,6 +991,126 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       return snapshot;
     },
 
+    keyboardAction(input) {
+      if (
+        disposed ||
+        gesture.status === 'pressed' ||
+        gesture.status === 'active' ||
+        composedInteraction().status === 'pending'
+      ) {
+        return false;
+      }
+      if (input.action.type === 'history' && keyboardGesture === undefined) {
+        void dispatchKeyboardHistory(input.action.action, focusedKeyboardTarget());
+        return true;
+      }
+      if (input.geometry === undefined) {
+        return false;
+      }
+      const options = interactionOptions(input.geometry);
+      if (keyboardGesture !== undefined) {
+        if (input.action.type === 'cancel') {
+          keyboardGesture = undefined;
+          setInteraction(
+            Object.freeze({
+              announcement: 'Keyboard interaction cancelled.',
+              status: 'idle',
+            }),
+          );
+          return true;
+        }
+        if (input.action.type === 'commit') {
+          return dispatchKeyboardIntent(keyboardGesture.intent, input.geometry);
+        }
+        if (input.action.type !== 'adjust') {
+          return false;
+        }
+        const next = adjustKeyboardInteraction(keyboardGesture, input.action.direction, options);
+        keyboardGesture = next;
+        const target = next.intent.source;
+        const action = next.intent.kind === 'resize' ? 'resize' : 'move';
+        setInteraction(
+          Object.freeze({
+            action,
+            announcement: next.preview.description,
+            mode: next.mode,
+            preview: publicPreview(next.preview, input.geometry),
+            status: 'keyboard',
+            target,
+          }),
+        );
+        return true;
+      }
+
+      const target = focusedKeyboardTarget();
+      if (target === undefined) {
+        return false;
+      }
+      if (input.action.type === 'navigate') {
+        const next = navigateInteractionOccurrence(options.index, target, input.action.direction);
+        if (next === undefined) {
+          return false;
+        }
+        revealKeyboardTarget(next);
+        return true;
+      }
+      if (input.action.type === 'toggle-selection') {
+        toggleKeyboardSelection(target);
+        return true;
+      }
+      if (input.action.type === 'activate') {
+        const event = Object.freeze({ source: 'runtime' as const });
+        setInteraction(
+          Object.freeze({
+            announcement: `${taskTitle(target)} activated.`,
+            status: 'idle',
+          }),
+        );
+        emitCallback('onTaskActivate', () => callbacks.onTaskActivate?.(target, event));
+        return true;
+      }
+      if (input.action.type === 'begin') {
+        return beginKeyboardMode(target, input.action.mode, input.geometry);
+      }
+      if (input.action.type === 'create') {
+        const intent = keyboardCreationIntent(target, options);
+        return intent === undefined ? false : dispatchKeyboardIntent(intent, input.geometry);
+      }
+      if (input.action.type === 'delete') {
+        void dispatchKeyboardCommand(
+          { cascade: true, id: target.taskId, type: 'task.delete' },
+          'delete',
+          target,
+        );
+        return true;
+      }
+      return false;
+    },
+
+    keyboardFocus(viewKey) {
+      if (disposed) {
+        return false;
+      }
+      const target = snapshot.selector.occurrences.find(
+        (occurrence) => occurrence.target.viewKey === viewKey,
+      )?.target;
+      if (target === undefined) {
+        return false;
+      }
+      const session = store.getSnapshot().session;
+      if (targetIdentity(session.focused) === targetIdentity(target)) {
+        return true;
+      }
+      return updateSession(
+        Object.freeze({
+          focused: target,
+          selection: session.selection,
+          viewport: session.viewport,
+        }),
+        'runtime',
+      );
+    },
+
     measure(measurement) {
       store.scheduleViewportMeasurement(measurement);
     },
@@ -784,6 +1141,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     pointerDown(input) {
       if (
         disposed ||
+        keyboardGesture !== undefined ||
         gesture.status === 'pressed' ||
         gesture.status === 'active' ||
         composedInteraction().status === 'pending'
@@ -997,6 +1355,18 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         }
         if ((changedDisplay || changedDiagnostics) && snapshot.version === previousVersion) {
           rebuild();
+        }
+        if (
+          keyboardGesture !== undefined &&
+          visibleTarget(keyboardGesture.intent.source) === undefined
+        ) {
+          keyboardGesture = undefined;
+          setInteraction(
+            Object.freeze({
+              announcement: 'Keyboard interaction cancelled because its task is no longer visible.',
+              status: 'idle',
+            }),
+          );
         }
       } finally {
         semanticSource = 'runtime';

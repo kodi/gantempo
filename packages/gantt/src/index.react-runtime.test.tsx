@@ -5,6 +5,7 @@ import {
   Gantt,
   type GanttDocument,
   type GanttHandle,
+  type GanttInteractionAction,
   type GanttInteractionCommandMappers,
   type GanttInteractionState,
   type GanttProps,
@@ -59,12 +60,43 @@ describe('public React runtime facade', () => {
     } satisfies GanttProps;
     const selector = (snapshot: GanttSelectorSnapshot) => snapshot.occurrences;
     const interaction: GanttInteractionState = { status: 'idle' };
+    const action: GanttInteractionAction = 'move';
+    const keyboardInteraction: GanttInteractionState = {
+      action,
+      announcement: 'Move mode.',
+      mode: 'move',
+      preview: {
+        description: 'Move the task.',
+        destination: { kind: 'lane', viewKey: 'lane-a' },
+        end: 1,
+        height: 1,
+        kind: 'move',
+        source: {
+          kind: 'task',
+          laneViewKey: 'lane-a',
+          taskId: 'task-a',
+          viewKey: 'task-a',
+        },
+        start: 0,
+        width: 1,
+        x: 0,
+        y: 0,
+      },
+      status: 'keyboard',
+      target: {
+        kind: 'task',
+        laneViewKey: 'lane-a',
+        taskId: 'task-a',
+        viewKey: 'task-a',
+      },
+    };
     const ref = createRef<GanttHandle>();
     const controlledElement = <Gantt {...controlled} ref={ref} />;
     const uncontrolledElement = <Gantt {...uncontrolled} />;
 
     expect(selector).toBeTypeOf('function');
     expect(interaction.status).toBe('idle');
+    expect(keyboardInteraction.status).toBe('keyboard');
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
   });

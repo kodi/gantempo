@@ -271,7 +271,7 @@ export function InteractivePage(): ReactElement {
           <h1>Interactive</h1>
           <p>
             Build a plan with public toolbar commands, then move, resize, or create work directly
-            through the chart’s pointer runtime.
+            through the chart’s interaction runtime.
           </p>
         </div>
         <div className="page-intro__meta">
@@ -358,8 +358,9 @@ export function InteractivePage(): ReactElement {
       </div>
 
       <p className="page-note">
-        Drag task bodies to move them, drag task edges to resize, or drag an empty lane position to
-        create a task. Keyboard parity arrives in the next M4 slice.
+        Drag task bodies or edges, or use arrows to navigate and Space to select. Press M to move,
+        S/E to resize, N to create, Delete to remove, Enter to commit or activate, Escape to cancel,
+        and the platform undo/redo shortcuts for history.
       </p>
     </div>
   );

@@ -2,13 +2,16 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
   useSyncExternalStore,
   type CSSProperties,
+  type FocusEvent as ReactFocusEvent,
   type ForwardRefExoticComponent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
   type RefAttributes,
@@ -18,6 +21,7 @@ import type { TaskBarPrimitive } from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import {
   createGanttReactRuntime,
+  type GanttKeyboardAction,
   type GanttReactRuntime,
   type GanttReactRuntimeSnapshot,
 } from './runtime';
@@ -64,16 +68,86 @@ function targetsInteraction(interaction: GanttInteractionState, viewKey: string)
   return 'target' in interaction && interaction.target?.viewKey === viewKey;
 }
 
+function keyboardActionForEvent(
+  event: ReactKeyboardEvent<HTMLElement>,
+  editing: boolean,
+): GanttKeyboardAction | undefined {
+  const adjustment =
+    event.key === 'ArrowLeft'
+      ? 'left'
+      : event.key === 'ArrowRight'
+        ? 'right'
+        : event.key === 'ArrowUp'
+          ? 'up'
+          : event.key === 'ArrowDown'
+            ? 'down'
+            : undefined;
+  if (editing) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return undefined;
+    }
+    if (adjustment !== undefined) {
+      return { direction: adjustment, type: 'adjust' };
+    }
+    if (event.key === 'Enter') {
+      return { type: 'commit' };
+    }
+    return event.key === 'Escape' ? { type: 'cancel' } : undefined;
+  }
+  const platformModifier = event.ctrlKey || event.metaKey;
+  const key = event.key.toLowerCase();
+  if (platformModifier && !event.altKey && key === 'z') {
+    return { action: event.shiftKey ? 'redo' : 'undo', type: 'history' };
+  }
+  if (platformModifier && !event.altKey && key === 'y') {
+    return { action: 'redo', type: 'history' };
+  }
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+    return undefined;
+  }
+  if (adjustment !== undefined) {
+    return { direction: adjustment, type: 'navigate' };
+  }
+  if (event.key === 'Home' || event.key === 'End') {
+    return { direction: event.key === 'Home' ? 'home' : 'end', type: 'navigate' };
+  }
+  if (event.key === ' ') {
+    return { type: 'toggle-selection' };
+  }
+  if (event.key === 'Enter') {
+    return { type: 'activate' };
+  }
+  if (key === 'm') {
+    return { mode: 'move', type: 'begin' };
+  }
+  if (key === 's') {
+    return { mode: 'resize-start', type: 'begin' };
+  }
+  if (key === 'e') {
+    return { mode: 'resize-end', type: 'begin' };
+  }
+  if (key === 'n') {
+    return { type: 'create' };
+  }
+  return event.key === 'Delete' || event.key === 'Backspace' ? { type: 'delete' } : undefined;
+}
+
 function GanttTask({
   dateFormatter,
+  describedBy,
   disabled,
+  domId,
   task,
+  tabIndex,
   timelineHeight,
   variant,
 }: {
   readonly dateFormatter: Intl.DateTimeFormat;
+  readonly describedBy: string;
   readonly disabled: boolean;
+  readonly domId: string;
   readonly task: TaskBarPrimitive;
+  readonly tabIndex: -1 | 0;
   readonly timelineHeight: number;
   readonly variant?: string | undefined;
 }): ReactElement {
@@ -87,8 +161,13 @@ function GanttTask({
         snapshot.session.focused?.kind === 'task' &&
           snapshot.session.focused.viewKey === task.viewKey,
         targeted && snapshot.interaction.status === 'pressing',
-        targeted && snapshot.interaction.status === 'dragging',
-        targeted && snapshot.interaction.status === 'resizing',
+        targeted &&
+          (snapshot.interaction.status === 'dragging' ||
+            (snapshot.interaction.status === 'keyboard' && snapshot.interaction.action === 'move')),
+        targeted &&
+          (snapshot.interaction.status === 'resizing' ||
+            (snapshot.interaction.status === 'keyboard' &&
+              snapshot.interaction.action === 'resize')),
         targeted && snapshot.interaction.status === 'pending',
         targeted && snapshot.interaction.status === 'rejected',
       ] as const;
@@ -98,7 +177,11 @@ function GanttTask({
   const accessibleName = taskAccessibleName(task, dateFormatter);
   return (
     <g
+      aria-describedby={describedBy}
+      aria-disabled={disabled || undefined}
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Space Enter M S E N Delete Backspace Control+Z Meta+Z Control+Y Meta+Shift+Z"
       aria-label={accessibleName}
+      aria-pressed={selected}
       data-assignment-id={task.assignmentId}
       data-clipped-end={task.clippedEnd || undefined}
       data-clipped-start={task.clippedStart || undefined}
@@ -119,7 +202,10 @@ function GanttTask({
       data-selected={selected || undefined}
       data-task-id={task.taskId}
       data-view-key={task.viewKey}
-      role="img"
+      focusable="true"
+      id={domId}
+      role="button"
+      tabIndex={tabIndex}
     >
       <rect
         className="gt-gantt__task-bar"
@@ -165,13 +251,51 @@ function GanttSurface({
   readonly timelineRef: React.RefObject<HTMLDivElement | null>;
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
+  const focused = useGanttSelector((snapshot) => snapshot.session.focused);
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
+  const accessibilityId = useId();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const hadLogicalTaskFocus = useRef(false);
+  const helpId = `${accessibilityId}-keyboard-help`;
+  const taskDomIds = useMemo(
+    () =>
+      new Map(
+        scene.taskBars.map((task, index) => [task.viewKey, `${accessibilityId}-task-${index}`]),
+      ),
+    [accessibilityId, scene.taskBars],
+  );
+  const focusedViewKey =
+    focused?.kind === 'task' && scene.taskBars.some((task) => task.viewKey === focused.viewKey)
+      ? focused.viewKey
+      : undefined;
+  const rovingViewKey = disabled ? undefined : (focusedViewKey ?? scene.taskBars[0]?.viewKey);
+
   useLayoutEffect(() => {
     const body = bodyRef.current;
     if (body !== null && body.scrollTop !== verticalStart) {
       body.scrollTop = verticalStart;
     }
   }, [bodyRef, verticalStart]);
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (root === null) {
+      return;
+    }
+    if (focusedViewKey !== undefined) {
+      hadLogicalTaskFocus.current = true;
+      const task = Array.from(root.querySelectorAll<SVGGElement>('[data-gt-part="task"]')).find(
+        (element) => element.dataset.viewKey === focusedViewKey,
+      );
+      if (task !== undefined && document.activeElement !== task) {
+        task.focus();
+      }
+      return;
+    }
+    if (hadLogicalTaskFocus.current) {
+      hadLogicalTaskFocus.current = false;
+      root.focus();
+    }
+  }, [focusedViewKey]);
 
   const geometry = useCallback(() => {
     const body = bodyRef.current;
@@ -275,6 +399,41 @@ function GanttSurface({
     },
     [runtime],
   );
+  const onFocusCapture = useCallback(
+    (event: ReactFocusEvent<HTMLDivElement>) => {
+      const target = event.target;
+      const viewKey =
+        target instanceof Element
+          ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
+          : undefined;
+      if (viewKey !== undefined) {
+        runtime.keyboardFocus(viewKey);
+      }
+    },
+    [runtime],
+  );
+  const onKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (disabled) {
+        return;
+      }
+      const action = keyboardActionForEvent(event, interaction.status === 'keyboard');
+      const bounds = geometry();
+      if (
+        action === undefined ||
+        (bounds === undefined && action.type !== 'history') ||
+        !runtime.keyboardAction({
+          action,
+          ...(bounds === undefined ? {} : { geometry: bounds }),
+        })
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [disabled, geometry, interaction.status, runtime],
+  );
   const classes = ['gt-gantt', className].filter(Boolean).join(' ');
   const style: GanttRootStyle = {
     '--gt-lane-column-width': `${scene.bounds.laneColumnWidth}px`,
@@ -284,6 +443,7 @@ function GanttSurface({
 
   return (
     <div
+      aria-describedby={helpId}
       aria-label={label}
       aria-disabled={disabled || undefined}
       className={classes}
@@ -292,20 +452,81 @@ function GanttSurface({
       data-gantempo=""
       data-gt-part="root"
       data-interaction-active={
-        ['pressing', 'dragging', 'resizing', 'creating', 'pending'].includes(interaction.status) ||
-        undefined
+        ['pressing', 'dragging', 'resizing', 'creating', 'keyboard', 'pending'].includes(
+          interaction.status,
+        ) || undefined
       }
       data-interaction-state={interaction.status}
       data-pending={interaction.status === 'pending' || undefined}
       data-rejected={interaction.status === 'rejected' || undefined}
+      onFocusCapture={onFocusCapture}
+      onKeyDown={onKeyDown}
+      ref={rootRef}
       role="region"
       style={style}
+      tabIndex={rovingViewKey === undefined ? 0 : -1}
     >
+      <p hidden id={helpId}>
+        Use arrow keys to navigate tasks, Space to select, Enter to activate, M to move, S or E to
+        resize, N to create, Delete to remove, and platform undo or redo shortcuts. In move or
+        resize mode, use arrow keys, Enter to commit, and Escape to cancel. Dependency links and
+        all-day task editing are not available in this interaction version.
+      </p>
+      <div
+        aria-colcount={2}
+        aria-describedby={helpId}
+        aria-label={`${label} task grid`}
+        aria-multiselectable="true"
+        aria-rowcount={scene.emptyState ? 2 : scene.lanes.length + 1}
+        className="gt-gantt__sr-only"
+        role="treegrid"
+      >
+        <div aria-rowindex={1} role="row">
+          <span aria-colindex={1} role="columnheader">
+            Work item
+          </span>
+          <span aria-colindex={2} role="columnheader">
+            Timeline
+          </span>
+        </div>
+        <div role="rowgroup">
+          {scene.emptyState ? (
+            <div aria-rowindex={2} role="row">
+              <span aria-colindex={1} role="rowheader">
+                {scene.emptyState.title}
+              </span>
+              <span aria-colindex={2} role="gridcell">
+                {scene.emptyState.description}
+              </span>
+            </div>
+          ) : (
+            scene.lanes.map((lane, laneIndex) => (
+              <div aria-level={1} aria-rowindex={laneIndex + 2} key={lane.viewKey} role="row">
+                <span aria-colindex={1} role="rowheader">
+                  {lane.title}
+                </span>
+                <span
+                  aria-colindex={2}
+                  aria-label={`${lane.title} timeline`}
+                  aria-owns={
+                    scene.taskBars
+                      .filter((task) => task.laneViewKey === lane.viewKey)
+                      .map((task) => taskDomIds.get(task.viewKey))
+                      .filter((id): id is string => id !== undefined)
+                      .join(' ') || undefined
+                  }
+                  role="gridcell"
+                />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
       <div className="gt-gantt__table" data-gt-part="chart">
-        <div className="gt-gantt__corner" data-gt-part="corner">
+        <div aria-hidden="true" className="gt-gantt__corner" data-gt-part="corner">
           Work item
         </div>
-        <div className="gt-gantt__time-header" data-gt-part="time-header">
+        <div aria-hidden="true" className="gt-gantt__time-header" data-gt-part="time-header">
           {scene.ticks.map((tick) => (
             <span
               data-edge={tick.x < 0.05 ? 'start' : tick.x > 0.95 ? 'end' : undefined}
@@ -318,14 +539,14 @@ function GanttSurface({
         </div>
 
         {scene.emptyState ? (
-          <div className="gt-gantt__empty" data-gt-part="empty-state">
+          <div aria-hidden="true" className="gt-gantt__empty" data-gt-part="empty-state">
             <strong>{scene.emptyState.title}</strong>
             <span>{scene.emptyState.description}</span>
           </div>
         ) : (
           <div className="gt-gantt__body-scroll" data-gt-part="viewport" ref={bodyRef}>
             <div className="gt-gantt__body" style={{ height: scene.bounds.timelineHeight }}>
-              <div className="gt-gantt__lanes" data-gt-part="lane-list">
+              <div aria-hidden="true" className="gt-gantt__lanes" data-gt-part="lane-list">
                 {scene.lanes.map((lane) => (
                   <div
                     className="gt-gantt__lane"
@@ -355,7 +576,7 @@ function GanttSurface({
                 onPointerUp={onPointerUp}
                 ref={timelineRef}
               >
-                <svg aria-label="Scheduled tasks" role="group">
+                <svg role="presentation">
                   <g aria-hidden="true" data-gt-part="grid">
                     {scene.gridLines.map((line) => (
                       <line
@@ -381,9 +602,12 @@ function GanttSurface({
                   {scene.taskBars.map((task) => (
                     <GanttTask
                       dateFormatter={dateFormatter}
+                      describedBy={helpId}
                       disabled={disabled}
+                      domId={taskDomIds.get(task.viewKey)!}
                       key={task.viewKey}
                       task={task}
+                      tabIndex={task.viewKey === rovingViewKey ? 0 : -1}
                       timelineHeight={scene.bounds.timelineHeight}
                       variant={taskVariants?.[task.taskId]}
                     />

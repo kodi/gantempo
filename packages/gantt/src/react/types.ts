@@ -66,6 +66,8 @@ export interface GanttInteractionPreview {
   readonly y: number;
 }
 
+export type GanttInteractionAction = 'create' | 'delete' | 'move' | 'redo' | 'resize' | 'undo';
+
 export type GanttInteractionState =
   | {
       readonly announcement?: string;
@@ -84,6 +86,15 @@ export type GanttInteractionState =
       readonly target?: GanttInteractionTarget;
     }
   | {
+      readonly action: 'move' | 'resize';
+      readonly announcement: string;
+      readonly mode: 'move' | 'resize-end' | 'resize-start';
+      readonly preview: GanttInteractionPreview;
+      readonly status: 'keyboard';
+      readonly target: GanttTaskTarget;
+    }
+  | {
+      readonly action?: GanttInteractionAction;
       readonly pointerType?: InteractionPointerType;
       readonly preview?: GanttInteractionPreview;
       readonly proposalId?: string;

@@ -70,7 +70,7 @@ describe('Gantt', () => {
     );
 
     expect(markup).toContain('aria-label="Gantt chart"');
-    expect(markup).toContain('role="region"');
+    expect(markup).toContain('role="treegrid"');
   });
 
   it('renders an accessible hybrid DOM and SVG chart with stable entity identity', () => {
@@ -90,14 +90,15 @@ describe('Gantt', () => {
       placements: [{ id: 'placement-review', laneId: 'lane-design', taskId: 'task-review' }],
     });
 
-    expect(markup).toContain('role="region"');
+    expect(markup).toContain('role="treegrid"');
     expect(markup).toContain('aria-label="Release plan"');
     expect(markup).toContain('data-lane-id="lane-design"');
     expect(markup).toContain('data-task-id="task-review"');
     expect(markup).toContain('data-placement-id="placement-review"');
     expect(markup).toContain('data-view-key="gt:v1:');
     expect(markup).toContain('data-clipped-start="true"');
-    expect(markup).toContain('<svg aria-label="Scheduled tasks" role="group">');
+    expect(markup).toContain('<svg role="presentation">');
+    expect(markup).toContain('role="button"');
     expect(markup).toContain('aria-hidden="true" data-gt-part="grid"');
     expect(markup).toContain('Review, Jul 28, 2026, 12:00 AM to Jul 31, 2026, 12:00 AM');
     expect(markup).toContain('<foreignObject');

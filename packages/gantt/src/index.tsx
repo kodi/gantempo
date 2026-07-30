@@ -3,6 +3,7 @@ export { useGanttSelector } from './react/context';
 export type {
   GanttCommandMappingResult,
   GanttCreateTaskIntent,
+  GanttInteractionAction,
   GanttInteractionCommandMappers,
   GanttInteractionPreview,
   GanttInteractionSnapPolicy,
