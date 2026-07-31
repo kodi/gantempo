@@ -2,6 +2,9 @@ import type { GanttCommand } from '../commands/types';
 import type { Diagnostic } from '../model/diagnostics';
 import type {
   EntityId,
+  DependencyRecord,
+  DependencyType,
+  DurationValue,
   EpochMilliseconds,
   GanttAppearanceReference,
   GanttDocument,
@@ -25,6 +28,7 @@ import type {
   GanttCommandRejectedEvent,
   GanttDispatchOptions,
   GanttDispatchResult,
+  GanttDependencyTarget,
   GanttInteractionTarget,
   GanttMeasuredViewportState,
   GanttRuntimeErrorEvent,
@@ -77,7 +81,7 @@ export interface GanttInteractionCommandMappers {
   readonly moveOccurrence?: (intent: GanttMoveOccurrenceIntent) => GanttCommandMappingResult;
 }
 
-export interface GanttInteractionPreview {
+export interface GanttTaskInteractionPreview {
   readonly description: string;
   readonly destination: Extract<GanttInteractionTarget, { readonly kind: 'lane' }>;
   readonly end: EpochMilliseconds;
@@ -91,9 +95,21 @@ export interface GanttInteractionPreview {
   readonly y: number;
 }
 
+export interface GanttDependencyInteractionPreview {
+  readonly kind: 'dependency';
+  readonly source: GanttTaskTarget;
+  readonly target?: GanttTaskTarget;
+  readonly type: DependencyType;
+}
+
+export type GanttInteractionPreview =
+  | GanttDependencyInteractionPreview
+  | GanttTaskInteractionPreview;
+
 export type GanttInteractionAction =
   | 'command'
   | 'create'
+  | 'dependency'
   | 'delete'
   | 'edit'
   | 'move'
@@ -103,6 +119,15 @@ export type GanttInteractionAction =
   | 'undo';
 
 export type GanttInteractionState =
+  | {
+      readonly action: 'dependency';
+      readonly announcement: string;
+      readonly mode: 'link';
+      readonly pointerType?: InteractionPointerType;
+      readonly preview: GanttDependencyInteractionPreview;
+      readonly status: 'linking';
+      readonly target: GanttTaskTarget;
+    }
   | {
       readonly announcement?: string;
       readonly status: 'idle';
@@ -145,6 +170,7 @@ export interface GanttSelectorSnapshot {
   readonly canRedo: boolean;
   readonly canUndo: boolean;
   readonly document: GanttDocument;
+  readonly dependencies: readonly GanttDependencySummary[];
   readonly interaction: GanttInteractionState;
   readonly occurrences: readonly GanttVisibleOccurrence[];
   readonly range: TimeRange;
@@ -193,6 +219,15 @@ export interface GanttLaneSummary {
   readonly title: string;
 }
 
+export interface GanttDependencySummary {
+  readonly dependency: DependencyRecord;
+  readonly fromTitle: string;
+  readonly hiddenEndpoint: boolean;
+  readonly status: 'invalid' | 'valid';
+  readonly target: GanttDependencyTarget;
+  readonly toTitle: string;
+}
+
 export interface GanttClassNameState {
   readonly disabled: boolean;
   readonly dragging: boolean;
@@ -211,12 +246,15 @@ export interface GanttClassNames {
   readonly branchToggle?: GanttClassNameValue;
   readonly chart?: GanttClassNameValue;
   readonly contextMenu?: GanttClassNameValue;
+  readonly dependencyMarker?: GanttClassNameValue;
+  readonly dependencyPath?: GanttClassNameValue;
   readonly editor?: GanttClassNameValue;
   readonly lane?: GanttClassNameValue;
   readonly laneHeader?: GanttClassNameValue;
   readonly liveRegion?: GanttClassNameValue;
   readonly milestone?: GanttClassNameValue;
   readonly progressHandle?: GanttClassNameValue;
+  readonly linkHandle?: GanttClassNameValue;
   readonly resizeHandle?: GanttClassNameValue;
   readonly root?: GanttClassNameValue;
   readonly summary?: GanttClassNameValue;
@@ -337,8 +375,29 @@ export interface GanttItemPropertiesProps {
   readonly pending: boolean;
 }
 
+export interface GanttDependencyPropertiesValue {
+  readonly dependencyId: EntityId;
+  readonly fromTitle: string;
+  readonly lag?: DurationValue;
+  readonly toTitle: string;
+  readonly type: DependencyType;
+}
+
+export interface GanttDependencyPropertiesProps {
+  readonly bindings: GanttOverlayBindings;
+  readonly error?: string;
+  readonly errorId: string;
+  readonly initialValue: GanttDependencyPropertiesValue;
+  readonly onCancel: () => void;
+  readonly onDelete: () => void;
+  readonly onSubmit: (value: GanttDependencyPropertiesValue) => void;
+  readonly pending: boolean;
+  readonly readOnly: boolean;
+}
+
 export interface GanttSlots {
   readonly ContextMenu?: ComponentType<GanttContextMenuProps>;
+  readonly DependencyProperties?: ComponentType<GanttDependencyPropertiesProps>;
   readonly ItemProperties?: ComponentType<GanttItemPropertiesProps>;
   readonly LaneHeader?: ComponentType<GanttLaneHeaderProps>;
   readonly TaskContent?: ComponentType<GanttTaskContentProps>;

@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-7 complete, Slice 8 next
+Status: In progress; Slices 1-8 complete, Slice 9 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -633,7 +633,7 @@ can map gestures to commands.
 
 ### Slice 8: Add dependency selection and editing workflows
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -665,12 +665,39 @@ editor can propose valid semantic intent.
 - complete basic dependency editing with pointer/touch/keyboard parity;
 - no automatic task-date changes.
 
+**Completed in this slice**
+
+- added the accepted canonical `GanttDependencyTarget`, immutable public dependency
+  summaries, selector/session normalization and reconciliation, canonical identity,
+  root exports, dependency class states, and logical focus retention independent of
+  route occurrence or visibility;
+- added finish-to-start link mode from offset 44px task connection handles and the `L`
+  keyboard shortcut, visible semantic previews, eligible-task navigation, Enter or
+  pointer-release commit, Escape/pointer cancellation, stable unique IDs, and strict
+  command rejection without any schedule movement;
+- reused one command-bus proposal, acknowledgement, history, persistence, interceptor,
+  and diagnostic lifecycle for pointer, touch, keyboard, controlled, and uncontrolled
+  creation, update, and deletion; committed creation selects the dependency, rejection
+  restores its source task, and deletion restores the canonical source focus;
+- made SVG paths focusable/selectable with stable hit precedence and interaction state,
+  exposed every canonical link through nonvisual inspect/edit/remove actions, and
+  preserved dependency focus when collapse, filtering, viewport clipping, or route
+  omission removes visual geometry;
+- added a default dependency-properties dialog for all four types and optional elapsed
+  lag, direct deletion, read-only inspection, and a bounded `DependencyProperties`
+  consumer slot plus dependency path/marker/link-handle class hooks.
+
 **Verification**
 
-- focused pure interaction, React DOM, keyboard, touch/pen, overlay, command,
-  selector, history, persistence, and axe suites
-- existing M4 gesture and item-properties matrices
-- `mise run ci`
+- focused runtime/session/React DOM/keyboard/coarse-touch/overlay/selector/history/
+  persistence/interceptor/read-only/custom-slot/axe tests, including cancellation,
+  controlled acknowledgement, rejection, direct removal, source-focus restoration,
+  same-summary visual omission, and collapse-safe logical focus;
+- existing M4 gesture, navigation, store, item-properties, SSR/facade, scene, command,
+  history, persistence, and style matrices;
+- `mise run ci`: 81 files / 443 tests, 179 formatted files, 168 lint/type files, four
+  package artifacts, and a 50.78 kB packed declaration; the only warning was Mise's
+  known non-fatal user-cache sandbox denial.
 
 **Dependencies**
 
@@ -1033,7 +1060,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 5: Integrate hierarchical task kinds with React and accessibility
 - [x] Slice 6: Add the Community dependency graph and cycle diagnostics
 - [x] Slice 7: Route and render dependency paths
-- [ ] Slice 8: Add dependency selection and editing workflows
+- [x] Slice 8: Add dependency selection and editing workflows
 - [ ] Slice 9: Add adaptive scales, zoom, and fit-to-project
 - [ ] Slice 10: Complete localization and RTL parity
 - [ ] Slice 11: Prove selective integration and Community boundary
@@ -1209,14 +1236,29 @@ owns the full shapes and rationale. In summary:
   Final `mise run ci` passed 80 files / 430 tests, 178 formatted files, 167 lint/type
   files, and four artifacts; the declaration is 48.75 kB. Mise reported only the
   known non-fatal user-cache sandbox warning.
+- 2026-07-31: Slice 8 keeps dependency identity canonical even when its route is
+  clipped, proxied, filtered, collapsed to the same summary, or outside the viewport.
+  Runtime occurrence reconciliation therefore includes nonvisual dependency summaries
+  separately from project route occurrences. Removing a focused relationship restores
+  its canonical source task when available; other visual changes retain the logical
+  dependency target and do not force focus to a proxy path.
+- 2026-07-31: Link creation uses an offset 44px handle so the existing resize and
+  progress zones retain their established hit policy. Both pointer and keyboard mode
+  publish the same canonical source/candidate/type preview, create one deterministic
+  unique dependency ID, and dispatch one strict `dependency.add`. The graph command
+  remains the final authority for self, missing, duplicate, and new-cycle rejection.
+- 2026-07-31: Focused session/runtime/React/keyboard/coarse-touch/properties/selector/
+  persistence/history/read-only/custom-slot/axe coverage passed. Controlled creation
+  remained pending until acknowledgement and published one dependency entity-change;
+  rejection and cancellation created no history. Final `mise run ci` passed 81 files /
+  443 tests, 179 formatted files, 168 lint/type files, and four artifacts; the packed
+  declaration is 50.78 kB with only the known non-fatal Mise cache warning.
 
 ## Next Slice
 
-Start Slice 8 by extending occurrence-independent interaction targets and runtime
-selection/focus reconciliation to dependencies, then layer pointer, touch, and
-keyboard link creation over the stable Slice 7 anchors and hit parts. Route every
-accepted create/update/delete intent through the Slice 6 commands, one proposal,
-history, and persistence lifecycle without moving task dates. Add relationship
-inspection/type/lag properties, pending/rejected previews, announcements, gesture
-arbitration, and deterministic focus recovery before the final `mise run ci` and
-Slice 8 commit.
+Start Slice 9 with the pure adaptive scale-selection and fit-range kernels. Define
+deterministic level thresholds, calendar-aware ticks, minimum/maximum span clamps,
+dataset extents that include final task and dependency geometry, and exact anchor
+preservation before adding controlled/uncontrolled range ownership or browser gesture
+bindings. Then integrate toolbar, wheel/pinch, keyboard, imperative, and fit actions
+through one range proposal lifecycle without entering link or item-edit gestures.

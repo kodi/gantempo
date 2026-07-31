@@ -111,9 +111,11 @@ describe('visual occurrence navigation', () => {
 
     expect(occurrences.filter((item) => item.target.kind === 'task')).toHaveLength(5);
     expect(
-      occurrences
-        .filter((item) => item.target.kind === 'task' && item.target.taskId === 'repeated')
-        .map((item) => item.target.viewKey),
+      occurrences.flatMap((item) =>
+        item.target.kind === 'task' && item.target.taskId === 'repeated'
+          ? [item.target.viewKey]
+          : [],
+      ),
     ).toEqual(['same', 'same-later']);
     expect(index.lanes[0]?.target).toMatchObject({ kind: 'lane', viewKey: 'same' });
     expect(index.tasks[0]?.target).toMatchObject({ kind: 'task', viewKey: 'same' });

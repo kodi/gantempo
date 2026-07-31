@@ -46,6 +46,7 @@ import {
 } from './runtime';
 import {
   DefaultContextMenu,
+  DefaultDependencyProperties,
   DefaultItemProperties,
   DefaultLaneHeader,
   DefaultTaskContent,
@@ -56,6 +57,7 @@ import type {
   GanttClassNameState,
   GanttClassNameValue,
   GanttContextMenuItem,
+  GanttDependencyPropertiesValue,
   GanttHandle,
   GanttInteractionState,
   GanttItemPropertiesValue,
@@ -90,7 +92,7 @@ interface TaskOverlayPosition {
 
 interface EditorOverlay {
   readonly error?: string;
-  readonly kind: 'lane' | 'task';
+  readonly kind: 'dependency' | 'lane' | 'task';
   readonly mode: 'legacy' | 'properties';
   readonly pending: boolean;
   readonly selectionKey?: string;
@@ -325,7 +327,11 @@ function inspectionSelectionKey(
 ): string {
   return JSON.stringify(
     selection.map((target) =>
-      target.kind === 'task' ? ['task', target.viewKey] : ['lane', target.viewKey],
+      target.kind === 'task'
+        ? ['task', target.viewKey]
+        : target.kind === 'dependency'
+          ? ['dependency', target.dependencyId]
+          : ['lane', target.viewKey],
     ),
   );
 }
@@ -725,12 +731,16 @@ function targetStateEqual(
 }
 
 function targetsInteraction(interaction: GanttInteractionState, viewKey: string): boolean {
-  return 'target' in interaction && interaction.target?.viewKey === viewKey;
+  return (
+    'target' in interaction &&
+    interaction.target?.kind === 'task' &&
+    interaction.target.viewKey === viewKey
+  );
 }
 
 function keyboardActionForEvent(
   event: ReactKeyboardEvent<HTMLElement>,
-  editingMode?: Extract<GanttInteractionState, { readonly status: 'keyboard' }>['mode'],
+  editingMode?: Extract<GanttInteractionState, { readonly status: 'keyboard' }>['mode'] | 'link',
 ): GanttKeyboardAction | undefined {
   const adjustment =
     event.key === 'ArrowLeft'
@@ -745,6 +755,14 @@ function keyboardActionForEvent(
   if (editingMode !== undefined) {
     if (event.altKey || event.ctrlKey || event.metaKey) {
       return undefined;
+    }
+    if (editingMode === 'link') {
+      if (adjustment !== undefined) return { direction: adjustment, type: 'navigate' };
+      if (event.key === 'Home' || event.key === 'End') {
+        return { direction: event.key === 'Home' ? 'home' : 'end', type: 'navigate' };
+      }
+      if (event.key === 'Enter') return { type: 'commit' };
+      return event.key === 'Escape' ? { type: 'cancel' } : undefined;
     }
     if (editingMode === 'progress' && (event.key === 'Home' || event.key === 'End')) {
       return {
@@ -818,6 +836,9 @@ function keyboardActionForEvent(
   if (key === 'n') {
     return { type: 'create' };
   }
+  if (key === 'l') {
+    return { type: 'link' };
+  }
   return event.key === 'Delete' || event.key === 'Backspace' ? { type: 'delete' } : undefined;
 }
 
@@ -832,6 +853,8 @@ function GanttTask({
   onFocus,
   onMouseEnter,
   onMouseLeave,
+  onLinkPointerDown,
+  linkEnabled,
   slots,
   task,
   progressEditable,
@@ -848,6 +871,11 @@ function GanttTask({
   readonly onFocus: (event: ReactFocusEvent<SVGGElement>, task: TaskBarPrimitive) => void;
   readonly onMouseEnter: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
   readonly onMouseLeave: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
+  readonly onLinkPointerDown: (
+    event: ReactPointerEvent<SVGCircleElement>,
+    task: TaskBarPrimitive,
+  ) => void;
+  readonly linkEnabled: boolean;
   readonly slots?: GanttProps['slots'];
   readonly task: TaskBarPrimitive;
   readonly progressEditable: boolean;
@@ -915,7 +943,7 @@ function GanttTask({
     <g
       aria-describedby={describedBy}
       aria-disabled={disabled || undefined}
-      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Space Enter M P S E N Delete Backspace Control+Z Meta+Z Control+Y Meta+Shift+Z"
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Space Enter L M P S E N Delete Backspace Control+Z Meta+Z Control+Y Meta+Shift+Z"
       aria-label={accessibleName}
       aria-pressed={selected}
       className={resolveClassName(classNames?.task, state)}
@@ -1022,6 +1050,35 @@ function GanttTask({
           <TaskContent {...state} task={summary} />
         </div>
       </foreignObject>
+      {linkEnabled ? (
+        <>
+          <circle
+            aria-hidden="true"
+            className="gt-gantt__link-handle-hit"
+            cx={`calc(${percent(
+              geometry.kind === 'milestone' ? geometry.centerX : task.x + task.width,
+            )} + 10px)`}
+            cy={percent((task.y + task.height / 2) / timelineHeight)}
+            data-gt-part="link-handle-hit-target"
+            onPointerDown={(event) => onLinkPointerDown(event, task)}
+            r="22"
+          />
+          <circle
+            aria-hidden="true"
+            className={joinClasses(
+              'gt-gantt__link-handle',
+              resolveClassName(classNames?.linkHandle, state),
+            )}
+            cx={`calc(${percent(
+              geometry.kind === 'milestone' ? geometry.centerX : task.x + task.width,
+            )} + 10px)`}
+            cy={percent((task.y + task.height / 2) / timelineHeight)}
+            data-gt-part="link-handle"
+            pointerEvents="none"
+            r="4"
+          />
+        </>
+      ) : null}
       {ordinaryTask ? (
         <rect
           aria-hidden="true"
@@ -1116,6 +1173,7 @@ function GanttSurface({
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
   const canonicalDocument = useGanttSelector((snapshot) => snapshot.document);
+  const dependencySummaries = useGanttSelector((snapshot) => snapshot.dependencies);
   const focused = useGanttSelector((snapshot) => snapshot.session.focused);
   const selection = useGanttSelector((snapshot) => snapshot.session.selection);
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
@@ -1133,6 +1191,7 @@ function GanttSurface({
       }
     | undefined
   >(undefined);
+  const dependencyPointer = useRef<number | undefined>(undefined);
   const tooltipSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [localOverlayHost, setLocalOverlayHost] = useState<HTMLDivElement | null>(null);
   const [externalOverlayHost, setExternalOverlayHost] = useState<HTMLDivElement | null>(null);
@@ -1154,7 +1213,10 @@ function GanttSurface({
     slots?.ContextMenu !== undefined ||
     contextMenuItems !== undefined ||
     onTaskEditRequest !== undefined;
-  const propertiesEnabled = features?.properties === true || slots?.ItemProperties !== undefined;
+  const propertiesEnabled =
+    features?.properties === true ||
+    slots?.ItemProperties !== undefined ||
+    slots?.DependencyProperties !== undefined;
   const legacyEditorEnabled = features?.editor === true || slots?.TaskEditor !== undefined;
   const editorEnabled = propertiesEnabled || legacyEditorEnabled;
   const registeredAppearanceVariants = useMemo(
@@ -1221,8 +1283,18 @@ function GanttSurface({
     focused?.kind === 'task' && scene.taskBars.some((task) => task.viewKey === focused.viewKey)
       ? focused.viewKey
       : undefined;
+  const focusedDependencyId =
+    focused?.kind === 'dependency' &&
+    scene.dependencyPaths.some((dependency) => dependency.dependencyId === focused.dependencyId)
+      ? focused.dependencyId
+      : undefined;
   const logicalTaskFocused = focused?.kind === 'task';
-  const rovingViewKey = logicalTaskFocused ? focusedViewKey : scene.taskBars[0]?.viewKey;
+  const logicalDependencyFocused = focused?.kind === 'dependency';
+  const rovingViewKey = logicalTaskFocused
+    ? focusedViewKey
+    : logicalDependencyFocused
+      ? undefined
+      : scene.taskBars[0]?.viewKey;
   const activeTooltipTask = tooltip === undefined ? undefined : taskByViewKey.get(tooltip.viewKey);
   const activeMenuTask = menu === undefined ? undefined : taskByViewKey.get(menu.viewKey);
   const activeEditorTask = editor?.kind === 'task' ? taskByViewKey.get(editor.viewKey) : undefined;
@@ -1230,6 +1302,22 @@ function GanttSurface({
     editor?.kind === 'lane'
       ? scene.lanes.find((lane) => lane.viewKey === editor.viewKey)
       : undefined;
+  const activeEditorDependency =
+    editor?.kind === 'dependency'
+      ? dependencySummaries.find((dependency) => dependency.target.dependencyId === editor.viewKey)
+      : undefined;
+  const activeDependencyValue: GanttDependencyPropertiesValue | undefined =
+    activeEditorDependency === undefined
+      ? undefined
+      : Object.freeze({
+          dependencyId: activeEditorDependency.dependency.id,
+          fromTitle: activeEditorDependency.fromTitle,
+          ...(activeEditorDependency.dependency.lag === undefined
+            ? {}
+            : { lag: activeEditorDependency.dependency.lag }),
+          toTitle: activeEditorDependency.toTitle,
+          type: activeEditorDependency.dependency.type,
+        });
   const activeEditorValue =
     editor?.mode !== 'properties'
       ? undefined
@@ -1239,6 +1327,18 @@ function GanttSurface({
           ? lanePropertiesValue(activeEditorLane, runtime.getSnapshot().selector.document)
           : undefined;
   const editorOpen = editor !== undefined;
+  const dependencyPreview =
+    'preview' in interaction && interaction.preview?.kind === 'dependency'
+      ? interaction.preview
+      : undefined;
+  const dependencyPreviewSource =
+    dependencyPreview === undefined
+      ? undefined
+      : taskByViewKey.get(dependencyPreview.source.viewKey);
+  const dependencyPreviewTarget =
+    dependencyPreview?.target === undefined
+      ? undefined
+      : taskByViewKey.get(dependencyPreview.target.viewKey);
 
   useLayoutEffect(() => {
     if (overlayBoundary === 'root') {
@@ -1296,6 +1396,15 @@ function GanttSurface({
       }
       return;
     }
+    if (focusedDependencyId !== undefined) {
+      const dependency = Array.from(
+        root.querySelectorAll<SVGGElement>('[data-gt-part="dependency"]'),
+      ).find((element) => element.dataset.dependencyId === focusedDependencyId);
+      if (dependency !== undefined && root.ownerDocument.activeElement !== dependency) {
+        dependency.focus();
+      }
+      return;
+    }
     if (logicalTaskFocused) {
       if (hadLogicalTaskFocus.current) {
         root.focus();
@@ -1307,7 +1416,7 @@ function GanttSurface({
       hadLogicalTaskFocus.current = false;
       root.focus();
     }
-  }, [focusedViewKey, logicalTaskFocused]);
+  }, [focusedDependencyId, focusedViewKey, logicalTaskFocused]);
   const focusTaskElement = useCallback((viewKey: string) => {
     queueMicrotask(() => {
       const root = rootRef.current;
@@ -1324,6 +1433,15 @@ function GanttSurface({
         root?.querySelectorAll<HTMLButtonElement>('[data-gt-part="lane-properties-trigger"]') ?? [],
       ).find((element) => element.dataset.viewKey === viewKey);
       (lane ?? root)?.focus();
+    });
+  }, []);
+  const focusDependencyElement = useCallback((dependencyId: string) => {
+    queueMicrotask(() => {
+      const root = rootRef.current;
+      const dependency = Array.from(
+        root?.querySelectorAll<SVGGElement>('[data-gt-part="dependency"]') ?? [],
+      ).find((element) => element.dataset.dependencyId === dependencyId);
+      (dependency ?? root)?.focus();
     });
   }, []);
   const closeMenu = useCallback(
@@ -1344,12 +1462,14 @@ function GanttSurface({
       if (restoreFocus && viewKey !== undefined) {
         if (kind === 'lane') {
           focusLaneElement(viewKey);
+        } else if (kind === 'dependency') {
+          focusDependencyElement(viewKey);
         } else {
           focusTaskElement(viewKey);
         }
       }
     },
-    [editor?.kind, editor?.viewKey, focusLaneElement, focusTaskElement],
+    [editor?.kind, editor?.viewKey, focusDependencyElement, focusLaneElement, focusTaskElement],
   );
 
   useEffect(() => {
@@ -1363,11 +1483,15 @@ function GanttSurface({
       editor !== undefined &&
       ((editor.kind === 'task' && activeEditorTask === undefined) ||
         (editor.kind === 'lane' && activeEditorLane === undefined) ||
-        (editor.mode === 'properties' && activeEditorValue === undefined))
+        (editor.kind === 'dependency' && activeEditorDependency === undefined) ||
+        (editor.mode === 'properties' &&
+          editor.kind !== 'dependency' &&
+          activeEditorValue === undefined))
     ) {
       closeEditor();
     }
   }, [
+    activeEditorDependency,
     activeEditorLane,
     activeEditorTask,
     activeEditorValue,
@@ -1744,6 +1868,27 @@ function GanttSurface({
     },
     [propertiesEnabled, runtime, scene.lanes],
   );
+  const openDependencyProperties = useCallback(
+    (dependencyId: string): boolean => {
+      if (!propertiesEnabled) return false;
+      const dependency = dependencySummaries.find(
+        (candidate) => candidate.target.dependencyId === dependencyId,
+      );
+      if (dependency === undefined) return false;
+      runtime.inspectDependency(dependencyId);
+      setTooltip(undefined);
+      setMenu(undefined);
+      setEditor({
+        kind: 'dependency',
+        mode: 'properties',
+        pending: false,
+        selectionKey: inspectionSelectionKey(runtime.getSnapshot().selector.session.selection),
+        viewKey: dependencyId,
+      });
+      return true;
+    },
+    [dependencySummaries, propertiesEnabled, runtime],
+  );
   const openContextMenu = useCallback(
     (element: Element, task: TaskBarPrimitive, clientX?: number, clientY?: number): boolean => {
       if (!menuEnabled) {
@@ -1800,6 +1945,38 @@ function GanttSurface({
       ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
       : undefined;
   }, []);
+  const dependencyCandidateViewKey = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>): string | undefined => {
+      const pointed = event.currentTarget.ownerDocument.elementFromPoint?.(
+        event.clientX,
+        event.clientY,
+      );
+      const target = pointed ?? event.target;
+      return target instanceof Element
+        ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
+        : undefined;
+    },
+    [],
+  );
+  const onLinkPointerDown = useCallback(
+    (event: ReactPointerEvent<SVGCircleElement>, task: TaskBarPrimitive) => {
+      if (disabled || event.button !== 0 || event.isPrimary === false) return;
+      const resolvedPointerType =
+        event.pointerType === 'touch' || event.pointerType === 'pen' ? event.pointerType : 'mouse';
+      if (!runtime.beginDependencyLink(task.viewKey, resolvedPointerType)) return;
+      dependencyPointer.current = event.pointerId;
+      setTooltip(undefined);
+      setMenu(undefined);
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        timelineRef.current?.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic adapters can lack a browser-managed active pointer.
+      }
+    },
+    [disabled, runtime, timelineRef],
+  );
   const progressCandidateViewKey = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target;
     return target instanceof Element &&
@@ -1974,6 +2151,12 @@ function GanttSurface({
   );
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (dependencyPointer.current === event.pointerId) {
+        const candidate = dependencyCandidateViewKey(event);
+        runtime.updateDependencyLink(candidate);
+        event.preventDefault();
+        return;
+      }
       if (movePan(event)) {
         return;
       }
@@ -1990,10 +2173,25 @@ function GanttSurface({
         event.preventDefault();
       }
     },
-    [movePan, pointerInput, runtime],
+    [dependencyCandidateViewKey, movePan, pointerInput, runtime],
   );
   const onPointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (dependencyPointer.current === event.pointerId) {
+        const candidate = dependencyCandidateViewKey(event);
+        runtime.updateDependencyLink(candidate);
+        dependencyPointer.current = undefined;
+        event.preventDefault();
+        try {
+          if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        } catch {
+          // Capture can already be released by the browser before pointerup dispatch.
+        }
+        void runtime.commitDependencyLink();
+        return;
+      }
       if (finishPan(event, false)) {
         return;
       }
@@ -2010,10 +2208,16 @@ function GanttSurface({
       }
       void runtime.pointerUp(event.pointerId);
     },
-    [disabled, finishPan, runtime],
+    [dependencyCandidateViewKey, disabled, finishPan, runtime],
   );
   const onPointerCancel = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (dependencyPointer.current === event.pointerId) {
+        dependencyPointer.current = undefined;
+        runtime.cancelDependencyLink();
+        event.preventDefault();
+        return;
+      }
       taskActivationPointer.current = undefined;
       if (finishPan(event, true)) {
         return;
@@ -2059,6 +2263,14 @@ function GanttSurface({
           : undefined;
       if (viewKey !== undefined) {
         runtime.keyboardFocus(viewKey);
+        return;
+      }
+      const dependencyId =
+        target instanceof Element
+          ? target.closest<SVGGElement>('[data-gt-part="dependency"]')?.dataset.dependencyId
+          : undefined;
+      if (dependencyId !== undefined) {
+        runtime.inspectDependency(dependencyId);
       }
     },
     [runtime],
@@ -2083,7 +2295,11 @@ function GanttSurface({
       }
       const action = keyboardActionForEvent(
         event,
-        interaction.status === 'keyboard' ? interaction.mode : undefined,
+        interaction.status === 'keyboard'
+          ? interaction.mode
+          : interaction.status === 'linking'
+            ? 'link'
+            : undefined,
       );
       if (
         disabled &&
@@ -2106,6 +2322,12 @@ function GanttSurface({
       }
       if (action.type === 'activate' && focusedViewKey !== undefined && editorEnabled) {
         openEditor(focusedViewKey);
+      } else if (
+        action.type === 'activate' &&
+        focusedDependencyId !== undefined &&
+        propertiesEnabled
+      ) {
+        openDependencyProperties(focusedDependencyId);
       }
       event.preventDefault();
       event.stopPropagation();
@@ -2114,11 +2336,13 @@ function GanttSurface({
       disabled,
       editorEnabled,
       focusedViewKey,
+      focusedDependencyId,
       geometry,
       interaction,
       menuEnabled,
       openContextMenu,
       openEditor,
+      openDependencyProperties,
       propertiesEnabled,
       runtime,
       taskByViewKey,
@@ -2412,6 +2636,89 @@ function GanttSurface({
       },
     );
   };
+  const onDependencyPropertiesSubmit = (value: GanttDependencyPropertiesValue) => {
+    if (
+      editor?.kind !== 'dependency' ||
+      editor.pending ||
+      activeEditorDependency === undefined ||
+      disabled
+    ) {
+      return;
+    }
+    if (
+      value.lag !== undefined &&
+      (!Number.isFinite(value.lag.value) || value.lag.mode === 'working')
+    ) {
+      setEditor((current) =>
+        current === undefined
+          ? undefined
+          : { ...current, error: 'Lag must be a finite elapsed duration.', pending: false },
+      );
+      return;
+    }
+    const previous = activeEditorDependency.dependency;
+    const changes = {
+      ...(value.type === previous.type ? {} : { type: value.type }),
+      ...(JSON.stringify(value.lag) === JSON.stringify(previous.lag)
+        ? {}
+        : { lag: value.lag ?? null }),
+    };
+    if (Object.keys(changes).length === 0) {
+      closeEditor();
+      return;
+    }
+    const dependencyId = previous.id;
+    setEditor((current) => {
+      if (current === undefined) return undefined;
+      const { error: _error, ...next } = current;
+      return { ...next, pending: true };
+    });
+    void runtime
+      .dispatchAction(
+        { changes, id: dependencyId, type: 'dependency.update' },
+        {
+          action: 'dependency',
+          source: { kind: 'editor' },
+          target: activeEditorDependency.target,
+        },
+      )
+      .then((result) => {
+        if (result.status === 'rejected') {
+          setEditor((current) =>
+            current?.viewKey !== dependencyId
+              ? current
+              : {
+                  ...current,
+                  error: result.diagnostics[0]?.message ?? 'The dependency update was rejected.',
+                  pending: false,
+                },
+          );
+        }
+      });
+  };
+  const onDependencyPropertiesDelete = () => {
+    if (
+      editor?.kind !== 'dependency' ||
+      editor.pending ||
+      activeEditorDependency === undefined ||
+      disabled
+    ) {
+      return;
+    }
+    setEditor((current) => {
+      if (current === undefined) return undefined;
+      const { error: _error, ...next } = current;
+      return { ...next, pending: true };
+    });
+    void runtime.dispatchAction(
+      { id: activeEditorDependency.dependency.id, type: 'dependency.delete' },
+      {
+        action: 'delete',
+        source: { kind: 'editor' },
+        target: activeEditorDependency.target,
+      },
+    );
+  };
   const trapFocus = (event: ReactKeyboardEvent<HTMLDivElement>, surface: HTMLDivElement | null) => {
     if (event.key !== 'Tab' || surface === null) {
       return;
@@ -2449,20 +2756,25 @@ function GanttSurface({
   const Tooltip = slots?.Tooltip ?? DefaultTooltip;
   const ContextMenu = slots?.ContextMenu ?? DefaultContextMenu;
   const TaskEditor = slots?.TaskEditor ?? DefaultTaskEditor;
+  const DependencyProperties = slots?.DependencyProperties ?? DefaultDependencyProperties;
   const editorClassState =
     activeEditorTask !== undefined
       ? overlayClassState(activeEditorTask)
       : activeEditorLane !== undefined
         ? idleClassState(disabled, laneSummary(activeEditorLane).target)
-        : rootClassState;
+        : activeEditorDependency !== undefined
+          ? idleClassState(disabled, activeEditorDependency.target)
+          : rootClassState;
   const editorBindings = {
     'aria-describedby': editor?.error === undefined ? undefined : editorErrorId,
     'aria-label':
-      editor?.mode === 'properties' && activeEditorValue !== undefined
-        ? `${disabled ? 'View' : 'Edit'} ${activeEditorValue.title} properties`
-        : activeEditorSummary === undefined
-          ? undefined
-          : `Edit ${activeEditorSummary.title}`,
+      editor?.kind === 'dependency' && activeEditorDependency !== undefined
+        ? `${disabled ? 'View' : 'Edit'} ${activeEditorDependency.fromTitle} to ${activeEditorDependency.toTitle} dependency`
+        : editor?.mode === 'properties' && activeEditorValue !== undefined
+          ? `${disabled ? 'View' : 'Edit'} ${activeEditorValue.title} properties`
+          : activeEditorSummary === undefined
+            ? undefined
+            : `Edit ${activeEditorSummary.title}`,
     'aria-modal': true,
     'aria-readonly': disabled || undefined,
     className: joinClasses(
@@ -2558,7 +2870,8 @@ function GanttSurface({
             ) : null}
             {editor !== undefined &&
             ((editor.mode === 'legacy' && activeEditorSummary !== undefined) ||
-              (editor.mode === 'properties' && activeEditorValue !== undefined)) ? (
+              (editor.mode === 'properties' &&
+                (activeEditorValue !== undefined || activeDependencyValue !== undefined))) ? (
               <div
                 className="gt-gantt__editor-backdrop"
                 data-editor-mode={editor.mode}
@@ -2569,7 +2882,20 @@ function GanttSurface({
                   }
                 }}
               >
-                {editor.mode === 'properties' && activeEditorValue !== undefined ? (
+                {editor.kind === 'dependency' && activeDependencyValue !== undefined ? (
+                  <DependencyProperties
+                    bindings={editorBindings}
+                    {...(editor.error === undefined ? {} : { error: editor.error })}
+                    errorId={editorErrorId}
+                    initialValue={activeDependencyValue}
+                    key={`dependency:${activeDependencyValue.dependencyId}`}
+                    onCancel={() => closeEditor()}
+                    onDelete={onDependencyPropertiesDelete}
+                    onSubmit={onDependencyPropertiesSubmit}
+                    pending={editor.pending}
+                    readOnly={disabled}
+                  />
+                ) : editor.mode === 'properties' && activeEditorValue !== undefined ? (
                   slots?.ItemProperties === undefined ? (
                     <DefaultItemProperties
                       appearanceVariants={registeredAppearanceVariants}
@@ -2674,16 +3000,17 @@ function GanttSurface({
         primary-button drag on the time header, or a middle-button drag on the timeline. Use PageUp
         or PageDown to move lanes and Alt plus PageUp or PageDown to move time. Use arrow keys to
         navigate tasks, Space to select, Enter to activate or open the enabled editor, Shift+F10 to
-        open the enabled task menu, M to move, P to adjust progress, S or E to resize, N to create,
-        Delete to remove, and platform undo or redo shortcuts. In move, progress, or resize mode,
-        viewport gestures do not edit tasks; use arrow keys, Home or End for progress boundaries,
-        Enter to commit, and Escape to cancel. Dependency links and all-day task editing are not
-        available in this interaction version.
+        open the enabled task menu, L to link the focused task, M to move, P to adjust progress, S
+        or E to resize, N to create, Delete to remove, and platform undo or redo shortcuts. In link,
+        move, progress, or resize mode, viewport gestures do not edit tasks; use arrow keys, Home or
+        End for progress boundaries, Enter to commit, and Escape to cancel. Focus a dependency and
+        press Enter to inspect it or Delete to remove it. All-day task editing is not available in
+        this interaction version.
         {propertiesEnabled
           ? ' Use each visible lane properties button to inspect or edit a persisted lane.'
           : ''}
       </p>
-      {scene.dependencySummaries.length > 0 ? (
+      {dependencySummaries.length > 0 ? (
         <section
           aria-label="Dependencies"
           className="gt-gantt__sr-only"
@@ -2691,18 +3018,52 @@ function GanttSurface({
         >
           <h2>Dependencies</h2>
           <ul>
-            {scene.dependencySummaries.map((summary, index) => (
+            {dependencySummaries.map((summary, index) => (
               <li
                 data-dependency-id={summary.dependency.id}
                 data-hidden-endpoint={summary.hiddenEndpoint || undefined}
                 data-status={summary.status}
-                data-visualized={summary.visualized || undefined}
+                data-visualized={
+                  scene.dependencyPaths.some(
+                    (dependency) => dependency.dependencyId === summary.dependency.id,
+                  ) || undefined
+                }
                 key={`${summary.dependency.id}:${index}`}
               >
                 {summary.fromTitle} to {summary.toTitle},{' '}
                 {dependencyTypeLabel(summary.dependency.type)}
                 {summary.hiddenEndpoint ? ', one or more endpoints hidden' : ''}
                 {summary.status === 'invalid' ? ', invalid relationship' : ''}
+                <button
+                  onClick={() => runtime.inspectDependency(summary.dependency.id)}
+                  type="button"
+                >
+                  Inspect {summary.fromTitle} to {summary.toTitle}
+                </button>
+                {propertiesEnabled ? (
+                  <button
+                    onClick={() => openDependencyProperties(summary.dependency.id)}
+                    type="button"
+                  >
+                    {disabled ? 'View' : 'Edit'} dependency
+                  </button>
+                ) : null}
+                <button
+                  disabled={disabled}
+                  onClick={() =>
+                    void runtime.dispatchAction(
+                      { id: summary.dependency.id, type: 'dependency.delete' },
+                      {
+                        action: 'delete',
+                        source: { kind: 'context-menu' },
+                        target: summary.target,
+                      },
+                    )
+                  }
+                  type="button"
+                >
+                  Remove dependency
+                </button>
               </li>
             ))}
           </ul>
@@ -2988,7 +3349,13 @@ function GanttSurface({
                       refY="4"
                       viewBox="0 0 8 8"
                     >
-                      <path className="gt-gantt__dependency-marker" d="M 0 0 L 8 4 L 0 8 z" />
+                      <path
+                        className={joinClasses(
+                          'gt-gantt__dependency-marker',
+                          resolveClassName(classNames?.dependencyMarker, rootClassState),
+                        )}
+                        d="M 0 0 L 8 4 L 0 8 z"
+                      />
                     </marker>
                   </defs>
                   <g aria-hidden="true" data-gt-part="grid">
@@ -3013,73 +3380,158 @@ function GanttSurface({
                     ))}
                   </g>
 
-                  <g aria-hidden="true" data-gt-part="dependencies">
-                    {scene.dependencyPaths.map((dependency) => (
-                      <g
-                        className="gt-gantt__dependency"
-                        data-clipped-end={dependency.clippedEnd || undefined}
-                        data-clipped-start={dependency.clippedStart || undefined}
-                        data-dependency-id={dependency.dependencyId}
-                        data-from-task-id={dependency.fromTaskId}
-                        data-from-view-key={dependency.fromViewKey}
-                        data-gt-part="dependency"
-                        data-hidden-endpoint={dependency.hiddenEndpoint || undefined}
-                        data-status={dependency.status}
-                        data-to-task-id={dependency.toTaskId}
-                        data-to-view-key={dependency.toViewKey}
-                        data-type={dependency.type}
-                        key={dependency.dependencyId}
-                      >
-                        {dependency.points.slice(1).map((to, index) => {
-                          const from = dependency.points[index]!;
-                          const markerEnd =
-                            index === dependency.points.length - 2 && !dependency.clippedEnd
-                              ? `url(#${dependencyMarkerId})`
-                              : undefined;
-                          return (
-                            <g key={`${dependency.dependencyId}:${index}`}>
-                              <line
-                                className="gt-gantt__dependency-path"
-                                markerEnd={markerEnd}
-                                x1={percent(from.x)}
-                                x2={percent(to.x)}
-                                y1={percent(from.y / scene.bounds.timelineHeight)}
-                                y2={percent(to.y / scene.bounds.timelineHeight)}
-                              />
-                              <line
-                                className="gt-gantt__dependency-hit"
-                                data-gt-part="dependency-hit-target"
-                                x1={percent(from.x)}
-                                x2={percent(to.x)}
-                                y1={percent(from.y / scene.bounds.timelineHeight)}
-                                y2={percent(to.y / scene.bounds.timelineHeight)}
-                              />
-                            </g>
-                          );
-                        })}
-                        {dependency.clippedStart ? (
-                          <circle
-                            className="gt-gantt__dependency-continuation"
-                            cx={percent(dependency.points[0]!.x)}
-                            cy={percent(dependency.points[0]!.y / scene.bounds.timelineHeight)}
-                            data-edge="start"
-                            data-gt-part="dependency-continuation"
-                            r="3"
-                          />
-                        ) : null}
-                        {dependency.clippedEnd ? (
-                          <circle
-                            className="gt-gantt__dependency-continuation"
-                            cx={percent(dependency.points.at(-1)!.x)}
-                            cy={percent(dependency.points.at(-1)!.y / scene.bounds.timelineHeight)}
-                            data-edge="end"
-                            data-gt-part="dependency-continuation"
-                            r="3"
-                          />
-                        ) : null}
-                      </g>
-                    ))}
+                  <g data-gt-part="dependencies">
+                    {scene.dependencyPaths.map((dependency) => {
+                      const summary = dependencySummaries.find(
+                        (candidate) => candidate.target.dependencyId === dependency.dependencyId,
+                      );
+                      const target = summary?.target ?? {
+                        dependencyId: dependency.dependencyId,
+                        kind: 'dependency' as const,
+                      };
+                      const selected = selection.some(
+                        (candidate) =>
+                          candidate.kind === 'dependency' &&
+                          candidate.dependencyId === dependency.dependencyId,
+                      );
+                      const dependencyFocused =
+                        focused?.kind === 'dependency' &&
+                        focused.dependencyId === dependency.dependencyId;
+                      const pending =
+                        interaction.status === 'pending' &&
+                        interaction.target?.kind === 'dependency' &&
+                        interaction.target.dependencyId === dependency.dependencyId;
+                      const state = Object.freeze({
+                        ...idleClassState(disabled, target),
+                        focused: dependencyFocused,
+                        invalid: dependency.status === 'invalid',
+                        pending,
+                        selected,
+                      });
+                      return (
+                        <g
+                          aria-disabled={disabled || undefined}
+                          aria-keyshortcuts="Enter Delete Backspace Space"
+                          aria-label={
+                            summary === undefined
+                              ? `Dependency ${dependency.dependencyId}`
+                              : `${summary.fromTitle} to ${summary.toTitle}, ${dependencyTypeLabel(summary.dependency.type)}`
+                          }
+                          aria-pressed={selected}
+                          className="gt-gantt__dependency"
+                          data-clipped-end={dependency.clippedEnd || undefined}
+                          data-clipped-start={dependency.clippedStart || undefined}
+                          data-dependency-id={dependency.dependencyId}
+                          data-from-task-id={dependency.fromTaskId}
+                          data-from-view-key={dependency.fromViewKey}
+                          data-gt-part="dependency"
+                          data-hidden-endpoint={dependency.hiddenEndpoint || undefined}
+                          data-focused={dependencyFocused || undefined}
+                          data-pending={pending || undefined}
+                          data-selected={selected || undefined}
+                          data-status={dependency.status}
+                          data-to-task-id={dependency.toTaskId}
+                          data-to-view-key={dependency.toViewKey}
+                          data-type={dependency.type}
+                          key={dependency.dependencyId}
+                          onClick={() => runtime.inspectDependency(dependency.dependencyId)}
+                          onDoubleClick={() => openDependencyProperties(dependency.dependencyId)}
+                          role="button"
+                          tabIndex={dependencyFocused ? 0 : -1}
+                        >
+                          {dependency.points.slice(1).map((to, index) => {
+                            const from = dependency.points[index]!;
+                            const markerEnd =
+                              index === dependency.points.length - 2 && !dependency.clippedEnd
+                                ? `url(#${dependencyMarkerId})`
+                                : undefined;
+                            return (
+                              <g key={`${dependency.dependencyId}:${index}`}>
+                                <line
+                                  aria-hidden="true"
+                                  className={joinClasses(
+                                    'gt-gantt__dependency-path',
+                                    resolveClassName(classNames?.dependencyPath, state),
+                                  )}
+                                  markerEnd={markerEnd}
+                                  x1={percent(from.x)}
+                                  x2={percent(to.x)}
+                                  y1={percent(from.y / scene.bounds.timelineHeight)}
+                                  y2={percent(to.y / scene.bounds.timelineHeight)}
+                                />
+                                <line
+                                  aria-hidden="true"
+                                  className="gt-gantt__dependency-hit"
+                                  data-gt-part="dependency-hit-target"
+                                  x1={percent(from.x)}
+                                  x2={percent(to.x)}
+                                  y1={percent(from.y / scene.bounds.timelineHeight)}
+                                  y2={percent(to.y / scene.bounds.timelineHeight)}
+                                />
+                              </g>
+                            );
+                          })}
+                          {dependency.clippedStart ? (
+                            <circle
+                              aria-hidden="true"
+                              className="gt-gantt__dependency-continuation"
+                              cx={percent(dependency.points[0]!.x)}
+                              cy={percent(dependency.points[0]!.y / scene.bounds.timelineHeight)}
+                              data-edge="start"
+                              data-gt-part="dependency-continuation"
+                              r="3"
+                            />
+                          ) : null}
+                          {dependency.clippedEnd ? (
+                            <circle
+                              aria-hidden="true"
+                              className="gt-gantt__dependency-continuation"
+                              cx={percent(dependency.points.at(-1)!.x)}
+                              cy={percent(
+                                dependency.points.at(-1)!.y / scene.bounds.timelineHeight,
+                              )}
+                              data-edge="end"
+                              data-gt-part="dependency-continuation"
+                              r="3"
+                            />
+                          ) : null}
+                        </g>
+                      );
+                    })}
                   </g>
+
+                  {dependencyPreviewSource === undefined ? null : (
+                    <line
+                      aria-hidden="true"
+                      className="gt-gantt__dependency-preview"
+                      data-gt-part="dependency-preview"
+                      markerEnd={`url(#${dependencyMarkerId})`}
+                      x1={percent(
+                        dependencyPreviewSource.presentation.geometry.kind === 'milestone'
+                          ? dependencyPreviewSource.presentation.geometry.centerX
+                          : dependencyPreviewSource.x + dependencyPreviewSource.width,
+                      )}
+                      x2={percent(
+                        dependencyPreviewTarget === undefined
+                          ? Math.min(
+                              1,
+                              dependencyPreviewSource.x + dependencyPreviewSource.width + 0.06,
+                            )
+                          : dependencyPreviewTarget.presentation.geometry.kind === 'milestone'
+                            ? dependencyPreviewTarget.presentation.geometry.centerX
+                            : dependencyPreviewTarget.x,
+                      )}
+                      y1={percent(
+                        (dependencyPreviewSource.y + dependencyPreviewSource.height / 2) /
+                          scene.bounds.timelineHeight,
+                      )}
+                      y2={percent(
+                        ((dependencyPreviewTarget ?? dependencyPreviewSource).y +
+                          (dependencyPreviewTarget ?? dependencyPreviewSource).height / 2) /
+                          scene.bounds.timelineHeight,
+                      )}
+                    />
+                  )}
 
                   {scene.taskBars.map((task) => (
                     <GanttTask
@@ -3092,11 +3544,13 @@ function GanttSurface({
                       disabled={disabled}
                       domId={taskDomIds.get(task.viewKey)!}
                       key={task.viewKey}
+                      linkEnabled={!disabled && interaction.status !== 'pending'}
                       onActivate={onTaskActivate}
                       onContextMenu={onTaskContextMenu}
                       onFocus={onTaskFocus}
                       onMouseEnter={onTaskMouseEnter}
                       onMouseLeave={onTaskMouseLeave}
+                      onLinkPointerDown={onLinkPointerDown}
                       progressEditable={progressEditableTaskIds.has(task.taskId)}
                       slots={slots}
                       task={task}
@@ -3105,7 +3559,9 @@ function GanttSurface({
                     />
                   ))}
                 </svg>
-                {'preview' in interaction && interaction.preview !== undefined ? (
+                {'preview' in interaction &&
+                interaction.preview !== undefined &&
+                interaction.preview.kind !== 'dependency' ? (
                   <div
                     aria-hidden="true"
                     className="gt-gantt__interaction-preview"
@@ -3272,10 +3728,11 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         focused?.kind === 'task'
           ? current.scene.taskBars.find((task) => task.viewKey === focused.viewKey)
           : undefined;
-      const preview =
+      const previewCandidate =
         'preview' in current.selector.interaction
           ? current.selector.interaction.preview
           : undefined;
+      const preview = previewCandidate?.kind === 'dependency' ? undefined : previewCandidate;
       const retainedStart =
         focusedTask === undefined && preview === undefined
           ? undefined

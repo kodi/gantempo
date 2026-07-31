@@ -299,7 +299,7 @@ describe('React runtime adapter', () => {
     const target = first.getSnapshot().selector.occurrences[0]!.target;
 
     expect(first.getHandle().focusTask(target)).toBe(true);
-    expect(first.getHandle().getSession().focused?.viewKey).toBe(target.viewKey);
+    expect(first.getHandle().getSession().focused).toMatchObject({ viewKey: target.viewKey });
     expect(first.getHandle().scrollToTask(target, { align: 'start' })).toBe(true);
     expect(first.getHandle().scrollToTime(START + 10 * DAY, { align: 'start' })).toBe(true);
     expect(ranges[0]).toEqual({
@@ -376,7 +376,9 @@ describe('React runtime adapter', () => {
       cascade: true,
     });
     expect(runtime.getHandle().getSession().selection).toEqual([]);
-    expect(runtime.getHandle().getSession().focused?.viewKey).toBe(offscreenTarget.viewKey);
+    expect(runtime.getHandle().getSession().focused).toMatchObject({
+      viewKey: offscreenTarget.viewKey,
+    });
     runtime.dispose();
   });
 
@@ -796,6 +798,212 @@ describe('React runtime adapter', () => {
     expect(runtime.getHandle().getDocument().tasks[0]?.schedule).toMatchObject({
       start: START + 2 * DAY,
     });
+    runtime.dispose();
+  });
+
+  it('creates one dependency command and selects its canonical target', async () => {
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: projectDocumentFixture(),
+      view: { kind: 'project' },
+    });
+    runtime.activate();
+    const child = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'child')!;
+    const milestone = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'milestone')!;
+
+    expect(runtime.beginDependencyLink(child.target.viewKey)).toBe(true);
+    expect(runtime.updateDependencyLink(milestone.target.viewKey)).toBe(true);
+    expect(runtime.getSnapshot().selector.interaction).toMatchObject({
+      action: 'dependency',
+      preview: {
+        source: { taskId: 'child' },
+        target: { taskId: 'milestone' },
+        type: 'finish-to-start',
+      },
+      status: 'linking',
+    });
+    await runtime.commitDependencyLink();
+
+    expect(runtime.getHandle().getDocument().dependencies).toEqual([
+      expect.objectContaining({
+        fromTaskId: 'child',
+        id: 'dependency:child:milestone',
+        toTaskId: 'milestone',
+        type: 'finish-to-start',
+      }),
+    ]);
+    expect(runtime.getSnapshot().selector.dependencies[0]).toMatchObject({
+      fromTitle: 'Child',
+      target: { dependencyId: 'dependency:child:milestone', kind: 'dependency' },
+      toTitle: 'Milestone',
+    });
+    expect(Object.isFrozen(runtime.getSnapshot().selector.dependencies)).toBe(true);
+    expect(Object.isFrozen(runtime.getSnapshot().selector.dependencies[0])).toBe(true);
+    expect(Object.isFrozen(runtime.getSnapshot().selector.dependencies[0]?.dependency)).toBe(true);
+    expect(runtime.getHandle().getSelection()).toEqual([
+      { dependencyId: 'dependency:child:milestone', kind: 'dependency' },
+    ]);
+    expect(runtime.getHandle().canUndo()).toBe(true);
+    await runtime.getHandle().undo();
+    expect(runtime.getHandle().getDocument().dependencies).toEqual([]);
+    runtime.dispose();
+  });
+
+  it('announces a rejected link and restores the initiating task focus', async () => {
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: projectDocumentFixture(),
+      interceptors: [
+        () => ({
+          diagnostic: { code: 'command.invalid-payload', message: 'No link.', severity: 'error' },
+          kind: 'reject',
+        }),
+      ],
+      view: { kind: 'project' },
+    });
+    runtime.activate();
+    const child = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'child')!;
+    const milestone = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'milestone')!;
+    runtime.beginDependencyLink(child.target.viewKey);
+    runtime.updateDependencyLink(milestone.target.viewKey);
+    await runtime.commitDependencyLink();
+
+    expect(runtime.getHandle().getDocument().dependencies).toEqual([]);
+    expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'child' });
+    expect(runtime.getSnapshot().selector.interaction).toMatchObject({
+      announcement: 'No link.',
+      status: 'rejected',
+    });
+    runtime.dispose();
+  });
+
+  it('waits for one controlled dependency acknowledgement before selecting the link', async () => {
+    const document = projectDocumentFixture();
+    let proposed: GanttDocument | undefined;
+    let proposedChange: Parameters<NonNullable<GanttProps['onDocumentChange']>>[0] | undefined;
+    let props: GanttProps = {
+      ...commonProps(),
+      document,
+      onDocumentChange(change) {
+        proposedChange = change;
+        proposed = change.document;
+      },
+      view: { kind: 'project' },
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    const child = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'child')!;
+    const milestone = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'milestone')!;
+    runtime.beginDependencyLink(child.target.viewKey);
+    runtime.updateDependencyLink(milestone.target.viewKey);
+    await runtime.commitDependencyLink();
+
+    expect(proposed?.dependencies).toHaveLength(1);
+    expect(proposedChange).toMatchObject({
+      command: { type: 'dependency.add' },
+      entityChanges: [
+        {
+          collection: 'dependencies',
+          id: 'dependency:child:milestone',
+          kind: 'create',
+        },
+      ],
+      source: { kind: 'keyboard' },
+      target: { dependencyId: 'dependency:child:milestone', kind: 'dependency' },
+    });
+    expect(runtime.getHandle().getDocument().dependencies).toEqual([]);
+    expect(runtime.getSnapshot().selector.interaction.status).toBe('pending');
+
+    props = { ...props, document: proposed! };
+    runtime.updateCallbacks(props);
+    runtime.reconcile(props);
+    expect(runtime.getHandle().getDocument().dependencies).toHaveLength(1);
+    expect(runtime.getHandle().getSelection()[0]).toMatchObject({ kind: 'dependency' });
+    expect(runtime.getSnapshot().selector.interaction.status).toBe('idle');
+    runtime.dispose();
+  });
+
+  it('cancels keyboard linking without history and deletes a focused dependency directly', async () => {
+    const document: GanttDocument = {
+      ...projectDocumentFixture(),
+      dependencies: [
+        {
+          fromTaskId: 'child',
+          id: 'child-milestone',
+          toTaskId: 'milestone',
+          type: 'finish-to-start',
+        },
+      ],
+    };
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: document,
+      view: { kind: 'project' },
+    });
+    runtime.activate();
+    const child = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'child')!;
+    runtime.beginDependencyLink(child.target.viewKey);
+    expect(runtime.cancelDependencyLink()).toBe(true);
+    expect(runtime.getHandle().canUndo()).toBe(false);
+    expect(runtime.getSnapshot().selector.interaction).toMatchObject({
+      announcement: 'Linking from Child cancelled.',
+      status: 'idle',
+    });
+
+    runtime.inspectDependency('child-milestone');
+    expect(
+      runtime.keyboardAction({
+        action: { type: 'delete' },
+        geometry: { height: 174, verticalStart: 0, width: 700, x: 160, y: 0 },
+      }),
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(runtime.getHandle().getDocument().dependencies).toEqual([]);
+    expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'child' });
+    runtime.dispose();
+  });
+
+  it('retains logical dependency focus when collapse omits its visual path', () => {
+    const document: GanttDocument = {
+      ...projectDocumentFixture(),
+      dependencies: [
+        {
+          fromTaskId: 'child',
+          id: 'inside-summary',
+          toTaskId: 'milestone',
+          type: 'finish-to-start',
+        },
+      ],
+    };
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: document,
+      view: { kind: 'project' },
+    });
+    runtime.activate();
+    runtime.inspectDependency('inside-summary');
+    expect(runtime.toggleProjectTask('summary', false)).toBe(true);
+    expect(runtime.getSnapshot().scene.dependencyPaths).toEqual([]);
+    expect(runtime.getHandle().getSession().focused).toEqual({
+      dependencyId: 'inside-summary',
+      kind: 'dependency',
+    });
+    expect(runtime.getSnapshot().selector.dependencies).toHaveLength(1);
     runtime.dispose();
   });
 });

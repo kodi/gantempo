@@ -328,13 +328,45 @@
     stroke: transparent;
     stroke-width: 12px;
     vector-effect: non-scaling-stroke;
-    pointer-events: none;
+    pointer-events: stroke;
+    cursor: pointer;
+  }
+
+  :where(.gt-gantt__link-handle-hit) {
+    fill: transparent;
+    pointer-events: auto;
+    cursor: crosshair;
+  }
+
+  :where(.gt-gantt__link-handle) {
+    fill: var(--gt-lane-surface);
+    stroke: var(--gt-task-border);
+    stroke-width: 1.5px;
+    opacity: 0;
+    vector-effect: non-scaling-stroke;
+    transition: opacity 120ms ease;
+  }
+
+  :where(
+    .gt-gantt [data-gt-part='task']:is(:hover, :focus) .gt-gantt__link-handle,
+    .gt-gantt[data-interaction-state='linking'] .gt-gantt__link-handle
+  ) {
+    opacity: 1;
   }
 
   :where(.gt-gantt__dependency-continuation) {
     fill: var(--gt-lane-surface);
     stroke: var(--gt-task-border);
     stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  :where(.gt-gantt__dependency-preview) {
+    fill: none;
+    stroke: var(--gt-color-focus);
+    stroke-dasharray: 4 3;
+    stroke-width: 2px;
+    pointer-events: none;
     vector-effect: non-scaling-stroke;
   }
 
@@ -1217,6 +1249,7 @@
       .gt-gantt__task-bar,
       .gt-gantt__task-progress,
       .gt-gantt__dependency-path,
+      .gt-gantt__link-handle,
       .gt-gantt [data-gt-part='progress-handle'],
       .gt-gantt__interaction-preview,
       .gt-gantt__context-menu-item,
@@ -1329,6 +1362,22 @@
     :where(.gt-gantt__dependency-continuation) {
       fill: Canvas;
       stroke: CanvasText;
+    }
+
+    :where(.gt-gantt__link-handle) {
+      fill: Canvas;
+      stroke: CanvasText;
+    }
+
+    :where(.gt-gantt__dependency-preview) {
+      stroke: Highlight;
+    }
+
+    :where(
+      .gt-gantt__dependency:is([data-selected='true'], [data-focused='true'])
+        .gt-gantt__dependency-path
+    ) {
+      stroke: Highlight;
     }
 
     :where(.gt-gantt__dependency[data-status='invalid'] .gt-gantt__dependency-path) {

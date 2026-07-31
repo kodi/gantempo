@@ -53,6 +53,7 @@ import type {
   GanttCommandSource,
   GanttDispatchResult,
   GanttInteractionTarget,
+  GanttDependencyTarget,
   GanttRuntimeErrorEvent,
   GanttRuntimeOccurrence,
   GanttRuntimeSnapshot,
@@ -83,6 +84,8 @@ export interface GanttReactRuntimeSnapshot {
 
 export interface GanttReactRuntime {
   activate(): void;
+  beginDependencyLink(viewKey: string, pointerType?: InteractionPointerType): boolean;
+  cancelDependencyLink(): boolean;
   clearMeasurement(): void;
   clearTaskFocusAndSelection(): boolean;
   deactivate(): void;
@@ -98,6 +101,7 @@ export interface GanttReactRuntime {
   getHandle(): GanttHandle;
   getSnapshot(): GanttReactRuntimeSnapshot;
   inspectLane(viewKey: string): boolean;
+  inspectDependency(dependencyId: string): boolean;
   inspectTask(viewKey: string): boolean;
   keyboardAction(input: GanttKeyboardActionInput): boolean;
   keyboardFocus(viewKey: string): boolean;
@@ -111,9 +115,11 @@ export interface GanttReactRuntime {
   pointerDown(input: GanttPointerInput): boolean;
   pointerMove(input: GanttPointerMoveInput): boolean;
   pointerUp(pointerId: number): Promise<void>;
+  commitDependencyLink(): Promise<boolean>;
   reconcile(props: GanttProps): void;
   subscribe(subscriber: () => void): () => void;
   toggleProjectTask(taskId: EntityId, expanded?: boolean): boolean;
+  updateDependencyLink(viewKey?: string): boolean;
   updateCallbacks(props: GanttProps): void;
 }
 
@@ -186,7 +192,7 @@ export type GanttKeyboardAction =
       readonly type: 'adjust';
     }
   | { readonly mode: InteractionKeyboardMode; readonly type: 'begin' }
-  | { readonly type: 'activate' | 'cancel' | 'commit' | 'create' | 'delete' }
+  | { readonly type: 'activate' | 'cancel' | 'commit' | 'create' | 'delete' | 'link' }
   | { readonly direction: InteractionNavigationDirection; readonly type: 'navigate' }
   | {
       readonly axis: 'horizontal' | 'vertical';
@@ -315,10 +321,15 @@ function laneTarget(
   });
 }
 
+function dependencyTarget(dependencyId: EntityId): GanttDependencyTarget {
+  return Object.freeze({ dependencyId, kind: 'dependency' });
+}
+
 function occurrences(
   scene: ChartScene,
   catalog: readonly ChartSceneOccurrence[],
 ): {
+  readonly dependencies: GanttSelectorSnapshot['dependencies'];
   readonly runtime: readonly GanttRuntimeOccurrence[];
   readonly visible: readonly GanttVisibleOccurrence[];
 } {
@@ -354,6 +365,18 @@ function occurrences(
     }),
   );
   return Object.freeze({
+    dependencies: Object.freeze(
+      scene.dependencySummaries.map((summary) =>
+        Object.freeze({
+          dependency: Object.freeze({ ...summary.dependency }),
+          fromTitle: summary.fromTitle,
+          hiddenEndpoint: summary.hiddenEndpoint,
+          status: summary.status,
+          target: dependencyTarget(summary.dependency.id),
+          toTitle: summary.toTitle,
+        }),
+      ),
+    ),
     runtime: Object.freeze([
       ...scene.lanes.map((lane, laneIndex) =>
         Object.freeze({
@@ -369,13 +392,24 @@ function occurrences(
           target: taskTarget(task),
         }),
       ),
+      ...scene.dependencySummaries.map((dependency) =>
+        Object.freeze({
+          horizontalCenter: 0,
+          laneIndex: 0,
+          target: dependencyTarget(dependency.dependency.id),
+        }),
+      ),
     ]),
     visible: Object.freeze(visible),
   });
 }
 
 function targetIdentity(target: GanttInteractionTarget | undefined): string | undefined {
-  return target === undefined ? undefined : `${target.kind}\u0000${target.viewKey}`;
+  return target === undefined
+    ? undefined
+    : target.kind === 'dependency'
+      ? `${target.kind}\u0000${target.dependencyId}`
+      : `${target.kind}\u0000${target.viewKey}`;
 }
 
 function selectionEqual(
@@ -399,6 +433,7 @@ function viewportEvent(snapshot: GanttSelectorSnapshot): import('./types').Gantt
 function createSelectorSnapshot(
   store: GanttRuntimeSnapshot,
   display: DisplayInputs,
+  dependencies: GanttSelectorSnapshot['dependencies'],
   visible: readonly GanttVisibleOccurrence[],
   interaction: GanttInteractionState,
 ): GanttSelectorSnapshot {
@@ -406,6 +441,7 @@ function createSelectorSnapshot(
     canRedo: store.history.canRedo,
     canUndo: store.history.canUndo,
     document: store.document,
+    dependencies,
     interaction,
     occurrences: visible,
     range: display.range,
@@ -483,6 +519,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let panGesture: ViewportPanGestureState = IDLE_VIEWPORT_PAN_GESTURE;
   let gestureGeometry: GanttPointerGeometry | undefined;
   let keyboardGesture: InteractionKeyboardState | undefined;
+  let dependencyLink:
+    | {
+        readonly candidate?: GanttTaskTarget;
+        readonly pointerType?: InteractionPointerType;
+        readonly source: GanttTaskTarget;
+      }
+    | undefined;
+  let dependencyFocusRestore: GanttTaskTarget | undefined;
   let pendingRangeAnnouncement = false;
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
@@ -537,6 +581,41 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
                 ? interaction.preview?.kind
                 : undefined;
         const label = interactionActionLabel(action ?? 'interaction');
+        const interactionTarget = 'target' in interaction ? interaction.target : undefined;
+        if (
+          interactionTarget?.kind === 'dependency' &&
+          store
+            .getSnapshot()
+            .document.dependencies.some(
+              (dependency) => dependency.id === interactionTarget.dependencyId,
+            )
+        ) {
+          const session = store.getSnapshot().session;
+          updateSession(
+            Object.freeze({
+              focused: interactionTarget,
+              ...projectSessionPart(session),
+              selection: Object.freeze([interactionTarget]),
+              viewport: session.viewport,
+            }),
+            'runtime',
+          );
+        } else if (
+          interactionTarget?.kind === 'dependency' &&
+          dependencyFocusRestore !== undefined
+        ) {
+          const session = store.getSnapshot().session;
+          updateSession(
+            Object.freeze({
+              focused: dependencyFocusRestore,
+              ...projectSessionPart(session),
+              selection: Object.freeze([]),
+              viewport: session.viewport,
+            }),
+            'runtime',
+          );
+        }
+        dependencyFocusRestore = undefined;
         setInteraction(
           Object.freeze({
             announcement: `${label} committed.`,
@@ -736,6 +815,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       selector: createSelectorSnapshot(
         reconciledStore,
         display,
+        sceneOccurrences.dependencies,
         sceneOccurrences.visible,
         composedInteraction(reconciledStore),
       ),
@@ -1016,6 +1096,96 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       snapshot.scene.taskBars.find((task) => task.viewKey === target.viewKey)?.title ??
       target.taskId
     );
+  }
+
+  function dependencyPreview(
+    source: GanttTaskTarget,
+    candidate?: GanttTaskTarget,
+  ): import('./types').GanttDependencyInteractionPreview {
+    return Object.freeze({
+      kind: 'dependency',
+      source,
+      ...(candidate === undefined ? {} : { target: candidate }),
+      type: 'finish-to-start',
+    });
+  }
+
+  function publishDependencyLink(): void {
+    if (dependencyLink === undefined) return;
+    const sourceTitle = taskTitle(dependencyLink.source);
+    const candidateTitle =
+      dependencyLink.candidate === undefined ? undefined : taskTitle(dependencyLink.candidate);
+    setInteraction(
+      Object.freeze({
+        action: 'dependency',
+        announcement:
+          candidateTitle === undefined
+            ? `Linking from ${sourceTitle}. Choose a target.`
+            : `Link ${sourceTitle} to ${candidateTitle}. Press Enter or release to commit.`,
+        mode: 'link',
+        ...(dependencyLink.pointerType === undefined
+          ? {}
+          : { pointerType: dependencyLink.pointerType }),
+        preview: dependencyPreview(dependencyLink.source, dependencyLink.candidate),
+        status: 'linking',
+        target: dependencyLink.source,
+      }),
+    );
+  }
+
+  function uniqueDependencyId(fromTaskId: string, toTaskId: string): string {
+    const ids = new Set(
+      store.getSnapshot().document.dependencies.map((dependency) => dependency.id),
+    );
+    const base = `dependency:${fromTaskId}:${toTaskId}`;
+    if (!ids.has(base)) return base;
+    let suffix = 2;
+    while (ids.has(`${base}:${suffix}`)) suffix += 1;
+    return `${base}:${suffix}`;
+  }
+
+  async function commitDependencyLink(): Promise<boolean> {
+    const link = dependencyLink;
+    if (link?.candidate === undefined) {
+      if (link !== undefined) {
+        setInteraction(
+          Object.freeze({
+            announcement: 'Choose a different task as the dependency target.',
+            status: 'rejected',
+            target: link.source,
+          }),
+        );
+      }
+      return false;
+    }
+    dependencyLink = undefined;
+    const target = dependencyTarget(uniqueDependencyId(link.source.taskId, link.candidate.taskId));
+    const preview = dependencyPreview(link.source, link.candidate);
+    setInteraction(pendingKeyboardInteraction('dependency', target, preview));
+    const result = await bus.dispatch(
+      {
+        value: {
+          fromTaskId: link.source.taskId,
+          id: target.dependencyId,
+          toTaskId: link.candidate.taskId,
+          type: 'finish-to-start',
+        },
+        type: 'dependency.add',
+      },
+      {
+        source:
+          link.pointerType === undefined
+            ? Object.freeze({ kind: 'keyboard' as const })
+            : Object.freeze({ kind: 'pointer' as const, pointerType: link.pointerType }),
+        target,
+      },
+    );
+    if (disposed) return true;
+    const pendingDocument = store.getSnapshot().ownership.pendingDocument;
+    if (result.status === 'proposed' && pendingDocument?.proposalId === result.proposalId) {
+      setInteraction(pendingKeyboardInteraction('dependency', target, preview, result.proposalId));
+    }
+    return true;
   }
 
   function revealKeyboardTarget(target: GanttTaskTarget): boolean {
@@ -1393,6 +1563,45 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
     },
 
+    beginDependencyLink(viewKey, pointerType) {
+      if (disposed || dependencyLink !== undefined || composedInteraction().status === 'pending') {
+        return false;
+      }
+      const source = snapshot.selector.occurrences.find(
+        (occurrence) => occurrence.target.viewKey === viewKey,
+      )?.target;
+      if (source === undefined) return false;
+      dependencyLink = Object.freeze({
+        ...(pointerType === undefined ? {} : { pointerType }),
+        source,
+      });
+      const session = store.getSnapshot().session;
+      updateSession(
+        Object.freeze({
+          focused: source,
+          ...projectSessionPart(session),
+          selection: Object.freeze([source]),
+          viewport: session.viewport,
+        }),
+        'runtime',
+      );
+      publishDependencyLink();
+      return true;
+    },
+
+    cancelDependencyLink() {
+      if (dependencyLink === undefined) return false;
+      const source = dependencyLink.source;
+      dependencyLink = undefined;
+      setInteraction(
+        Object.freeze({
+          announcement: `Linking from ${taskTitle(source)} cancelled.`,
+          status: 'idle',
+        }),
+      );
+      return true;
+    },
+
     clearMeasurement() {
       if (disposed) {
         return;
@@ -1435,6 +1644,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return;
       }
       disposed = true;
+      dependencyLink = undefined;
       panGesture = IDLE_VIEWPORT_PAN_GESTURE;
       unsubscribeStore();
       subscribers.clear();
@@ -1464,6 +1674,27 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (input.action.type === 'history' && keyboardGesture === undefined) {
         void dispatchKeyboardHistory(input.action.action, focusedKeyboardTarget());
         return true;
+      }
+      if (dependencyLink !== undefined) {
+        if (input.action.type === 'cancel') return runtime.cancelDependencyLink();
+        if (input.action.type === 'commit') {
+          void commitDependencyLink();
+          return true;
+        }
+        if (input.action.type === 'navigate') {
+          const current = dependencyLink.candidate ?? dependencyLink.source;
+          const next = navigateRuntimeOccurrence(
+            occurrences(snapshot.scene, snapshot.occurrenceCatalog).runtime,
+            current,
+            input.action.direction,
+          );
+          if (next?.kind !== 'task' || next.taskId === dependencyLink.source.taskId) return false;
+          dependencyLink = Object.freeze({ ...dependencyLink, candidate: next });
+          revealKeyboardTarget(next);
+          publishDependencyLink();
+          return true;
+        }
+        return false;
       }
       if (input.geometry === undefined) {
         return false;
@@ -1516,6 +1747,35 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return true;
       }
 
+      const focused = store.getSnapshot().session.focused;
+      if (focused?.kind === 'dependency') {
+        if (input.action.type === 'delete') {
+          void dispatchKeyboardCommand(
+            { id: focused.dependencyId, type: 'dependency.delete' },
+            'delete',
+            focused,
+          );
+          return true;
+        }
+        if (input.action.type === 'toggle-selection') {
+          const session = store.getSnapshot().session;
+          updateSession(
+            Object.freeze({
+              focused,
+              ...projectSessionPart(session),
+              selection: Object.freeze([focused]),
+              viewport: session.viewport,
+            }),
+            'runtime',
+          );
+          return true;
+        }
+        if (input.action.type === 'activate') {
+          setInteraction(Object.freeze({ announcement: 'Dependency activated.', status: 'idle' }));
+          return true;
+        }
+        return false;
+      }
       const target = focusedKeyboardTarget();
       if (target === undefined) {
         return false;
@@ -1581,6 +1841,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (input.action.type === 'begin') {
         return beginKeyboardMode(target, input.action.mode, input.geometry);
       }
+      if (input.action.type === 'link') {
+        return runtime.beginDependencyLink(target.viewKey);
+      }
       if (input.action.type === 'create') {
         const intent = keyboardCreationIntent(target, options);
         return intent === undefined ? false : dispatchKeyboardIntent(intent, input.geometry);
@@ -1605,6 +1868,35 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return false;
       }
       const target = laneTarget(lane);
+      const session = store.getSnapshot().session;
+      return updateSession(
+        Object.freeze({
+          focused: target,
+          ...projectSessionPart(session),
+          selection: Object.freeze([target]),
+          viewport: session.viewport,
+        }),
+        'runtime',
+      );
+    },
+
+    inspectDependency(dependencyId) {
+      if (disposed) return false;
+      const target = snapshot.selector.dependencies.find(
+        (dependency) => dependency.target.dependencyId === dependencyId,
+      )?.target;
+      if (target === undefined) return false;
+      const dependency = store
+        .getSnapshot()
+        .document.dependencies.find((candidate) => candidate.id === dependencyId);
+      const sourceOccurrence =
+        dependency === undefined
+          ? undefined
+          : snapshot.occurrenceCatalog.find(
+              (occurrence) => occurrence.taskId === dependency.fromTaskId,
+            );
+      dependencyFocusRestore =
+        sourceOccurrence === undefined ? undefined : taskTarget(sourceOccurrence);
       const session = store.getSnapshot().session;
       return updateSession(
         Object.freeze({
@@ -1679,6 +1971,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     panPointerMove,
 
     panPointerUp: panPointerEnd,
+
+    commitDependencyLink,
 
     pointerCancel(pointerId) {
       if (
@@ -1950,6 +2244,30 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             }),
           );
         }
+        if (
+          dependencyLink !== undefined &&
+          catalogOccurrence(dependencyLink.source) === undefined
+        ) {
+          dependencyLink = undefined;
+          setInteraction(
+            Object.freeze({
+              announcement:
+                'Dependency linking cancelled because its source is no longer available.',
+              status: 'idle',
+            }),
+          );
+        } else if (
+          dependencyLink?.candidate !== undefined &&
+          catalogOccurrence(dependencyLink.candidate) === undefined
+        ) {
+          dependencyLink = Object.freeze({
+            ...(dependencyLink.pointerType === undefined
+              ? {}
+              : { pointerType: dependencyLink.pointerType }),
+            source: dependencyLink.source,
+          });
+          publishDependencyLink();
+        }
       } finally {
         semanticSource = 'runtime';
       }
@@ -2039,6 +2357,26 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           status: 'idle',
         }),
       );
+      return true;
+    },
+
+    updateDependencyLink(viewKey) {
+      if (dependencyLink === undefined) return false;
+      const candidate = snapshot.selector.occurrences.find(
+        (occurrence) => occurrence.target.viewKey === viewKey,
+      )?.target;
+      if (candidate === undefined || candidate.taskId === dependencyLink.source.taskId) {
+        if (dependencyLink.candidate === undefined) return false;
+        dependencyLink = Object.freeze({
+          ...(dependencyLink.pointerType === undefined
+            ? {}
+            : { pointerType: dependencyLink.pointerType }),
+          source: dependencyLink.source,
+        });
+      } else {
+        dependencyLink = Object.freeze({ ...dependencyLink, candidate });
+      }
+      publishDependencyLink();
       return true;
     },
 

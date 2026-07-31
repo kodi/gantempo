@@ -492,23 +492,30 @@ describe('Gantt runtime store', () => {
       },
     });
 
-    expect(store.getSnapshot().session.selection.map((target) => target.viewKey)).toEqual([
-      'first',
-      'third',
-    ]);
+    expect(
+      store
+        .getSnapshot()
+        .session.selection.flatMap((target) =>
+          target.kind === 'dependency' ? [] : [target.viewKey],
+        ),
+    ).toEqual(['first', 'third']);
     store.setOccurrences([
       occurrence(first, 0, 10),
       occurrence(second, 0, 30),
       occurrence(third, 1, 12),
     ]);
     store.setOccurrences([occurrence(second, 0, 30), occurrence(third, 1, 12)]);
-    expect(store.getSnapshot().session.focused?.viewKey).toBe('second');
-    expect(store.getSnapshot().session.selection.map((target) => target.viewKey)).toEqual([
-      'third',
-    ]);
+    expect(store.getSnapshot().session.focused).toMatchObject({ viewKey: 'second' });
+    expect(
+      store
+        .getSnapshot()
+        .session.selection.flatMap((target) =>
+          target.kind === 'dependency' ? [] : [target.viewKey],
+        ),
+    ).toEqual(['third']);
 
     store.setOccurrences([occurrence(third, 1, 12)]);
-    expect(store.getSnapshot().session.focused?.viewKey).toBe('third');
+    expect(store.getSnapshot().session.focused).toMatchObject({ viewKey: 'third' });
     store.setOccurrences([]);
     expect(store.getSnapshot().session.focused).toBeUndefined();
     expect(store.getSnapshot().session.selection).toEqual([]);
@@ -557,7 +564,11 @@ describe('Gantt runtime store', () => {
     });
 
     expect(
-      store.getSnapshot().session.selection.map((target) => [target.kind, target.viewKey]),
+      store
+        .getSnapshot()
+        .session.selection.flatMap((target) =>
+          target.kind === 'dependency' ? [] : [[target.kind, target.viewKey]],
+        ),
     ).toEqual([
       ['lane', 'shared'],
       ['task', 'shared'],

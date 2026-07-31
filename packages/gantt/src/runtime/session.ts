@@ -27,6 +27,12 @@ export function cloneInteractionTarget(input: GanttInteractionTarget): GanttInte
     throw new TypeError('An interaction target must be a plain data object.');
   }
   const record = input as unknown as Record<string, unknown>;
+  if (record.kind === 'dependency') {
+    return Object.freeze({
+      dependencyId: requiredString(record.dependencyId, 'dependencyId'),
+      kind: 'dependency',
+    });
+  }
   if (record.kind === 'lane') {
     const laneId = optionalString(record, 'laneId').value;
     const resourceId = optionalString(record, 'resourceId').value;
@@ -38,7 +44,7 @@ export function cloneInteractionTarget(input: GanttInteractionTarget): GanttInte
     });
   }
   if (record.kind !== 'task') {
-    throw new TypeError('An interaction target kind must be lane or task.');
+    throw new TypeError('An interaction target kind must be dependency, lane, or task.');
   }
   const assignmentId = optionalString(record, 'assignmentId').value;
   const laneId = optionalString(record, 'laneId').value;
@@ -59,7 +65,9 @@ export function cloneInteractionTarget(input: GanttInteractionTarget): GanttInte
 }
 
 export function interactionTargetIdentity(target: GanttInteractionTarget): string {
-  return `${target.kind}\u0000${target.viewKey}`;
+  return target.kind === 'dependency'
+    ? `${target.kind}\u0000${target.dependencyId}`
+    : `${target.kind}\u0000${target.viewKey}`;
 }
 
 function targetEqual(
@@ -78,6 +86,9 @@ function targetEqual(
       previous.laneId === next.laneId &&
       previous.resourceId === next.resourceId
     );
+  }
+  if (previous.kind === 'dependency' && next.kind === 'dependency') {
+    return previous.dependencyId === next.dependencyId;
   }
   if (previous.kind !== 'task' || next.kind !== 'task') {
     return false;
@@ -169,26 +180,37 @@ export function reconcileSessionDocument(
   session: GanttSessionState,
   document: GanttDocument,
 ): GanttSessionState {
-  if (session.project === undefined) {
-    return session;
-  }
+  const dependencyIds = new Set(document.dependencies.map((dependency) => dependency.id));
+  const retainsTarget = (target: GanttInteractionTarget): boolean =>
+    target.kind !== 'dependency' || dependencyIds.has(target.dependencyId);
   const parentIds = new Set(
     document.tasks.flatMap((task) => (task.parentId === undefined ? [] : [task.parentId])),
   );
-  const collapsed = new Set(session.project.collapsedTaskIds);
-  const collapsedTaskIds = document.tasks
-    .filter((task) => parentIds.has(task.id) && collapsed.has(task.id))
-    .map((task) => task.id);
+  const collapsed = new Set(session.project?.collapsedTaskIds ?? []);
+  const collapsedTaskIds =
+    session.project === undefined
+      ? undefined
+      : document.tasks
+          .filter((task) => parentIds.has(task.id) && collapsed.has(task.id))
+          .map((task) => task.id);
+  const focused =
+    session.focused !== undefined && retainsTarget(session.focused) ? session.focused : undefined;
+  const selection = session.selection.filter(retainsTarget);
   if (
-    collapsedTaskIds.length === session.project.collapsedTaskIds.length &&
-    collapsedTaskIds.every((id, index) => id === session.project!.collapsedTaskIds[index])
+    focused === session.focused &&
+    selection.length === session.selection.length &&
+    (collapsedTaskIds === undefined ||
+      (collapsedTaskIds.length === session.project!.collapsedTaskIds.length &&
+        collapsedTaskIds.every((id, index) => id === session.project!.collapsedTaskIds[index])))
   ) {
     return session;
   }
   return Object.freeze({
-    ...(session.focused === undefined ? {} : { focused: session.focused }),
-    project: Object.freeze({ collapsedTaskIds: Object.freeze(collapsedTaskIds) }),
-    selection: session.selection,
+    ...(focused === undefined ? {} : { focused }),
+    ...(collapsedTaskIds === undefined
+      ? {}
+      : { project: Object.freeze({ collapsedTaskIds: Object.freeze(collapsedTaskIds) }) }),
+    selection: selection.length === 0 ? EMPTY_SELECTION : Object.freeze(selection),
     viewport: session.viewport,
   });
 }
@@ -230,7 +252,7 @@ export function normalizeOccurrences(
 }
 
 function laneViewKey(target: GanttInteractionTarget): string {
-  return target.kind === 'task' ? target.laneViewKey : target.viewKey;
+  return target.kind === 'task' ? target.laneViewKey : target.kind === 'lane' ? target.viewKey : '';
 }
 
 function nearestFocus(

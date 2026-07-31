@@ -27,7 +27,12 @@ export interface GanttTaskTarget {
   readonly viewKey: string;
 }
 
-export type GanttInteractionTarget = GanttLaneTarget | GanttTaskTarget;
+export interface GanttDependencyTarget {
+  readonly dependencyId: EntityId;
+  readonly kind: 'dependency';
+}
+
+export type GanttInteractionTarget = GanttDependencyTarget | GanttLaneTarget | GanttTaskTarget;
 
 export interface GanttViewportIntent {
   readonly verticalStart: number;

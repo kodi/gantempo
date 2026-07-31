@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first seven slices are complete.
+first eight slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-7 complete, Slice 8 next
+**Status:** `[-]` In progress; Slices 1-8 complete, Slice 9 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -730,6 +730,22 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 8. Dependencies now have canonical occurrence-
+  independent public targets, immutable selector summaries, normalized session
+  identity, route-independent selection/focus, and public path/marker/link-handle and
+  properties-slot contracts. Pointer, pen, and touch use offset 44px connection
+  handles; keyboard users press `L`, navigate eligible tasks, and press Enter or
+  Escape. Both paths create one finish-to-start command through the existing strict
+  graph, proposal, acknowledgement, history, persistence, interceptor, and diagnostic
+  lifecycle without moving dates. SVG paths and the complete nonvisual relationship
+  list support selection, inspection, update, and removal. The default bounded dialog
+  edits all four types plus optional elapsed lag; read-only and custom-slot paths are
+  covered. Rejection restores source focus, deletion restores canonical source focus,
+  and collapse/filter/virtualization/visual omission retain logical dependency focus.
+  Full `mise run ci` passed 81 files / 443 tests, 179 formatted files, 168 lint/type
+  files, and four package artifacts; the declaration is 50.78 kB. Slice 9 adaptive
+  scale, zoom, and fit-to-project is next.
 
 - 2026-07-31: Completed M5 Slice 7. One React-free routing kernel now maps every
   dependency type to semantic start/finish anchors, deterministic orthogonal channels,

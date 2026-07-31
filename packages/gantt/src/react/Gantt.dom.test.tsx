@@ -1317,7 +1317,9 @@ describe('Gantt React facade in a DOM environment', () => {
     });
 
     expect(ranges).toEqual([{ start: START + 0.7 * DAY, end: START + 7.7 * DAY }]);
-    expect(ref.current?.getSelection()[0]?.viewKey).toBe(selected?.viewKey);
+    expect(ref.current?.getSelection()[0]).toMatchObject({
+      viewKey: selected?.kind === 'dependency' ? undefined : selected?.viewKey,
+    });
     expect(ref.current?.canUndo()).toBe(false);
     expect(documentChanges).toBe(0);
     expect(

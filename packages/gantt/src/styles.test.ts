@@ -26,6 +26,10 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain('.gt-gantt__dependency-path');
     expect(stylesheet).toContain('.gt-gantt__dependency-hit');
     expect(stylesheet).toContain('.gt-gantt__dependency-continuation');
+    expect(stylesheet).toContain('.gt-gantt__dependency-preview');
+    expect(stylesheet).toContain('.gt-gantt__link-handle-hit');
+    expect(stylesheet).toContain('.gt-gantt__link-handle');
+    expect(stylesheet).toContain('cursor: crosshair');
     const interactionPreviewZIndex = Number(
       stylesheet.match(/\.gt-gantt__interaction-preview\)[^{]*\{[^}]*z-index: (\d+);/s)?.[1],
     );
