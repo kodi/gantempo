@@ -780,6 +780,20 @@ proposed canonical fraction. The visible `progress-handle`, its typed class hook
 the `progressing` class state are public; renderer hit geometry and enlarged
 coarse-pointer targets remain private.
 
+Applications may keep task details and editing chrome outside Gantt's overlay tree.
+`onTaskActivate` remains the display-intent seam. The additive
+`onTaskEditRequest` callback publishes one immutable, task-only
+`GanttTaskEditRequest` when the mutable chart's built-in context-menu
+`Edit properties` action is selected. Gantt closes the menu without restoring chart
+focus before publishing the request so the application can focus its own surface.
+The request does not open a package editor, dispatch a command, create history, or
+acknowledge a document change. Read-only controlled charts keep the menu action
+disabled, and consumers without the callback retain the existing properties/editor
+fallback. The exact request and consumer boundary is fixed by the
+[item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md)
+and proved by the
+[Interactive Custom integration plan](plans/2026-07-31-interactive-custom-integration-plan.md).
+
 ### 9.6 Subscriptions and React ownership
 
 The public API remains declarative in controlled and uncontrolled modes. Internally,

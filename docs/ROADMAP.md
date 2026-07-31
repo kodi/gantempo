@@ -304,6 +304,28 @@ rule coverage, zero overflow, a clean console, and 74 successful requests. Final
 tests, and four package artifacts. The accepted architecture and decision boundaries
 remain unchanged; M5 detailed planning is the next action.
 
+### Post-M4 Interactive Custom consumer integration
+
+**Status:** `[-]` Slice 1 complete; package seam next
+
+The
+[Interactive Custom integration plan](plans/2026-07-31-interactive-custom-integration-plan.md)
+adds a second controlled playground route at `/interactive-custom`. The page
+keeps the existing timeline, command/history, and controlled-document behavior, omits
+the persistence/API debug log, and renders task details below the chart in an
+application-owned display/edit panel.
+
+Current `onTaskActivate` behavior can open the panel in display mode. The built-in
+`Edit properties` task-menu action is hard-wired to Gantt's private overlay opener,
+however, and appended consumer menu items can dispatch commands but cannot publish an
+application edit request. Slice 1 accepts the narrow, task-only
+`GanttTaskEditRequest` / `onTaskEditRequest` callback. The action remains disabled for
+read-only controlled charts; on mutable charts it closes the menu without restoring
+chart focus, publishes one immutable request, and does not enter the command,
+history, persistence, or overlay lifecycle. Package/facade coverage is the next
+slice, followed by the custom consumer and desktop/narrow live browser verification.
+Slice 1 passed `mise run ci` with 67 test files and 348 tests.
+
 ### Post-M4 persistence entity-change projection
 
 **Status:** `[-]` Structured log implemented; narrow live gate pending
@@ -847,6 +869,33 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — Interactive Custom edit-request contract accepted
+
+- Accepted `/interactive-custom` and `Interactive Custom` as the separate route and
+  label while preserving `/interactive`.
+- Fixed the additive public contract as task-only
+  `GanttTaskEditRequest` / `onTaskEditRequest`, sourced only from the built-in context
+  menu.
+- Kept read-only controlled charts disabled and existing consumers on the current
+  editor fallback.
+- Fixed menu closure without chart-focus restoration before exact-once request
+  delivery so an application-owned panel can take focus.
+- Kept the request outside commands, history, persistence, acknowledgement, and
+  package overlay state. Slice 2 will publish and verify the package seam.
+
+### 2026-07-31 — Interactive Custom integration proposed
+
+- Planned `/interactive-custom` as a separate `Interactive Custom` playground
+  consumer while preserving `/interactive`.
+- Kept the controlled timeline, command/history, and direct-interaction proof, but
+  removed the persistence/API debug surface from the proposed page.
+- Confirmed that `onTaskActivate` is sufficient for application-owned display mode.
+- Recorded the missing public seam: the built-in `Edit properties` action directly
+  opens Gantt's private overlay and cannot currently hand edit intent to a site-owned
+  panel.
+- Proposed a narrow additive task edit-request callback and stopped before
+  implementation pending contract review.
 
 ### 2026-07-31 — Proportional documentation governance
 

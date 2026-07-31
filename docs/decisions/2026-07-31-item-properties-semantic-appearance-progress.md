@@ -192,13 +192,53 @@ and the destination has one canonical `laneId`; otherwise the control is read-on
 with a stable reason. Occurrence-level appearance and kind conversion remain
 deferred.
 
+### Allow application-owned task properties surfaces
+
+The built-in task context menu also supports a narrow application-owned edit-request
+seam:
+
+```ts
+export interface GanttTaskEditRequest {
+  readonly source: "context-menu";
+  readonly target: GanttTaskTarget;
+}
+
+export interface GanttProps {
+  readonly onTaskEditRequest?: (request: GanttTaskEditRequest) => void;
+}
+```
+
+When `onTaskEditRequest` is present, the mutable chart's built-in task menu exposes
+one `Edit properties` action even when neither `features.properties` nor
+`features.editor` is enabled. Selecting it closes the menu without restoring task
+focus, publishes one frozen request, and does not open `ItemProperties` or
+`TaskEditor`. This focus policy lets the application move focus into its own named
+surface. Pointer-opened, Context Menu key, and Shift+F10 menus share the same
+selection path and exact-once behavior.
+
+The request is task-only and its only accepted source is `context-menu`.
+`onTaskActivate` remains independent and is the application-owned display-mode seam.
+The callback does not make a read-only chart mutable: a controlled chart without
+`onDocumentChange` keeps the edit action disabled and never receives the request.
+Consumers without the callback retain the existing menu label, eligibility, editor,
+overlay, Escape, and focus-return behavior.
+
+This callback publishes UI intent, not a document mutation. Applications resolve the
+canonical task and placement from their acknowledged document and dispatch
+`task.update`, `placement.move`, or a transaction through `GanttHandle.dispatch`.
+The request itself never enters command interception, patches, history, persistence
+events, or the document-change lifecycle. Lane edit requests, externally controlled
+package overlays, and a public form-schema contract remain out of scope.
+
 ## Public API Impact
 
 The appendix adds canonical appearance types, registry types and props, the
 item-properties slot/value types, and the narrow additive progress interaction
-members named above. Existing root imports remain the only public boundary. The
-packed declaration must not expose private resolver, diagnostic deduplication, form
-reducer, scene-cache, or hit-test implementations.
+members named above. The post-appendix consumer proof additionally adds
+`GanttTaskEditRequest` and `GanttProps.onTaskEditRequest` for application-owned task
+editing. Existing root imports remain the only public boundary. The packed
+declaration must not expose private resolver, diagnostic deduplication, form reducer,
+scene-cache, or hit-test implementations.
 
 ## Consequences
 
@@ -212,6 +252,8 @@ reducer, scene-cache, or hit-test implementations.
   framework.
 - Progress rendering, fields, gestures, history, and accessibility share one numeric
   and command contract.
+- Applications can own task details/edit presentation without owning Gantt's context
+  menu or introducing another mutation path.
 
 ## Revisit Triggers
 
@@ -226,3 +268,4 @@ document styling.
 - [UI and theming](../UI_THEMING.md)
 - [Roadmap](../ROADMAP.md#m4-appendix-item-properties-semantic-appearance-and-progress)
 - [Implementation plan](../plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
+- [Interactive Custom integration plan](../plans/2026-07-31-interactive-custom-integration-plan.md)
