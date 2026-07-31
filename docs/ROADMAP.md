@@ -466,6 +466,23 @@ renders only its title while retaining `aria-pressed="true"`,
 overflow, or application console warning/error remained. Chrome DevTools was
 profile-locked, so no live request-ledger claim is made.
 
+### Post-M4 default-tooltip usability
+
+**Status:** `[-]` Implemented; live verification pending
+
+The
+[default-tooltip usability plan](plans/2026-07-31-default-tooltip-usability-plan.md)
+replaces raw ISO timestamps with a deterministic human calendar range and compact
+duration while preserving the public tooltip summary, replacement slot, bindings,
+overlay ownership, class hooks, and accessibility relationship.
+
+Focused customization/stylesheet coverage passed 2 files / 12 tests. The complete CI
+gate passed 67 files / 348 tests and all four artifacts, and the production
+playground transformed 1,918 modules. Chrome DevTools remained profile-locked, and
+the built-in Browser fallback timed out after bounded documented recovery, so live
+desktop/narrow geometry, accessibility-tree, overflow, console, and request evidence
+remain pending and are not claimed.
+
 ### Post-M4 overlay-boundary hardening
 
 **Status:** `[x]` Complete and verified

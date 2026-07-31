@@ -58,3 +58,13 @@ describe('lane properties trigger stylesheet', () => {
     );
   });
 });
+
+describe('default tooltip stylesheet', () => {
+  it('lays out a compact human schedule and duration badge', () => {
+    expect(stylesheet).toContain('.gt-gantt__tooltip-schedule');
+    expect(stylesheet).toContain('.gt-gantt__tooltip-schedule svg');
+    expect(stylesheet).toContain('.gt-gantt__tooltip-duration');
+    expect(stylesheet).toContain('min-width: min(210px, calc(100% - 16px))');
+    expect(stylesheet).toContain('border-radius: 999px');
+  });
+});

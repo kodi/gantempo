@@ -37,6 +37,58 @@ interface DefaultItemPropertiesProps extends GanttItemPropertiesProps {
   readonly taskKind?: string;
 }
 
+const TOOLTIP_MONTH_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+});
+const TOOLTIP_FULL_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+  year: 'numeric',
+});
+const TOOLTIP_DURATION_FORMATTER = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 1,
+});
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+function formatTooltipDateRange(start: number, end: number): string {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (
+    startDate.getUTCFullYear() === endDate.getUTCFullYear() &&
+    startDate.getUTCMonth() === endDate.getUTCMonth() &&
+    startDate.getUTCDate() === endDate.getUTCDate()
+  ) {
+    return TOOLTIP_FULL_DATE_FORMATTER.format(startDate);
+  }
+  if (startDate.getUTCFullYear() === endDate.getUTCFullYear()) {
+    return `${TOOLTIP_MONTH_DAY_FORMATTER.format(startDate)} – ${TOOLTIP_MONTH_DAY_FORMATTER.format(endDate)}, ${endDate.getUTCFullYear()}`;
+  }
+  return `${TOOLTIP_FULL_DATE_FORMATTER.format(startDate)} – ${TOOLTIP_FULL_DATE_FORMATTER.format(endDate)}`;
+}
+
+function formatTooltipDuration(start: number, end: number): string {
+  const duration = Math.max(0, end - start);
+  if (duration === 0) {
+    return 'Instant';
+  }
+  if (duration < MINUTE) {
+    return '< 1 min';
+  }
+  const [value, unit] =
+    duration >= DAY
+      ? ([duration / DAY, 'day'] as const)
+      : duration >= HOUR
+        ? ([duration / HOUR, 'hr'] as const)
+        : ([duration / MINUTE, 'min'] as const);
+  const formatted = TOOLTIP_DURATION_FORMATTER.format(value);
+  return `${formatted} ${unit}${unit === 'day' && formatted !== '1' ? 's' : ''}`;
+}
+
 export function DefaultTaskContent({ task }: GanttTaskContentProps): ReactElement {
   return <span>{task.title}</span>;
 }
@@ -56,9 +108,13 @@ export function DefaultTooltip({ bindings, task }: GanttTooltipProps): ReactElem
   return (
     <div {...bindings}>
       <strong>{task.title}</strong>
-      <span>
-        {new Date(task.start).toISOString()} – {new Date(task.end).toISOString()}
-      </span>
+      <div className="gt-gantt__tooltip-schedule" data-gt-part="tooltip-schedule">
+        <CalendarClock aria-hidden="true" />
+        <span data-gt-part="tooltip-range">{formatTooltipDateRange(task.start, task.end)}</span>
+        <span className="gt-gantt__tooltip-duration" data-gt-part="tooltip-duration">
+          {formatTooltipDuration(task.start, task.end)}
+        </span>
+      </div>
     </div>
   );
 }

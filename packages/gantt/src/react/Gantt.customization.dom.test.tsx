@@ -183,7 +183,12 @@ describe('Gantt customization surfaces', () => {
     const task = screen.getByRole('button', { name: /Task A/ });
     task.focus();
 
-    expect((await screen.findByRole('tooltip')).textContent).toContain('Task A');
+    const tooltip = await screen.findByRole('tooltip');
+    expect(within(tooltip).getByText('Task A')).toBeTruthy();
+    expect(within(tooltip).getByText('Jul 30 – Jul 31, 2026')).toBeTruthy();
+    expect(within(tooltip).getByText('1 day')).toBeTruthy();
+    expect(tooltip.textContent).not.toContain('T00:00:00.000Z');
+    expect(tooltip.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
     await user.keyboard('{Enter}');
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit Task A' });

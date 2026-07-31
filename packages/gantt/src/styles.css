@@ -501,15 +501,49 @@
 
   :where(.gt-gantt__tooltip) {
     display: grid;
-    gap: 3px;
-    padding: 8px 10px;
+    min-width: min(210px, calc(100% - 16px));
+    gap: 7px;
+    padding: 10px 12px;
     font-size: 10px;
     transform: translateX(-50%);
+  }
+
+  :where(.gt-gantt__tooltip strong) {
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   :where(.gt-gantt__tooltip span) {
     color: var(--gt-color-text-muted);
     font-size: 9px;
+  }
+
+  :where(.gt-gantt__tooltip-schedule) {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  :where(.gt-gantt__tooltip-schedule svg) {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    color: var(--gt-color-text-muted);
+    stroke-width: 1.8;
+  }
+
+  :where(.gt-gantt__tooltip-duration) {
+    margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 999px;
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface-muted);
+    font-weight: 750;
+    white-space: nowrap;
   }
 
   :where(.gt-gantt__context-menu) {
