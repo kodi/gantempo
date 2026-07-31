@@ -27,6 +27,7 @@ describe('semantic appearance stylesheet', () => {
   });
 
   it('retains non-color task states and system media fallbacks', () => {
+    expect(stylesheet).toContain('--gt-color-text-muted: #69736c');
     expect(stylesheet).toContain("[data-selected='true']");
     expect(stylesheet).toContain("[data-rejected='true']");
     expect(stylesheet).toContain("[data-progressing='true']");

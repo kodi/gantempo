@@ -125,7 +125,7 @@ Detailed completion evidence is recorded in
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
-| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A6 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
+| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -148,7 +148,7 @@ M3 view/layout/viewport kernel [done]
 M4 interaction runtime [done]
   |
   v
-M4 item-properties appendix [active]
+M4 item-properties appendix [done]
   |
   v
 M5 basic project Gantt
@@ -163,15 +163,14 @@ M7 hardening/release
 The completed M0 vertical slice proves the renderer direction, M1 and M2 complete
 architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
-timeline navigation interaction correction is complete. The bounded item-properties,
-semantic-color, and progress appendix is next; M5 remains queued after that additive
-post-M4 work.
+timeline navigation interaction correction and the bounded item-properties,
+semantic-color, and progress appendix are complete. M5 detailed planning is next.
 
 ## Current Focus
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[-]` Appendix Slice A6 complete; A7 consumer/final gates next
+**Status:** `[x]` Complete; M5 detailed planning next
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -276,8 +275,28 @@ tests. The complete gate passed 66 files / 343 tests plus formatting, lint/types
 four packed artifacts; the production playground build passed. Chrome DevTools
 verified desktop keyboard commit/persistence/Undo/focus plus live pen preview and
 narrow 44x24 px coarse touch targeting with cancellation, no overflow, a clean
-console, and 76 successful or cache-valid requests. Appendix Slice A7 owns the final
-consumer, compatibility, artifact, SSR, and live release matrix.
+console, and 76 successful or cache-valid requests.
+
+Appendix Slice A7 closes the milestone with root-import controlled, runtime-owned,
+and read-only playground consumers. The main route proves lane inheritance, a
+repeated task with different lane variants, explicit task precedence, unknown
+fallback, and live theme switching. Controlled field editing commits progress,
+appearance, and lane movement in one transaction and proves deletion plus Undo/Redo;
+the runtime-owned resource view commits through async policy and explains why its
+derived occurrence cannot persist a lane move.
+
+The clean packed-consumer gate found and corrected a missing React DOM peer declaration
+for the already-existing portal import. The final tarball contains only four built
+artifacts plus metadata, installs in a fresh temporary consumer, imports all 11 runtime
+exports, and resolves the stylesheet subpath. Production playground and 46 focused
+SSR/hydration tests pass. A live narrow Lighthouse finding raised the light muted text
+token from 3.96:1 to the 4.5:1 normal-text threshold; the repeated accessibility score
+is 100. Desktop/narrow Chrome checks pass modal containment/isolation, read-only
+inspection, 44x24 px coarse progress targeting, reduced-motion behavior, forced-colors
+rule coverage, zero overflow, a clean console, and 74 successful requests. Final
+`mise run ci` passes 158 formatted files, 147 lint/type files, 67 test files / 346
+tests, and four package artifacts. The accepted architecture and decision boundaries
+remain unchanged; M5 detailed planning is the next action.
 
 ### Post-M4 persistence entity-change projection
 
@@ -429,7 +448,7 @@ across 49 files.
 
 ### M4 appendix: Item properties, semantic color, and progress
 
-**Status:** `[ ]` Planned; Appendix Slice A1 is the next action
+**Status:** `[x]` Complete; M5 detailed planning is the next action
 
 **Target outcome**
 
@@ -447,19 +466,18 @@ command, event, accessibility, customization, and package boundaries.
 
 **Next action**
 
-Execute Appendix Slice A1 of the
-[item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md).
-Freeze the canonical appearance/description/progress contract and exact command,
-editor, rendering, codec, and package implications before implementation. M5 detailed
-planning follows the verified appendix.
+Create the detailed M5 basic-project-Gantt plan. The completed
+[item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
+contains the appendix implementation and final evidence.
 
-**Queued M4 appendix**
+**Completed M4 appendix**
 
-The base-M4 prerequisite has closed. The
+The
 [item properties, semantic color, and progress appendix](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
-is the selected next action and adds
-task/lane semantic variants, coordinated progress rendering/editing, and a bounded
-standard properties surface without reopening the completed base-M4 contract.
+adds task/lane semantic variants, coordinated progress rendering/editing, and a
+bounded standard properties surface without reopening the completed base-M4
+contract. Its controlled, runtime-owned, read-only, package, SSR, browser,
+accessibility, console, and network gates are complete.
 
 **Adjacent proof complete**
 
@@ -747,6 +765,27 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — M4 item-properties appendix complete
+
+- Completed Appendix Slice A7 and the final automated/package/SSR and
+  browser/accessibility gates.
+- Added root-import controlled, runtime-owned, and read-only consumer proofs for
+  properties, semantic appearance precedence, repeated tasks, unknown fallback,
+  progress, persisted lane movement, deletion, Undo/Redo, and async acknowledgement.
+- Corrected the package manifest to declare the React DOM 18/19 peer required by the
+  existing portal import after a fresh tarball consumer exposed the omission.
+- Corrected light muted helper/meta text from 3.96:1 to the normal-text threshold;
+  the repeated narrow Lighthouse accessibility score is 100.
+- Recorded the `vp pack` repository-root and `npm pack` package-directory cwd
+  constraints. The corrected tarball contains four artifacts plus metadata and
+  installs/imports cleanly.
+- Final Chrome evidence covers desktop/narrow containment, modal isolation, live
+  light/dark/high-contrast switching, a 44x24 px touch progress target,
+  reduced-motion behavior, forced-colors rules, zero overflow, no console issues, and
+  74 successful requests.
+- Full `mise run ci` passes 158 formatted files, 147 lint/type files, 67 test files /
+  346 tests, and four package artifacts. M5 detailed planning is next.
 
 ### 2026-07-31 — Persistence entity-change projection started
 

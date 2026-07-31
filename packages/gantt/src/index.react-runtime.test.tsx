@@ -1,6 +1,7 @@
 import { createRef } from 'react';
 import { describe, expect, it } from 'vite-plus/test';
 
+import packageMetadata from '../package.json' with { type: 'json' };
 import {
   Gantt,
   type GanttClassNames,
@@ -35,6 +36,13 @@ const common = {
 } as const;
 
 describe('public React runtime facade', () => {
+  it('declares every external React runtime import as a compatible peer', () => {
+    expect(packageMetadata.peerDependencies).toEqual({
+      react: '^18.3.0 || ^19.0.0',
+      'react-dom': '^18.3.0 || ^19.0.0',
+    });
+  });
+
   it('exposes controlled and uncontrolled ownership with the narrow handle and selector types', () => {
     const session: GanttSessionState = {
       selection: [],

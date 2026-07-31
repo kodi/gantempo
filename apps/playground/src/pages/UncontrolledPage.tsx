@@ -13,6 +13,7 @@ import {
   type TimeRange,
 } from '@gantempo/gantt';
 import { useMemo, useRef, useState, type ReactElement } from 'react';
+import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
 
 const DAY = 24 * 60 * 60 * 1000;
 const START = Date.UTC(2026, 6, 29);
@@ -47,8 +48,10 @@ const API_DOCUMENT = {
   schemaVersion: 1,
   tasks: [
     {
+      appearance: { variant: 'accent' },
       fields: { owner: 'application-mapper' },
       id: 'task-mapped',
+      progress: 0.35,
       schedule: {
         end: '2026-08-04T00:00:00Z',
         mode: 'instant',
@@ -58,6 +61,7 @@ const API_DOCUMENT = {
     },
     {
       id: 'task-blocked',
+      progress: 0.6,
       schedule: {
         end: '2026-08-10T00:00:00Z',
         mode: 'instant',
@@ -489,6 +493,7 @@ export function UncontrolledPage(): ReactElement {
         </div>
 
         <Gantt
+          appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
           classNames={{
             laneHeader: 'interactive-column-cell',
             task: ({ pending }) => (pending ? 'uncontrolled-task--pending' : undefined),
@@ -515,7 +520,7 @@ export function UncontrolledPage(): ReactElement {
           ]}
           defaultDocument={INITIAL_DOCUMENT}
           defaultSession={DEFAULT_SESSION}
-          features={{ contextMenu: true, editor: true, tooltip: true }}
+          features={{ contextMenu: true, properties: true, tooltip: true }}
           interactionMappers={interactionMappers}
           interactionSnap={{ anchor: START, step: DAY }}
           interceptors={interceptors}
@@ -567,8 +572,10 @@ export function UncontrolledPage(): ReactElement {
       <p className="page-note">
         The resource view is derived. Cross-resource movement is therefore rejected for the
         policy-locked task with an application diagnostic; the mapped task becomes one explicit
-        move-plus-assignment transaction. The parsed all-day record remains in the canonical model
-        but does not become an instant task occurrence in M4.
+        move-plus-assignment transaction. Activate either rendered task for runtime-owned
+        properties; the derived lane is inspectable but cannot be persisted as a placement. Drag the
+        progress marker or press P for keyboard progress through the same async policy and history.
+        The parsed all-day record remains canonical but is not coerced into an instant occurrence.
       </p>
     </div>
   );

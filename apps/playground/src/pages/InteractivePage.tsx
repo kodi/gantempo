@@ -501,10 +501,11 @@ export function InteractivePage(): ReactElement {
       </section>
 
       <p className="page-note">
-        Drag task bodies or edges, or use arrows to navigate and Space to select. Press M to move,
-        S/E to resize, N to create, Delete to remove, Enter to commit or activate, Escape to cancel,
-        and the platform undo/redo shortcuts for history. Persisted cross-lane movement becomes one
-        request containing both the task and placement changes.
+        Activate a task or lane to inspect its standard properties. Drag task bodies, edges, or the
+        progress marker; press P for 1-point progress changes, Shift for 10, and Home/End for
+        boundaries. M moves, S/E resizes, N creates, Delete removes, and platform shortcuts
+        undo/redo. Every accepted field, direct, keyboard, lane, and task edit appears as the same
+        concise persistence request.
       </p>
     </div>
   );

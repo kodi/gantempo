@@ -1,6 +1,6 @@
 # M4 Appendix: Item Properties, Semantic Color, and Progress Plan
 
-Status: Planned; starts only after the base M4 plan and its final gates are complete
+Status: Complete
 Date: 2026-07-30
 Milestone: M4 appendix
 
@@ -657,7 +657,7 @@ The numeric field path and progress geometry are proven first.
 
 ### Appendix Slice A7: Prove consumers and close the appendix
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -809,9 +809,9 @@ Resolved in Appendix Slice A1:
 - [x] Appendix Slice A4: Render accessible semantic color and progress
 - [x] Appendix Slice A5: Add task and lane properties surfaces
 - [x] Appendix Slice A6: Add direct and keyboard progress editing
-- [ ] Appendix Slice A7: Prove consumers and close the appendix
-- [ ] Final automated/package/SSR gate
-- [ ] Final browser/accessibility gate
+- [x] Appendix Slice A7: Prove consumers and close the appendix
+- [x] Final automated/package/SSR gate
+- [x] Final browser/accessibility gate
 
 ## Working Notes
 
@@ -1007,11 +1007,63 @@ Resolved in Appendix Slice A1:
   marker; touch preview/cancel kept canonical progress at 80%, and the document had
   no horizontal overflow. The console had no warnings/errors/issues and all 76
   inspected requests returned 200 or cache-valid 304 responses.
+- 2026-07-31: Appendix Slice A7 extends the root-import playground proofs rather than
+  adding another consumer-only adapter. The read-only `/` scenario now renders the
+  same task in two lanes with inherited `accent` and `warning` variants, an explicit
+  task override, and one unavailable canonical ID with one diagnostic. The controlled
+  `/interactive` and runtime-owned `/uncontrolled` routes expose the standard
+  properties and progress surfaces; the resource view explicitly explains why its
+  derived occurrence has no persisted lane selector. README documents the canonical
+  fields, precedence, unknown fallback, custom slot, read-only inspection, and
+  field/direct/keyboard progress paths. Occurrence-level appearance remains deferred
+  because the accepted appendix persists task and lane references only.
+- 2026-07-31: The first release-facing package commands exposed two cwd constraints:
+  `vp pack` resolves its entry from the repository root, while `npm pack` must run
+  inside `packages/gantt`. Rerunning each from its owning directory succeeded. The
+  first real temporary-consumer import then found that the ESM bundle imports
+  `react-dom` for portals while the package declared only `react` as a peer. The
+  manifest and lockfile now declare matching React DOM 18/19 peer support, and a
+  focused package-metadata regression passed. This fixes package metadata only; it
+  does not alter the React runtime or public facade.
+- 2026-07-31: Packed artifact inspection produced exactly `index.js`, its source map,
+  CSS, declarations, and package metadata. A fresh temporary npm consumer installed
+  the tarball with its React peers, imported all 11 runtime exports, and resolved the
+  stylesheet subpath. Declarations export only the accepted properties, appearance,
+  and progress facade; renderer registry, appearance resolver, hit-test intent, and
+  coarse-target geometry remain private. The package measured 380.59 kB JavaScript,
+  791.21 kB source map, 26.77 kB CSS, and 44.31 kB declarations before compression.
+  The production playground built successfully, and the focused SSR/hydration
+  regression passed 3 files / 46 tests.
+- 2026-07-31: Chrome DevTools verified `/` and `/interactive` at 1440x1000 and
+  `/uncontrolled` at 1440x1000 plus 390x844. The read-only surface exposed seven task
+  occurrences, inherited `accent`/`warning` paint for the repeated task, one
+  unresolved fallback, live light/dark/high-contrast theme changes, and a fully
+  disabled inspection dialog. The controlled surface committed one field transaction
+  that changed progress 80% to 70%, task appearance, and persisted lane, then proved
+  delete, Undo, Redo, acknowledgement, and concise persistence rows. The runtime-owned
+  surface committed progress 35% to 40% after async policy and exposed the derived-lane
+  reason. The narrow chart stayed within 360 px with no document overflow, used a
+  44x24 px coarse progress hit target around a 2 px marker, and contained the modal
+  within 370x814 px with background isolation and named focus.
+- 2026-07-31: The first narrow Lighthouse snapshot found the light muted helper/meta
+  token at 3.96:1. The shared package and playground light token now use `#69736c`,
+  focused style/consumer checks pass, and the repeated snapshot scored 100 for
+  accessibility. Live reduced-motion preference was active and produced zero-duration
+  editor transitions. Chrome DevTools cannot activate forced-colors through its
+  available emulation surface; live stylesheet inspection found the 12-rule
+  forced-colors block including task progress/marker rules, while the focused CSS
+  regression verifies `Canvas`, `Highlight`, non-color states, and transition
+  removal. Console warnings/errors/issues were empty and all 74 final requests
+  returned 200.
+- 2026-07-31: Architecture and the accepted decision were reviewed after the package
+  and contrast deviations; neither changes the intended boundary or release
+  contract, so no architecture/decision revision is required. The theming
+  accessibility contract now fixes the 4.5:1 normal-text expectation for small muted
+  copy. The complete pre-commit `mise run ci` passed 158 formatted files, 147
+  lint/type files, 67 test files / 346 tests, and all four package artifacts.
 
 ## Next Slice
 
-Begin Appendix Slice A7 by completing the controlled and runtime-owned consumer
-proofs through root imports, documenting field/direct/keyboard progress and
-appearance precedence in the playground, and closing the compatibility, packed
-artifact, SSR, responsive, accessibility, forced-colors, reduced-motion, console,
-network, and final release gates.
+No appendix slice remains. Create the detailed M5 basic-project-Gantt plan before
+starting hierarchy, summary, milestone, dependency, zoom, filtering, localization, or
+additional SSR implementation.

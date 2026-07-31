@@ -476,6 +476,11 @@ Built-in themes must preserve:
 - usable touch and resize targets at each density;
 - state communication that does not depend on color alone.
 
+Small helper, metadata, and optional-field text must meet the normal-text 4.5:1
+contrast threshold against every built-in surface. The default light
+`--gt-color-text-muted` value is selected against the editor surface with that
+threshold, not as a decorative-text exemption.
+
 Development diagnostics should detect missing required tokens, invalid values, and
 obvious contrast or transparent-focus failures. Custom themes remain the consumer's
 responsibility, but the library provides a theme test fixture covering all important

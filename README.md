@@ -15,7 +15,8 @@ import '@gantempo/gantt/styles.css';
 - [tsdown](https://tsdown.dev/) through `vp pack` for library bundles
 - [mise](https://mise.jdx.dev/) for the Node.js runtime
 - pnpm pinned through the workspace `packageManager` field
-- React 19 for development, with React 18 and 19 supported as peer versions
+- React and React DOM 19 for development, with React and React DOM 18/19 supported as
+  peer versions
 - TypeScript 7
 
 ## Setup
@@ -342,6 +343,98 @@ Built-in movement, resizing, and editing apply only to unsegmented instant sched
 All-day schedules remain canonical model records but do not produce instant bars and
 are never coerced into instants; calendar-aware rendering and all-day interaction
 belong to a later scheduling layer.
+
+### Item properties, semantic appearance, and progress
+
+Tasks and lanes may persist one semantic appearance ID. The instance registry maps
+those IDs to coordinated task, progress, text, border, and restrained lane tokens;
+documents never store raw colors or theme objects. An explicit task appearance
+follows every occurrence and overrides the lane default. Without that override, the
+same task may inherit a different appearance in each lane:
+
+```tsx
+import { Gantt, type GanttAppearanceVariantOption, type GanttDocument } from '@gantempo/gantt';
+
+const appearanceVariants = [
+  {
+    id: 'delivery',
+    label: 'Delivery',
+    tokens: {
+      'lane.accent': '#2563eb',
+      'task.fill': '#3b82f6',
+      'task.progressFill': '#1e40af',
+      'task.text': '#ffffff',
+    },
+  },
+  {
+    id: 'risk',
+    label: 'At risk',
+    tokens: {
+      'lane.accent': '#b45309',
+      'task.fill': '#f59e0b',
+      'task.progressFill': '#92400e',
+      'task.text': '#111827',
+    },
+  },
+] satisfies readonly GanttAppearanceVariantOption[];
+
+const document: GanttDocument = {
+  schemaVersion: 1,
+  resources: [],
+  assignments: [],
+  dependencies: [],
+  lanes: [
+    { id: 'build', title: 'Build', appearance: { variant: 'delivery' } },
+    { id: 'release', title: 'Release', appearance: { variant: 'risk' } },
+  ],
+  tasks: [
+    {
+      id: 'handoff',
+      kind: 'task',
+      title: 'Handoff',
+      description: 'Prepare the release handoff.',
+      progress: 0.65,
+      segments: [],
+      schedule: { mode: 'instant', start, end },
+    },
+  ],
+  placements: [
+    { id: 'handoff-build', taskId: 'handoff', laneId: 'build' },
+    { id: 'handoff-release', taskId: 'handoff', laneId: 'release' },
+  ],
+};
+
+<Gantt
+  appearanceVariants={appearanceVariants}
+  document={document}
+  features={{ properties: true }}
+  onDocumentChange={acceptCandidate}
+  range={range}
+  tickAnchor={range.start}
+  tickInterval={WEEK}
+  timeZone="UTC"
+/>;
+```
+
+Activating a task or persisted lane opens the standard properties surface. Task
+fields cover title, description, instant start/end, elapsed duration, progress,
+appearance, an unambiguous persisted lane, and deletion; lane fields cover title and
+appearance. IDs, task kind, and linked resource identity remain read-only.
+`slots.ItemProperties` may replace the complete presentation through
+`GanttItemPropertiesProps`, but receives frozen values and lifecycle callbacks—not a
+mutable document or private runtime.
+
+Progress remains canonical task data in `0..1`. The field displays integer
+percentages. Drag the visible progress marker with mouse, pen, or touch, or focus a
+task and press `P`: arrows adjust one percentage point, `Shift` plus an arrow adjusts
+ten, and `Home`/`End` propose 0/100. `Enter` commits exactly one `task.update`;
+`Escape` cancels. Milestone and summary progress is read-only. Unknown valid
+appearance IDs survive round trips and render through deterministic fallback while
+remaining visible as unavailable in the properties picker.
+
+Supplying `document` without `onDocumentChange` creates a read-only chart: activation
+still opens inspection, but mutation controls and direct progress editing are
+disabled.
 
 ### Overlay boundaries
 

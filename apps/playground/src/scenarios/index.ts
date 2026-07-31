@@ -88,6 +88,7 @@ const mainDocument: GanttDocument = {
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 9), end: Date.UTC(2026, 7, 20) },
     },
     {
+      appearance: { variant: 'customer:unavailable' },
       id: 'qa',
       kind: 'task',
       progress: 0.2,
@@ -107,6 +108,7 @@ const mainDocument: GanttDocument = {
   ],
   placements: [
     { id: 'place-requirements', taskId: 'requirements', laneId: 'discovery' },
+    { id: 'place-requirements-release', taskId: 'requirements', laneId: 'release' },
     { id: 'place-wireframes', taskId: 'wireframes', laneId: 'design' },
     { id: 'place-review', taskId: 'review', laneId: 'design' },
     { id: 'place-build', taskId: 'build', laneId: 'delivery' },
