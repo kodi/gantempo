@@ -1,5 +1,5 @@
 import type { Diagnostic } from '../model/diagnostics';
-import type { GanttDocument } from '../model/types';
+import type { EntityId, GanttDocument } from '../model/types';
 import type {
   DocumentCollection,
   DomainRecordByCollection,
@@ -56,6 +56,10 @@ export interface GanttMeasuredViewportState {
   readonly verticalStart: number;
 }
 
+export interface GanttProjectSessionState {
+  readonly collapsedTaskIds: readonly EntityId[];
+}
+
 export type GanttRuntimeUpdateScheduler = (update: () => void) => (() => void) | undefined | void;
 
 export interface GanttRuntimeViewportOptions {
@@ -66,6 +70,7 @@ export interface GanttRuntimeViewportOptions {
 
 export interface GanttSessionState {
   readonly focused?: GanttInteractionTarget;
+  readonly project?: GanttProjectSessionState;
   readonly selection: readonly GanttInteractionTarget[];
   readonly viewport: GanttViewportIntent;
 }

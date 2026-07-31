@@ -20,7 +20,7 @@ import {
   type RefAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { EllipsisVertical } from 'lucide-react';
+import { ChevronRight, EllipsisVertical } from 'lucide-react';
 
 import type { GanttCommand } from '../commands/types';
 import {
@@ -263,6 +263,15 @@ function lanePropertiesTriggerStyle(y: number, laneHeight: number): CSSPropertie
   };
 }
 
+function branchTriggerStyle(y: number, laneHeight: number, depth: number): CSSProperties {
+  const height = Math.min(28, Math.max(24, laneHeight - 12));
+  return {
+    height,
+    left: 8 + depth * 16,
+    top: y + (laneHeight - height) / 2,
+  };
+}
+
 function appearanceStyle(
   appearance: EffectiveAppearancePrimitive | undefined,
 ): GanttAppearanceStyle | undefined {
@@ -314,17 +323,35 @@ function inspectionSelectionKey(
 }
 
 function taskSummary(task: TaskBarPrimitive): GanttTaskSummary {
+  const project = task.presentation.project;
+  const summary = task.presentation.summary;
   return Object.freeze({
+    ...(project?.depth === undefined ? {} : { depth: project.depth }),
+    ...(summary === undefined ? {} : { descendantCount: summary.descendantCount }),
     end: task.end,
+    ...(project?.expanded === undefined ? {} : { expanded: project.expanded }),
+    ...(project?.filterMatch === undefined ? {} : { filterMatch: project.filterMatch }),
+    ...(project?.hasChildren === undefined ? {} : { hasChildren: project.hasChildren }),
+    intervalSource: task.presentation.intervalSource,
+    kind: task.presentation.kind,
+    ...(task.progress === undefined ? {} : { progress: task.progress.value }),
+    ...(summary === undefined ? {} : { resolvedDescendantCount: summary.resolvedDescendantCount }),
     start: task.start,
     target: taskTarget(task),
     title: task.title,
+    ...(summary === undefined
+      ? {}
+      : { unresolvedDescendantCount: summary.unresolvedDescendantCount }),
     ...(task.appearance?.variant === undefined ? {} : { variant: task.appearance.variant }),
   });
 }
 
 function laneSummary(lane: GanttReactRuntimeSnapshot['scene']['lanes'][number]): GanttLaneSummary {
   return Object.freeze({
+    ...(lane.project?.depth === undefined ? {} : { depth: lane.project.depth }),
+    ...(lane.project?.expanded === undefined ? {} : { expanded: lane.project.expanded }),
+    ...(lane.project?.filterMatch === undefined ? {} : { filterMatch: lane.project.filterMatch }),
+    ...(lane.project?.hasChildren === undefined ? {} : { hasChildren: lane.project.hasChildren }),
     target: Object.freeze({
       kind: 'lane' as const,
       ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
@@ -429,8 +456,11 @@ function taskPropertiesValue(
     return undefined;
   }
   const schedule =
-    record.schedule?.mode === 'instant' && task.segmentId === undefined
-      ? { end: record.schedule.end, start: record.schedule.start }
+    record.schedule?.mode === 'instant' && task.segmentId === undefined && record.kind !== 'summary'
+      ? {
+          end: record.kind === 'milestone' ? record.schedule.start : record.schedule.end,
+          start: record.schedule.start,
+        }
       : {};
   return Object.freeze({
     ...(record.appearance === undefined ? {} : { appearance: record.appearance }),
@@ -438,11 +468,14 @@ function taskPropertiesValue(
     ...schedule,
     kind: 'task',
     ...(task.laneId === undefined ? {} : { laneId: task.laneId }),
+    ...(record.order === undefined ? {} : { order: record.order }),
+    ...(record.parentId === undefined ? {} : { parentId: record.parentId }),
     ...(task.placementId === undefined ? {} : { placementId: task.placementId }),
     ...(record.kind !== 'task' || record.progress === undefined
       ? {}
       : { progress: record.progress }),
     taskId: record.id,
+    taskKind: record.kind,
     title: record.title,
   });
 }
@@ -494,7 +527,9 @@ function validateItemPropertiesValue(
     (value.start === undefined) !== (value.end === undefined) ||
     (value.start !== undefined &&
       value.end !== undefined &&
-      (!Number.isFinite(value.start) || !Number.isFinite(value.end) || value.end <= value.start))
+      (!Number.isFinite(value.start) ||
+        !Number.isFinite(value.end) ||
+        (value.taskKind === 'milestone' ? value.end !== value.start : value.end <= value.start)))
   ) {
     return 'End must be later than start.';
   }
@@ -503,6 +538,20 @@ function validateItemPropertiesValue(
     (!Number.isFinite(value.progress) || value.progress < 0 || value.progress > 1)
   ) {
     return 'Progress must be between 0% and 100%.';
+  }
+  if (value.order !== undefined && !Number.isFinite(value.order)) {
+    return 'Order must be a finite number.';
+  }
+  if (
+    value.parentId !== undefined &&
+    !document.tasks.some(
+      (candidate) => candidate.id === value.parentId && candidate.kind === 'summary',
+    )
+  ) {
+    return 'Parent must be an existing summary task.';
+  }
+  if (value.parentId === value.taskId) {
+    return 'A task cannot be its own parent.';
   }
   if (
     value.laneId !== undefined &&
@@ -549,6 +598,9 @@ function itemPropertiesCommand(
   const changes: {
     appearance?: { readonly variant: string } | null;
     description?: string | null;
+    kind?: 'milestone' | 'summary' | 'task';
+    order?: number | null;
+    parentId?: string | null;
     progress?: number | null;
     schedule?: { readonly end: number; readonly mode: 'instant'; readonly start: number };
     title?: string;
@@ -563,16 +615,30 @@ function itemPropertiesCommand(
   if (appearanceVariant(value) !== record.appearance?.variant) {
     changes.appearance = value.appearance ?? null;
   }
-  if (record.kind === 'task' && value.progress !== record.progress) {
+  if (value.taskKind !== record.kind) {
+    changes.kind = value.taskKind;
+  }
+  if (value.order !== record.order) {
+    changes.order = value.order ?? null;
+  }
+  if (value.parentId !== record.parentId) {
+    changes.parentId = value.parentId ?? null;
+  }
+  if (value.taskKind === 'task' && value.progress !== record.progress) {
     changes.progress = value.progress ?? null;
   }
   if (
     record.schedule?.mode === 'instant' &&
+    value.taskKind !== 'summary' &&
     value.start !== undefined &&
     value.end !== undefined &&
     (value.start !== record.schedule.start || value.end !== record.schedule.end)
   ) {
-    changes.schedule = { end: value.end, mode: 'instant', start: value.start };
+    changes.schedule = {
+      end: value.taskKind === 'milestone' ? value.start : value.end,
+      mode: 'instant',
+      start: value.start,
+    };
   }
   if (Object.keys(changes).length > 0) {
     commands.push({ changes, id: record.id, type: 'task.update' });
@@ -621,10 +687,26 @@ function elapsedDuration(value: GanttItemPropertiesValue): string | undefined {
 }
 
 function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeFormat): string {
-  const schedule = `${task.title}, ${formatter.format(task.start)} to ${formatter.format(task.end)}`;
-  return task.progress === undefined
-    ? schedule
-    : `${schedule}, ${Math.round(task.progress.value * 100)}% complete`;
+  const kind = task.presentation.kind;
+  const schedule =
+    kind === 'milestone'
+      ? `${formatter.format(task.start)}`
+      : `${formatter.format(task.start)} to ${formatter.format(task.end)}`;
+  const project = task.presentation.project;
+  const hierarchy =
+    project === undefined
+      ? ''
+      : `, level ${project.depth + 1}${
+          project.hasChildren ? `, ${project.expanded ? 'expanded' : 'collapsed'}` : ''
+        }`;
+  const counts = task.presentation.summary;
+  const detail =
+    counts === undefined
+      ? ''
+      : `, ${counts.resolvedDescendantCount} of ${counts.descendantCount} descendants scheduled`;
+  const progress =
+    task.progress === undefined ? '' : `, ${Math.round(task.progress.value * 100)}% complete`;
+  return `${task.title}, ${schedule}${kind === 'task' ? '' : `, ${kind}`}${hierarchy}${detail}${progress}`;
 }
 
 function targetStateEqual(
@@ -804,6 +886,23 @@ function GanttTask({
     target: summary.target,
   }) satisfies GanttClassNameState;
   const TaskContent = slots?.TaskContent ?? DefaultTaskContent;
+  const geometry = task.presentation.geometry;
+  const ordinaryTask = geometry.kind === 'bar';
+  const trackClass = joinClasses(
+    geometry.kind === 'summary'
+      ? 'gt-gantt__task-summary'
+      : geometry.kind === 'milestone'
+        ? 'gt-gantt__task-milestone'
+        : 'gt-gantt__task-bar',
+    resolveClassName(
+      geometry.kind === 'summary'
+        ? classNames?.summary
+        : geometry.kind === 'milestone'
+          ? classNames?.milestone
+          : undefined,
+      state,
+    ),
+  );
   return (
     <g
       aria-describedby={describedBy}
@@ -828,6 +927,7 @@ function GanttTask({
       data-gt-appearance-source={appearance?.source}
       data-gt-variant={appearance?.variant}
       data-lane-id={task.laneId}
+      data-task-kind={task.presentation.kind}
       data-lane-view-key={task.laneViewKey}
       data-placement-id={task.placementId}
       data-resource-id={task.resourceId}
@@ -846,32 +946,62 @@ function GanttTask({
       style={appearanceStyle(appearance)}
       tabIndex={tabIndex}
     >
-      <rect
-        className="gt-gantt__task-bar"
-        data-gt-part="task-track"
-        height={percent(task.height / timelineHeight)}
-        rx="6"
-        width={percent(task.width)}
-        x={percent(task.x)}
-        y={percent(task.y / timelineHeight)}
-      />
+      {geometry.kind === 'milestone' ? (
+        <rect
+          className={trackClass}
+          data-gt-part="milestone"
+          height={geometry.size}
+          width={geometry.size}
+          x={percent(geometry.centerX)}
+          y={percent((task.y + task.height / 2) / timelineHeight)}
+          style={{
+            transform: `translate(${-geometry.size / 2}px, ${-geometry.size / 2}px) rotate(45deg) scale(0.72)`,
+          }}
+        />
+      ) : (
+        <rect
+          className={trackClass}
+          data-gt-part={geometry.kind === 'summary' ? 'summary' : 'task-track'}
+          height={percent(
+            (geometry.kind === 'summary' ? geometry.capHeight : task.height) / timelineHeight,
+          )}
+          rx={geometry.kind === 'summary' ? undefined : '6'}
+          width={percent(task.width)}
+          x={percent(task.x)}
+          y={percent(
+            (geometry.kind === 'summary'
+              ? task.y + (task.height - geometry.capHeight) / 2
+              : task.y) / timelineHeight,
+          )}
+        />
+      )}
       {task.progress !== undefined && task.progress.width > 0 ? (
         <rect
           aria-hidden="true"
           className="gt-gantt__task-progress"
           data-gt-part="task-progress"
           data-progress={task.progress.value}
-          height={percent(task.height / timelineHeight)}
-          rx="6"
+          height={percent(
+            (geometry.kind === 'summary' ? geometry.capHeight : task.height) / timelineHeight,
+          )}
+          rx={geometry.kind === 'summary' ? undefined : '6'}
           width={percent(task.progress.width)}
           x={percent(task.progress.x)}
-          y={percent(task.y / timelineHeight)}
+          y={percent(
+            (geometry.kind === 'summary'
+              ? task.y + (task.height - geometry.capHeight) / 2
+              : task.y) / timelineHeight,
+          )}
         />
       ) : null}
       <foreignObject
         height={percent(task.height / timelineHeight)}
-        width={percent(task.width)}
-        x={percent(task.x)}
+        width={geometry.kind === 'milestone' ? '120' : percent(task.width)}
+        x={
+          geometry.kind === 'milestone'
+            ? `calc(${percent(geometry.centerX)} + ${geometry.size / 2 + 4}px)`
+            : percent(task.x)
+        }
         y={percent(task.y / timelineHeight)}
       >
         <div
@@ -884,16 +1014,18 @@ function GanttTask({
           <TaskContent {...state} task={summary} />
         </div>
       </foreignObject>
-      <rect
-        aria-hidden="true"
-        className={resolveClassName(classNames?.resizeHandle, state)}
-        data-edge="start"
-        data-gt-part="resize-handle"
-        height={percent(task.height / timelineHeight)}
-        width="8"
-        x={percent(task.x)}
-        y={percent(task.y / timelineHeight)}
-      />
+      {ordinaryTask ? (
+        <rect
+          aria-hidden="true"
+          className={resolveClassName(classNames?.resizeHandle, state)}
+          data-edge="start"
+          data-gt-part="resize-handle"
+          height={percent(task.height / timelineHeight)}
+          width="8"
+          x={percent(task.x)}
+          y={percent(task.y / timelineHeight)}
+        />
+      ) : null}
       {progressEditable ? (
         <>
           <rect
@@ -917,16 +1049,18 @@ function GanttTask({
           />
         </>
       ) : null}
-      <rect
-        aria-hidden="true"
-        className={resolveClassName(classNames?.resizeHandle, state)}
-        data-edge="end"
-        data-gt-part="resize-handle"
-        height={percent(task.height / timelineHeight)}
-        width="8"
-        x={percent(task.x + task.width)}
-        y={percent(task.y / timelineHeight)}
-      />
+      {ordinaryTask ? (
+        <rect
+          aria-hidden="true"
+          className={resolveClassName(classNames?.resizeHandle, state)}
+          data-edge="end"
+          data-gt-part="resize-handle"
+          height={percent(task.height / timelineHeight)}
+          width="8"
+          x={percent(task.x + task.width)}
+          y={percent(task.y / timelineHeight)}
+        />
+      ) : null}
     </g>
   );
 }
@@ -1998,10 +2132,6 @@ function GanttSurface({
   const activeEditorSummary =
     activeEditorTask === undefined ? undefined : taskSummary(activeEditorTask);
   const currentDocument = runtime.getSnapshot().selector.document;
-  const activeEditorTaskRecord =
-    activeEditorTask === undefined
-      ? undefined
-      : currentDocument.tasks.find((task) => task.id === activeEditorTask.taskId);
   const activeEditorLaneRecord =
     activeEditorLane?.laneId === undefined
       ? undefined
@@ -2009,6 +2139,9 @@ function GanttSurface({
   const propertyLaneOptions = currentDocument.lanes.map((lane) =>
     Object.freeze({ id: lane.id, title: lane.title }),
   );
+  const propertyParentOptions = currentDocument.tasks
+    .filter((task) => task.kind === 'summary')
+    .map((task) => Object.freeze({ id: task.id, title: task.title }));
   const laneMoveDisabledReason =
     activeEditorValue?.kind !== 'task' || activeEditorValue.placementId === undefined
       ? undefined
@@ -2448,14 +2581,12 @@ function GanttSurface({
                       onCancel={() => closeEditor()}
                       onDelete={onItemPropertiesDelete}
                       onSubmit={onItemPropertiesSubmit}
+                      parentTasks={propertyParentOptions}
                       pending={editor.pending}
                       readOnly={disabled}
                       {...(activeEditorLaneRecord?.resourceId === undefined
                         ? {}
                         : { resourceId: activeEditorLaneRecord.resourceId })}
-                      {...(activeEditorTaskRecord === undefined
-                        ? {}
-                        : { taskKind: activeEditorTaskRecord.kind })}
                     />
                   ) : (
                     <slots.ItemProperties
@@ -2580,7 +2711,14 @@ function GanttSurface({
             </div>
           ) : (
             scene.lanes.map((lane, laneIndex) => (
-              <div aria-level={1} aria-rowindex={laneIndex + 2} key={lane.viewKey} role="row">
+              <div
+                aria-expanded={lane.project?.hasChildren ? lane.project.expanded : undefined}
+                aria-level={(lane.project?.depth ?? 0) + 1}
+                aria-rowindex={laneIndex + 2}
+                id={`${accessibilityId}-row-${laneIndex}`}
+                key={lane.viewKey}
+                role="row"
+              >
                 {resolvedColumns.map((column, columnIndex) => (
                   <span
                     aria-colindex={columnIndex + 1}
@@ -2705,6 +2843,11 @@ function GanttSurface({
                         data-column-id={column.id}
                         data-gt-part="lane-header"
                         key={column.id}
+                        style={
+                          column.id === resolvedColumns[0]?.id && lane.project !== undefined
+                            ? { paddingInlineStart: 38 + lane.project.depth * 16 }
+                            : undefined
+                        }
                       >
                         {renderLaneColumn(column, lane.viewKey)}
                       </div>
@@ -2717,6 +2860,34 @@ function GanttSurface({
                     ) : null}
                   </div>
                 ))}
+                {scene.lanes.map((lane, laneIndex) =>
+                  lane.project?.hasChildren ? (
+                    <button
+                      aria-controls={`${accessibilityId}-row-${laneIndex}`}
+                      aria-expanded={lane.project.expanded}
+                      aria-label={`${lane.project.expanded ? 'Collapse' : 'Expand'} ${lane.title}`}
+                      className={joinClasses(
+                        'gt-gantt__branch-toggle',
+                        resolveClassName(
+                          classNames?.branchToggle,
+                          idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
+                        ),
+                      )}
+                      data-gt-part="branch-toggle"
+                      data-view-key={lane.viewKey}
+                      key={`${lane.viewKey}:branch`}
+                      onClick={() => {
+                        if (lane.source.kind === 'project-task') {
+                          runtime.toggleProjectTask(lane.source.taskId, !lane.project?.expanded);
+                        }
+                      }}
+                      style={branchTriggerStyle(lane.y, lane.height, lane.project.depth)}
+                      type="button"
+                    >
+                      <ChevronRight aria-hidden="true" />
+                    </button>
+                  ) : null,
+                )}
                 {propertiesEnabled
                   ? scene.lanes.map((lane) =>
                       lane.laneId === undefined ? null : (

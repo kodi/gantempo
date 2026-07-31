@@ -37,7 +37,7 @@ import type {
   InteractionPreviewPrimitive,
 } from '../interaction/types';
 import type { Diagnostic } from '../model/diagnostics';
-import type { EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
+import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences } from '../model/validate';
 import { createChartScenePipeline, type ChartSceneOccurrence } from '../render/scene-pipeline';
 import type { ChartScene, TaskBarPrimitive } from '../render/primitives';
@@ -113,6 +113,7 @@ export interface GanttReactRuntime {
   pointerUp(pointerId: number): Promise<void>;
   reconcile(props: GanttProps): void;
   subscribe(subscriber: () => void): () => void;
+  toggleProjectTask(taskId: EntityId, expanded?: boolean): boolean;
   updateCallbacks(props: GanttProps): void;
 }
 
@@ -255,6 +256,40 @@ function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
   );
 }
 
+function projectSessionPart(session: GanttSessionState) {
+  return session.project === undefined ? {} : { project: session.project };
+}
+
+function projectCollapsedTaskIds(
+  document: GanttDocument,
+  session: GanttSessionState,
+  taskId: EntityId,
+  expanded?: boolean,
+): readonly EntityId[] | undefined {
+  const parentIds = new Set(
+    document.tasks.flatMap((task) => (task.parentId === undefined ? [] : [task.parentId])),
+  );
+  if (!parentIds.has(taskId)) {
+    return undefined;
+  }
+  const collapsed = new Set(session.project?.collapsedTaskIds ?? []);
+  const currentlyExpanded = !collapsed.has(taskId);
+  const nextExpanded = expanded ?? !currentlyExpanded;
+  if (nextExpanded === currentlyExpanded) {
+    return undefined;
+  }
+  if (nextExpanded) {
+    collapsed.delete(taskId);
+  } else {
+    collapsed.add(taskId);
+  }
+  return Object.freeze(
+    document.tasks
+      .filter((task) => collapsed.has(task.id) && parentIds.has(task.id))
+      .map((task) => task.id),
+  );
+}
+
 function taskTarget(task: TaskBarPrimitive | ChartSceneOccurrence): GanttTaskTarget {
   return Object.freeze({
     ...(task.assignmentId === undefined ? {} : { assignmentId: task.assignmentId }),
@@ -289,9 +324,33 @@ function occurrences(
 } {
   const visible = scene.taskBars.map((task) =>
     Object.freeze({
+      ...(task.presentation.project?.depth === undefined
+        ? {}
+        : { depth: task.presentation.project.depth }),
+      ...(task.presentation.summary === undefined
+        ? {}
+        : { descendantCount: task.presentation.summary.descendantCount }),
       end: task.end,
+      ...(task.presentation.project?.expanded === undefined
+        ? {}
+        : { expanded: task.presentation.project.expanded }),
+      ...(task.presentation.project?.filterMatch === undefined
+        ? {}
+        : { filterMatch: task.presentation.project.filterMatch }),
+      ...(task.presentation.project?.hasChildren === undefined
+        ? {}
+        : { hasChildren: task.presentation.project.hasChildren }),
+      intervalSource: task.presentation.intervalSource,
+      kind: task.presentation.kind,
+      ...(task.progress === undefined ? {} : { progress: task.progress.value }),
+      ...(task.presentation.summary === undefined
+        ? {}
+        : { resolvedDescendantCount: task.presentation.summary.resolvedDescendantCount }),
       start: task.start,
       target: taskTarget(task),
+      ...(task.presentation.summary === undefined
+        ? {}
+        : { unresolvedDescendantCount: task.presentation.summary.unresolvedDescendantCount }),
     }),
   );
   return Object.freeze({
@@ -650,6 +709,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         tickInterval: display.tickInterval,
         timeZone: display.timeZone,
         locale: display.locale,
+        ...(storeSnapshot.session.project === undefined
+          ? {}
+          : { projectQuery: storeSnapshot.session.project }),
         ...(display.view === undefined ? {} : { view: display.view }),
         ...(viewport === undefined ? {} : { viewport }),
         ...(display.taskVariants === undefined ? {} : { taskVariants: display.taskVariants }),
@@ -994,6 +1056,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     return updateSession(
       Object.freeze({
         focused: target,
+        ...projectSessionPart(session),
         selection: session.selection,
         viewport: Object.freeze({ verticalStart }),
       }),
@@ -1032,6 +1095,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     const updated = updateSession(
       Object.freeze({
         ...(session.focused === undefined ? {} : { focused: session.focused }),
+        ...projectSessionPart(session),
         selection: session.selection,
         viewport: Object.freeze({ verticalStart }),
       }),
@@ -1059,6 +1123,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       updateSession(
         Object.freeze({
           focused: target,
+          ...projectSessionPart(session),
           selection: Object.freeze(selection),
           viewport: session.viewport,
         }),
@@ -1079,6 +1144,17 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     mode: InteractionKeyboardMode,
     geometry: GanttPointerGeometry,
   ): boolean {
+    const record = store.getSnapshot().document.tasks.find((task) => task.id === target.taskId);
+    if (record?.kind !== 'task') {
+      const message =
+        mode === 'progress'
+          ? `Progress editing is not available for ${record?.kind} tasks.`
+          : `${record?.kind === 'summary' ? 'Summary' : 'Milestone'} tasks do not support direct ${
+              mode === 'move' ? 'moving' : 'resizing'
+            }.`;
+      setInteraction(Object.freeze({ announcement: message, status: 'rejected', target }));
+      return true;
+    }
     const next = beginKeyboardInteraction(target, mode, interactionOptions(geometry));
     if (next === undefined) {
       if (mode === 'progress') {
@@ -1116,6 +1192,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     updateSession(
       Object.freeze({
         focused: target,
+        ...projectSessionPart(session),
         selection: Object.freeze([target]),
         viewport: session.viewport,
       }),
@@ -1142,6 +1219,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         vertical = updateSession(
           Object.freeze({
             ...(session.focused === undefined ? {} : { focused: session.focused }),
+            ...projectSessionPart(session),
             selection: session.selection,
             viewport: Object.freeze({ verticalStart }),
           }),
@@ -1213,6 +1291,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         updateSession(
           Object.freeze({
             ...(session.focused === undefined ? {} : { focused: session.focused }),
+            ...projectSessionPart(session),
             selection: session.selection,
             viewport: Object.freeze({ verticalStart }),
           }),
@@ -1243,6 +1322,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       return updateSession(
         Object.freeze({
           focused: current,
+          ...projectSessionPart(store.getSnapshot().session),
           selection: store.getSnapshot().session.selection,
           viewport: store.getSnapshot().session.viewport,
         }),
@@ -1279,6 +1359,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       return updateSession(
         Object.freeze({
           ...(session.focused === undefined ? {} : { focused: session.focused }),
+          ...projectSessionPart(session),
           selection: session.selection,
           viewport: Object.freeze({ verticalStart }),
         }),
@@ -1306,6 +1387,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       activationVersion += 1;
       active = true;
+      const pendingSession = store.getSnapshot().ownership.pendingSession;
+      if (pendingSession !== undefined) {
+        emitControlledSessionProposal(initialProps.session!, pendingSession, 'controlled-prop');
+      }
     },
 
     clearMeasurement() {
@@ -1325,6 +1410,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       return updateSession(
         Object.freeze({
+          ...projectSessionPart(session),
           selection: Object.freeze([]),
           viewport: session.viewport,
         }),
@@ -1435,6 +1521,38 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return false;
       }
       if (input.action.type === 'navigate') {
+        const currentLane = snapshot.scene.lanes.find(
+          (lane) => lane.viewKey === target.laneViewKey,
+        );
+        if (
+          currentLane?.project !== undefined &&
+          (input.action.direction === 'left' || input.action.direction === 'right')
+        ) {
+          const record = store
+            .getSnapshot()
+            .document.tasks.find((task) => task.id === target.taskId);
+          if (input.action.direction === 'left') {
+            if (currentLane.project.hasChildren && currentLane.project.expanded) {
+              return runtime.toggleProjectTask(target.taskId, false);
+            }
+            if (record?.parentId !== undefined) {
+              const parent = snapshot.occurrenceCatalog.find(
+                (occurrence) => occurrence.taskId === record.parentId,
+              );
+              return parent === undefined ? false : revealKeyboardTarget(taskTarget(parent));
+            }
+            return false;
+          }
+          if (currentLane.project.hasChildren && currentLane.project.expanded === false) {
+            return runtime.toggleProjectTask(target.taskId, true);
+          }
+          const child = snapshot.occurrenceCatalog.find(
+            (occurrence) =>
+              store.getSnapshot().document.tasks.find((task) => task.id === occurrence.taskId)
+                ?.parentId === target.taskId,
+          );
+          return child === undefined ? false : revealKeyboardTarget(taskTarget(child));
+        }
         const next = navigateRuntimeOccurrence(
           occurrences(snapshot.scene, snapshot.occurrenceCatalog).runtime,
           target,
@@ -1491,6 +1609,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       return updateSession(
         Object.freeze({
           focused: target,
+          ...projectSessionPart(session),
           selection: Object.freeze([target]),
           viewport: session.viewport,
         }),
@@ -1512,6 +1631,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       return updateSession(
         Object.freeze({
           focused: target,
+          ...projectSessionPart(session),
           selection: Object.freeze([target]),
           viewport: session.viewport,
         }),
@@ -1536,6 +1656,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       return updateSession(
         Object.freeze({
           focused: target,
+          ...projectSessionPart(session),
           selection: session.selection,
           viewport: session.viewport,
         }),
@@ -1634,6 +1755,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         (gesture.status !== 'pressed' && gesture.status !== 'active') ||
         gesture.pointerId !== input.pointerId
       ) {
+        return false;
+      }
+      const pressedTask =
+        gesture.status === 'pressed' && gesture.hit.kind !== 'timeline-position'
+          ? gesture.hit.task.primitive
+          : undefined;
+      if (pressedTask !== undefined && pressedTask.presentation.kind !== 'task') {
         return false;
       }
       const options = interactionOptions(input.geometry);
@@ -1856,6 +1984,62 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       subscribers.add(subscriber);
       return () => subscribers.delete(subscriber);
+    },
+
+    toggleProjectTask(taskId, expanded) {
+      if (disposed || display.view?.kind !== 'project') {
+        return false;
+      }
+      const document = store.getSnapshot().document;
+      const session = store.getSnapshot().session;
+      const collapsedTaskIds = projectCollapsedTaskIds(document, session, taskId, expanded);
+      if (collapsedTaskIds === undefined) {
+        return false;
+      }
+      const parentByTaskId = new Map(document.tasks.map((task) => [task.id, task.parentId]));
+      const isHiddenDescendant = (target: GanttInteractionTarget): boolean => {
+        if (target.kind !== 'task') {
+          return false;
+        }
+        let parentId = parentByTaskId.get(target.taskId);
+        while (parentId !== undefined) {
+          if (parentId === taskId) {
+            return true;
+          }
+          parentId = parentByTaskId.get(parentId);
+        }
+        return false;
+      };
+      const collapsing = collapsedTaskIds.includes(taskId);
+      const parentOccurrence = snapshot.occurrenceCatalog.find(
+        (occurrence) => occurrence.taskId === taskId,
+      );
+      const parentTarget =
+        parentOccurrence === undefined ? undefined : taskTarget(parentOccurrence);
+      const focused =
+        collapsing && session.focused !== undefined && isHiddenDescendant(session.focused)
+          ? parentTarget
+          : session.focused;
+      const selection = collapsing
+        ? session.selection.filter((target) => !isHiddenDescendant(target))
+        : session.selection;
+      const next = Object.freeze({
+        ...(focused === undefined ? {} : { focused }),
+        project: Object.freeze({ collapsedTaskIds }),
+        selection: Object.freeze(selection),
+        viewport: session.viewport,
+      });
+      if (!updateSession(next, 'runtime')) {
+        return false;
+      }
+      const title = document.tasks.find((task) => task.id === taskId)?.title ?? taskId;
+      setInteraction(
+        Object.freeze({
+          announcement: `${title} ${collapsing ? 'collapsed' : 'expanded'}.`,
+          status: 'idle',
+        }),
+      );
+      return true;
     },
 
     updateCallbacks(props) {

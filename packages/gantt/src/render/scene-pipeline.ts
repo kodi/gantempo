@@ -231,6 +231,10 @@ function tickSignature(options: BuildChartSceneOptions): string {
   ]);
 }
 
+function projectQuerySignature(options: BuildChartSceneOptions): string {
+  return JSON.stringify(options.projectQuery ?? {});
+}
+
 function appearanceRegistrySignature(options: BuildChartSceneOptions): string {
   return JSON.stringify(options.appearanceVariants ?? []);
 }
@@ -823,6 +827,9 @@ export function createChartScenePipeline(): ChartScenePipeline {
         cache === undefined || !sameViewDefinition(cache.options.view, options.view);
       const presentationZoneChanged =
         cache === undefined || cache.options.timeZone !== options.timeZone;
+      const projectQueryChanged =
+        cache === undefined ||
+        projectQuerySignature(cache.options) !== projectQuerySignature(options);
       const rangeChanged = cache === undefined || !sameRange(cache.options.range, options.range);
       const affected = invalidation?.kind === 'affected' ? invalidation.affected : [];
 
@@ -831,6 +838,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         !documentChanged &&
         !metricsChanged &&
         !viewChanged &&
+        !projectQueryChanged &&
         !rangeChanged &&
         !appearanceRegistryChanged &&
         !legacyTaskVariantsChanged &&
@@ -872,11 +880,16 @@ export function createChartScenePipeline(): ChartScenePipeline {
       const shouldBuildTopology =
         forceAll ||
         viewChanged ||
+        projectQueryChanged ||
         cache === undefined ||
         (documentChanged &&
           topologyAffected(affected, cache.options.document, options.document, options.view));
       const topology = shouldBuildTopology
-        ? resolveView(validation.document, options.view)
+        ? resolveView(
+            validation.document,
+            options.view,
+            options.projectQuery === undefined ? {} : { project: options.projectQuery },
+          )
         : cache!.topology;
       if (topology !== cache?.topology) {
         work.topologyBuilds += 1;

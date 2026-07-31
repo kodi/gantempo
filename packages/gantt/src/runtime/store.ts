@@ -4,6 +4,7 @@ import type { GanttDocument } from '../model/types';
 import {
   normalizeOccurrences,
   normalizeSessionState,
+  reconcileSessionDocument,
   reconcileSessionOccurrences,
   sessionEqual,
 } from './session';
@@ -220,8 +221,9 @@ export function createGanttRuntimeStore(
     if (!occurrencesInitialized) {
       return Object.freeze({ session: sourceSession });
     }
+    const documentSession = reconcileSessionDocument(sourceSession, snapshot.document);
     const session = reconcileSessionOccurrences(
-      sourceSession,
+      documentSession,
       previousOccurrences,
       currentOccurrences,
     );
@@ -278,6 +280,7 @@ export function createGanttRuntimeStore(
     }
     const session = normalizeSessionState({
       ...(snapshot.session.focused === undefined ? {} : { focused: snapshot.session.focused }),
+      ...(snapshot.session.project === undefined ? {} : { project: snapshot.session.project }),
       selection: snapshot.session.selection,
       viewport: { verticalStart: viewport.verticalStart },
     });

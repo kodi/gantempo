@@ -382,6 +382,16 @@ function requireInstantScheduledTask(
       ),
     ]);
   }
+  if (task.kind !== 'task') {
+    return rejected(document, [
+      diagnostic(
+        'command.unsupported-target',
+        `${task.kind === 'summary' ? 'Summary' : 'Milestone'} tasks do not support direct move or resize commands.`,
+        '/command/id',
+        [id],
+      ),
+    ]);
+  }
   const schedule: unknown = task.schedule;
   if (schedule === undefined) {
     return rejected(document, [

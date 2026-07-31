@@ -111,6 +111,7 @@ export type {
   GanttInteractionTarget,
   GanttLaneTarget,
   GanttMeasuredViewportState,
+  GanttProjectSessionState,
   GanttRuntimeErrorEvent,
   GanttSessionState,
   GanttTaskTarget,

@@ -43,6 +43,39 @@ function withRevision(document: GanttDocument, revision: number | string): Gantt
 }
 
 describe('Gantt runtime store', () => {
+  it('normalizes committed project expansion against canonical branch order', () => {
+    const document: GanttDocument = {
+      assignments: [],
+      dependencies: [],
+      lanes: [],
+      placements: [],
+      resources: [],
+      schemaVersion: 1,
+      tasks: [
+        { id: 'root-b', kind: 'summary', segments: [], title: 'B' },
+        { id: 'leaf', kind: 'task', parentId: 'root-b', segments: [], title: 'Leaf' },
+        { id: 'root-a', kind: 'summary', segments: [], title: 'A' },
+        { id: 'child', kind: 'task', parentId: 'root-a', segments: [], title: 'Child' },
+      ],
+    };
+    const store = createGanttRuntimeStore({
+      document: { kind: 'uncontrolled', value: document },
+      session: {
+        kind: 'uncontrolled',
+        value: {
+          project: { collapsedTaskIds: ['missing', 'root-a', 'leaf', 'root-b', 'root-a'] },
+          selection: [],
+          viewport: { verticalStart: 0 },
+        },
+      },
+    });
+    store.setOccurrences([]);
+
+    expect(store.getSnapshot().session.project?.collapsedTaskIds).toEqual(['root-b', 'root-a']);
+    expect(Object.isFrozen(store.getSnapshot().session.project)).toBe(true);
+    expect(Object.isFrozen(store.getSnapshot().session.project?.collapsedTaskIds)).toBe(true);
+  });
+
   it('clones consumer inputs and keeps two uncontrolled instances independent', () => {
     const mutable = JSON.parse(serializeGanttDocument(createPatchTestDocument())) as GanttDocument;
     const first = createGanttRuntimeStore({

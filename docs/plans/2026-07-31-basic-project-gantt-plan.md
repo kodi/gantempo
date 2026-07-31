@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-4 complete, Slice 5 next
+Status: In progress; Slices 1-5 complete, Slice 6 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -445,7 +445,7 @@ geometry first.
 
 ### Slice 5: Integrate hierarchical task kinds with React and accessibility
 
-Status: `[ ]` Not started
+Status: `[x]` Done and verified
 
 **Goal**
 
@@ -475,6 +475,22 @@ second relationship interaction mode.
 
 - a usable, accessible project tree with summary and milestone surfaces;
 - public runtime/session and customization additions accepted in Slice 1.
+
+**Completed in this slice**
+
+- added normalized committed `project.collapsedTaskIds` session state, document-order
+  branch reconciliation, controlled complete-session proposals, and project-query
+  pipeline invalidation without adding collapse state to the document;
+- added pointer and keyboard branch controls, depth/expansion treegrid semantics,
+  deterministic hidden-descendant focus/selection recovery, and public selector/slot
+  summaries carrying kind, interval source, hierarchy, progress, and descendant data;
+- rendered summary bars and canonical progress plus milestone diamonds with semantic
+  SVG parts, accessible names, visible focus/selection treatment, centered milestone
+  hit targets, and typed branch/summary/milestone class hooks;
+- extended the properties surface through `task.update` for kind, parent, and order,
+  kept summary schedule/progress and milestone progress read-only, normalized edited
+  milestone schedules to one point, and rejected direct summary/milestone move,
+  resize, and progress interactions with stable reasons.
 
 **Verification**
 
@@ -972,7 +988,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 2: Add hierarchy integrity, indexes, and strict reparenting
 - [x] Slice 3: Resolve project trees, expansion, filtering, and sorting
 - [x] Slice 4: Resolve summary and milestone presentation semantics
-- [ ] Slice 5: Integrate hierarchical task kinds with React and accessibility
+- [x] Slice 5: Integrate hierarchical task kinds with React and accessibility
 - [ ] Slice 6: Add the Community dependency graph and cycle diagnostics
 - [ ] Slice 7: Route and render dependency paths
 - [ ] Slice 8: Add dependency selection and editing workflows
@@ -1089,17 +1105,37 @@ owns the full shapes and rationale. In summary:
   ci` passed 75 files / 393 tests, 171 formatted files, 160 lint/type files, and four
   artifacts; the packed declaration is 46.13 kB. Mise also reported a non-fatal
   sandbox denial while refreshing its user cache; every repository gate passed.
+- 2026-07-31: Slice 5 commits normalized project expansion to the existing session
+  ownership path and feeds it into project topology resolution. Unknown, duplicate,
+  and leaf collapse IDs reconcile away in canonical document order. Controlled
+  collapse emits one complete proposal, and hiding a focused/selected descendant
+  deterministically promotes focus to the collapsing summary and removes hidden
+  selections before acknowledgement.
+- 2026-07-31: Project React rows now publish one-based treegrid levels and expansion
+  state, accessible branch buttons, stable task-derived row identity, branch-aware
+  Left/Right navigation, and semantic public occurrence/task summaries. Summary and
+  milestone SVG surfaces have distinct stable parts, typed class hooks, accessible
+  names, and kind-aware hit geometry; only ordinary tasks expose direct move, resize,
+  and progress interaction. The properties surface edits kind, parent, and sibling
+  order through one command/history path while enforcing the accepted read-only
+  summary/milestone fields.
+- 2026-07-31: Focused runtime/session/React/properties/hydration/SSR/hit-test/axe
+  coverage passed, including controlled/uncontrolled collapse, hidden-focus recovery,
+  tree semantics, public semantic summaries, milestone conversion, point hit targets,
+  and unsupported kind interactions. Final `mise run ci` passed 76 files / 401 tests,
+  172 formatted files, 161 lint/type files, and four package artifacts; the packed
+  declaration is 47.42 kB. Chrome DevTools verified `/interactive` at 1440x1000 and
+  the installed narrow minimum of 500x844 with four level-one treegrid rows, no page
+  overflow, ordinary-task resize handles intact, and no console warnings/errors. The
+  dedicated `/project` browser matrix remains correctly owned by Slice 12/13.
 
 ## Next Slice
 
-Start Slice 5 at the runtime/session boundary, then feed its committed project collapse
-state into the Slice 3 query without changing `GanttDocument`. Add controlled and
-uncontrolled reconciliation, collapse actions, branch-aware selection/focus recovery,
-and selector summaries before changing DOM. Then render project rows as a treegrid
-with levels, expansion state, branch controls, summary brackets/progress, milestone
-diamonds, kind-aware accessible names, hit targets, slots/classes, properties, and
-stable disabled reasons for unsupported move/resize/progress/schedule operations.
-Verify controlled/uncontrolled/read-only, keyboard, properties, occurrence lifetime,
-hydration, and axe behavior alongside the existing M4 suites. Record exact evidence
-and run `mise run ci` before the Slice 5 commit; do not begin dependency graph work
-from Slice 6 yet.
+Start Slice 6 with one React-free Community dependency graph boundary. Index incoming
+and outgoing dependencies, validate accepted type/endpoints/duplicates/kind policy,
+diagnose existing cycles deterministically without moving dates, and add the accepted
+`dependency.update` command across patches, inverses, history, transactions, affected
+references, persistence projection, and the public facade. Verify arbitrary order,
+deep chains, disconnected graphs, parallel links, invalid mutations, and immutability;
+run `mise run ci` before the Slice 6 commit. Do not begin dependency geometry or React
+link rendering from Slice 7 yet.

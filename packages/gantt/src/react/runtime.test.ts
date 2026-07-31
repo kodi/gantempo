@@ -63,6 +63,42 @@ function navigationDocumentFixture(): GanttDocument {
   };
 }
 
+function projectDocumentFixture(): GanttDocument {
+  return {
+    assignments: [],
+    dependencies: [],
+    lanes: [],
+    placements: [],
+    resources: [],
+    schemaVersion: 1,
+    tasks: [
+      {
+        id: 'summary',
+        kind: 'summary',
+        schedule: { end: START + 4 * DAY, mode: 'instant', start: START },
+        segments: [],
+        title: 'Summary',
+      },
+      {
+        id: 'child',
+        kind: 'task',
+        parentId: 'summary',
+        schedule: { end: START + 2 * DAY, mode: 'instant', start: START + DAY },
+        segments: [],
+        title: 'Child',
+      },
+      {
+        id: 'milestone',
+        kind: 'milestone',
+        parentId: 'summary',
+        schedule: { end: START + 3 * DAY, mode: 'instant', start: START + 3 * DAY },
+        segments: [],
+        title: 'Milestone',
+      },
+    ],
+  };
+}
+
 function commonProps() {
   return {
     range: { start: START, end: START + 7 * DAY },
@@ -73,6 +109,72 @@ function commonProps() {
 }
 
 describe('React runtime adapter', () => {
+  it('adopts project collapse and reconciles a controlled proposal atomically', () => {
+    let proposal: Parameters<NonNullable<GanttProps['onSessionChange']>>[0] | undefined;
+    const document = projectDocumentFixture();
+    const bootstrap = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: document,
+      view: { kind: 'project' },
+    });
+    const child = bootstrap
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'child')!.target;
+    bootstrap.dispose();
+    const props: GanttProps = {
+      ...commonProps(),
+      document,
+      onSessionChange(session) {
+        proposal = session;
+      },
+      session: { focused: child, selection: [child], viewport: { verticalStart: 0 } },
+      view: { kind: 'project' },
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    expect(runtime.toggleProjectTask('summary', false)).toBe(true);
+    expect(proposal).toMatchObject({
+      focused: { taskId: 'summary' },
+      project: { collapsedTaskIds: ['summary'] },
+      selection: [],
+      viewport: { verticalStart: 0 },
+    });
+    expect(runtime.getSnapshot().scene.lanes).toHaveLength(3);
+
+    const nextProps = { ...props, session: proposal! };
+    runtime.updateCallbacks(nextProps);
+    runtime.reconcile(nextProps);
+    expect(runtime.getSnapshot().scene.lanes.map((lane) => lane.title)).toEqual(['Summary']);
+    expect(runtime.getSnapshot().selector.session.project?.collapsedTaskIds).toEqual(['summary']);
+    runtime.dispose();
+  });
+
+  it('uses branch-aware left and right keyboard navigation in project views', () => {
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: projectDocumentFixture(),
+      view: { kind: 'project' },
+    });
+    runtime.activate();
+    const geometry = { height: 174, verticalStart: 0, width: 700, x: 160, y: 0 };
+    const summary = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'summary')!.target;
+    runtime.getHandle().focusTask(summary);
+    expect(
+      runtime.keyboardAction({ action: { direction: 'left', type: 'navigate' }, geometry }),
+    ).toBe(true);
+    expect(runtime.getSnapshot().scene.lanes).toHaveLength(1);
+    expect(
+      runtime.keyboardAction({ action: { direction: 'right', type: 'navigate' }, geometry }),
+    ).toBe(true);
+    expect(runtime.getSnapshot().scene.lanes).toHaveLength(3);
+    expect(
+      runtime.keyboardAction({ action: { direction: 'right', type: 'navigate' }, geometry }),
+    ).toBe(true);
+    expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'child' });
+    runtime.dispose();
+  });
   it('adopts uncontrolled commands before immutable change and commit callbacks', async () => {
     const order: string[] = [];
     let runtime!: ReturnType<typeof createGanttReactRuntime>;

@@ -82,6 +82,46 @@ function indexFor(scene = sceneFixture(), verticalStart = 0, height?: number) {
 }
 
 describe('interaction hit testing', () => {
+  it('gives milestone points a centered pointer hit target without resize edges', () => {
+    const scene = buildChartScene({
+      document: {
+        assignments: [],
+        dependencies: [],
+        lanes: [],
+        placements: [],
+        resources: [],
+        schemaVersion: 1,
+        tasks: [
+          {
+            id: 'milestone',
+            kind: 'milestone',
+            schedule: { end: START + 5 * DAY, mode: 'instant', start: START + 5 * DAY },
+            segments: [],
+            title: 'Milestone',
+          },
+        ],
+      },
+      range: RANGE,
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+      view: { kind: 'project' },
+    });
+    const index = indexFor(scene);
+    const milestone = index.tasks[0]!;
+    const hit = hitTestInteraction(
+      index,
+      {
+        x: milestone.rect.x + milestone.rect.width / 2,
+        y: milestone.rect.y + milestone.rect.height / 2,
+      },
+      'mouse',
+    );
+
+    expect(milestone.rect.width).toBe(24);
+    expect(hit).toMatchObject({ kind: 'task-body', task: { target: { taskId: 'milestone' } } });
+  });
+
   it('resolves task edges, bodies, empty lane positions, and canonical targets', () => {
     const index = indexFor();
     const task = index.tasks.find((node) => node.target.taskId === 'task-a')!;

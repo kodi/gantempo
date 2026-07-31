@@ -173,6 +173,42 @@
       transform 120ms ease;
   }
 
+  :where(.gt-gantt__branch-toggle) {
+    position: absolute;
+    z-index: 3;
+    display: grid;
+    box-sizing: border-box;
+    width: 28px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: var(--gt-color-text-muted);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  :where(.gt-gantt__branch-toggle svg) {
+    width: 16px;
+    height: 16px;
+    transition: transform 120ms ease;
+  }
+
+  :where(.gt-gantt__branch-toggle[aria-expanded='true'] svg) {
+    transform: rotate(90deg);
+  }
+
+  :where(.gt-gantt__branch-toggle:is(:hover, :focus-visible)) {
+    border-color: var(--gt-color-border);
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface);
+  }
+
+  :where(.gt-gantt__branch-toggle:focus-visible) {
+    outline: 2px solid var(--gt-color-focus);
+    outline-offset: 1px;
+  }
+
   :where(.gt-gantt__lane-properties-trigger svg) {
     width: 16px;
     height: 16px;
@@ -281,6 +317,22 @@
       filter 120ms ease;
   }
 
+  :where(.gt-gantt__task-summary) {
+    fill: var(--gt-task-fill);
+    stroke: var(--gt-task-border);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  :where(.gt-gantt__task-milestone) {
+    fill: var(--gt-task-fill);
+    stroke: var(--gt-task-border);
+    stroke-width: 1.5px;
+    transform-box: fill-box;
+    transform-origin: center;
+    vector-effect: non-scaling-stroke;
+  }
+
   :where(.gt-gantt__task-progress) {
     fill: var(--gt-task-progress-fill);
     stroke: var(--gt-task-border);
@@ -337,14 +389,16 @@
     outline-offset: 3px;
   }
 
-  :where(.gt-gantt [data-gt-part='task'][data-selected='true'] .gt-gantt__task-bar) {
+  :where(.gt-gantt [data-gt-part='task'][data-selected='true'])
+    :is(.gt-gantt__task-bar, .gt-gantt__task-summary, .gt-gantt__task-milestone) {
     stroke: var(--gt-color-focus);
     stroke-width: 2px;
     stroke-dasharray: 4 2;
     vector-effect: non-scaling-stroke;
   }
 
-  :where(.gt-gantt [data-gt-part='task']:focus .gt-gantt__task-bar) {
+  :where(.gt-gantt [data-gt-part='task']:focus)
+    :is(.gt-gantt__task-bar, .gt-gantt__task-summary, .gt-gantt__task-milestone) {
     stroke: var(--gt-color-focus);
     stroke-width: 2px;
     stroke-dasharray: none;

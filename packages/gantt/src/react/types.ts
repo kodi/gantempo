@@ -5,6 +5,7 @@ import type {
   EpochMilliseconds,
   GanttAppearanceReference,
   GanttDocument,
+  TaskKind,
   TimeRange,
 } from '../model/types';
 import type { ComponentType, HTMLAttributes, ReactNode, RefCallback } from 'react';
@@ -51,9 +52,19 @@ export interface GanttScrollOptions {
 }
 
 export interface GanttVisibleOccurrence {
+  readonly depth?: number;
+  readonly descendantCount?: number;
   readonly end: EpochMilliseconds;
+  readonly expanded?: boolean;
+  readonly filterMatch?: 'ancestor' | 'direct';
+  readonly hasChildren?: boolean;
+  readonly intervalSource: 'canonical' | 'descendants';
+  readonly kind: TaskKind;
+  readonly progress?: number;
+  readonly resolvedDescendantCount?: number;
   readonly start: EpochMilliseconds;
   readonly target: GanttTaskTarget;
+  readonly unresolvedDescendantCount?: number;
 }
 
 export type GanttCommandMappingResult = InteractionCommandMappingResult;
@@ -156,14 +167,28 @@ export interface GanttHandle {
 }
 
 export interface GanttTaskSummary {
+  readonly depth?: number;
+  readonly descendantCount?: number;
   readonly end: EpochMilliseconds;
+  readonly expanded?: boolean;
+  readonly filterMatch?: 'ancestor' | 'direct';
+  readonly hasChildren?: boolean;
+  readonly intervalSource: 'canonical' | 'descendants';
+  readonly kind: TaskKind;
+  readonly progress?: number;
+  readonly resolvedDescendantCount?: number;
   readonly start: EpochMilliseconds;
   readonly target: GanttTaskTarget;
   readonly title: string;
+  readonly unresolvedDescendantCount?: number;
   readonly variant?: string;
 }
 
 export interface GanttLaneSummary {
+  readonly depth?: number;
+  readonly expanded?: boolean;
+  readonly filterMatch?: 'ancestor' | 'direct';
+  readonly hasChildren?: boolean;
   readonly target: Extract<GanttInteractionTarget, { readonly kind: 'lane' }>;
   readonly title: string;
 }
@@ -183,15 +208,18 @@ export interface GanttClassNameState {
 export type GanttClassNameValue = string | ((state: GanttClassNameState) => string | undefined);
 
 export interface GanttClassNames {
+  readonly branchToggle?: GanttClassNameValue;
   readonly chart?: GanttClassNameValue;
   readonly contextMenu?: GanttClassNameValue;
   readonly editor?: GanttClassNameValue;
   readonly lane?: GanttClassNameValue;
   readonly laneHeader?: GanttClassNameValue;
   readonly liveRegion?: GanttClassNameValue;
+  readonly milestone?: GanttClassNameValue;
   readonly progressHandle?: GanttClassNameValue;
   readonly resizeHandle?: GanttClassNameValue;
   readonly root?: GanttClassNameValue;
+  readonly summary?: GanttClassNameValue;
   readonly task?: GanttClassNameValue;
   readonly taskContent?: GanttClassNameValue;
   readonly timelineCell?: GanttClassNameValue;
@@ -282,10 +310,13 @@ export type GanttItemPropertiesValue =
       readonly end?: EpochMilliseconds;
       readonly kind: 'task';
       readonly laneId?: EntityId;
+      readonly order?: number;
+      readonly parentId?: EntityId;
       readonly placementId?: EntityId;
       readonly progress?: number;
       readonly start?: EpochMilliseconds;
       readonly taskId: EntityId;
+      readonly taskKind: TaskKind;
       readonly title: string;
     }
   | {

@@ -1,4 +1,10 @@
-import type { GanttInteractionTarget, GanttRuntimeOccurrence, GanttSessionState } from './types';
+import type { GanttDocument } from '../model/types';
+import type {
+  GanttInteractionTarget,
+  GanttProjectSessionState,
+  GanttRuntimeOccurrence,
+  GanttSessionState,
+} from './types';
 
 const EMPTY_SELECTION = Object.freeze([]) as readonly GanttInteractionTarget[];
 
@@ -91,10 +97,40 @@ function targetEqual(
 export function sessionEqual(previous: GanttSessionState, next: GanttSessionState): boolean {
   return (
     previous.viewport.verticalStart === next.viewport.verticalStart &&
+    (previous.project === next.project ||
+      (previous.project !== undefined &&
+        next.project !== undefined &&
+        previous.project.collapsedTaskIds.length === next.project.collapsedTaskIds.length &&
+        previous.project.collapsedTaskIds.every(
+          (id, index) => id === next.project!.collapsedTaskIds[index],
+        ))) &&
     targetEqual(previous.focused, next.focused) &&
     previous.selection.length === next.selection.length &&
     previous.selection.every((target, index) => targetEqual(target, next.selection[index]))
   );
+}
+
+function normalizeProjectSession(input: unknown): GanttProjectSessionState | undefined {
+  if (input === undefined) {
+    return undefined;
+  }
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    throw new TypeError('Session project state must be a plain data object.');
+  }
+  const collapsedInput = (input as Record<string, unknown>).collapsedTaskIds;
+  if (!Array.isArray(collapsedInput)) {
+    throw new TypeError('Session collapsedTaskIds must be an array.');
+  }
+  const collapsedTaskIds: string[] = [];
+  const seen = new Set<string>();
+  for (const id of collapsedInput) {
+    const normalized = requiredString(id, 'collapsedTaskIds item');
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      collapsedTaskIds.push(normalized);
+    }
+  }
+  return Object.freeze({ collapsedTaskIds: Object.freeze(collapsedTaskIds) });
 }
 
 export function normalizeSessionState(
@@ -120,10 +156,40 @@ export function normalizeSessionState(
     throw new RangeError('Session verticalStart must be a finite non-negative number.');
   }
   const focused = input?.focused === undefined ? undefined : cloneInteractionTarget(input.focused);
+  const project = normalizeProjectSession(input?.project);
   return Object.freeze({
     ...(focused === undefined ? {} : { focused }),
+    ...(project === undefined ? {} : { project }),
     selection: selection.length === 0 ? EMPTY_SELECTION : Object.freeze(selection),
     viewport: Object.freeze({ verticalStart }),
+  });
+}
+
+export function reconcileSessionDocument(
+  session: GanttSessionState,
+  document: GanttDocument,
+): GanttSessionState {
+  if (session.project === undefined) {
+    return session;
+  }
+  const parentIds = new Set(
+    document.tasks.flatMap((task) => (task.parentId === undefined ? [] : [task.parentId])),
+  );
+  const collapsed = new Set(session.project.collapsedTaskIds);
+  const collapsedTaskIds = document.tasks
+    .filter((task) => parentIds.has(task.id) && collapsed.has(task.id))
+    .map((task) => task.id);
+  if (
+    collapsedTaskIds.length === session.project.collapsedTaskIds.length &&
+    collapsedTaskIds.every((id, index) => id === session.project!.collapsedTaskIds[index])
+  ) {
+    return session;
+  }
+  return Object.freeze({
+    ...(session.focused === undefined ? {} : { focused: session.focused }),
+    project: Object.freeze({ collapsedTaskIds: Object.freeze(collapsedTaskIds) }),
+    selection: session.selection,
+    viewport: session.viewport,
   });
 }
 
@@ -229,6 +295,7 @@ export function reconcileSessionOccurrences(
   }
   const reconciled = Object.freeze({
     ...(focused === undefined ? {} : { focused }),
+    ...(session.project === undefined ? {} : { project: session.project }),
     selection: selection.length === 0 ? EMPTY_SELECTION : Object.freeze(selection),
     viewport: session.viewport,
   });

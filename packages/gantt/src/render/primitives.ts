@@ -13,6 +13,7 @@ import type {
   ViewLaneSource,
   ViewPlacementSource,
 } from '../view/types';
+import type { ResolveProjectViewQuery } from '../view/types';
 import type { EffectiveAppearancePrimitive, GanttAppearanceVariantOption } from './appearance';
 
 export interface ChartLayoutMetrics {
@@ -141,5 +142,6 @@ export interface BuildChartSceneOptions {
   readonly timeZone: string;
   readonly locale?: string;
   readonly metrics?: Partial<ChartLayoutMetrics>;
+  readonly projectQuery?: ResolveProjectViewQuery;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;
 }

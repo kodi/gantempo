@@ -181,7 +181,15 @@ export function createInteractionHitTestIndex(
   const tasks: InteractionTaskNode[] = [];
   scene.taskBars.forEach((primitive, paintOrder) => {
     const lane = lanesByKey.get(primitive.laneViewKey);
-    if (lane === undefined || primitive.width <= 0 || primitive.height <= 0) {
+    const milestoneSize =
+      primitive.presentation.geometry.kind === 'milestone'
+        ? primitive.presentation.geometry.size
+        : undefined;
+    if (
+      lane === undefined ||
+      (primitive.width <= 0 && milestoneSize === undefined) ||
+      primitive.height <= 0
+    ) {
       return;
     }
     tasks.push(
@@ -192,9 +200,12 @@ export function createInteractionHitTestIndex(
         progressEditable:
           progressTaskIds.has(primitive.taskId) && primitive.segmentId === undefined,
         rect: freezeRect({
-          x: frozenTimeline.x + primitive.x * frozenTimeline.width,
+          x:
+            milestoneSize === undefined
+              ? frozenTimeline.x + primitive.x * frozenTimeline.width
+              : frozenTimeline.x + primitive.x * frozenTimeline.width - milestoneSize / 2,
           y: frozenTimeline.y + primitive.y - frozenTimeline.verticalStart,
-          width: primitive.width * frozenTimeline.width,
+          width: milestoneSize ?? primitive.width * frozenTimeline.width,
           height: primitive.height,
         }),
         target: taskTarget(primitive),
@@ -280,46 +291,48 @@ export function hitTestInteraction(
       time,
     });
   }
-  const edges = candidateTasks.flatMap((task) => {
-    const verticalRect = expandedVerticalRect(task.rect, minimumHeight);
-    const values: {
-      readonly candidate: boolean;
-      readonly distance: number;
-      readonly edge: 'end' | 'start';
-      readonly task: InteractionTaskNode;
-    }[] = [];
-    if (!task.primitive.clippedStart) {
-      const distance = Math.abs(point.x - task.rect.x);
-      if (
-        distance <= edgeRadius &&
-        point.y >= verticalRect.y &&
-        point.y < verticalRect.y + verticalRect.height
-      ) {
-        values.push({
-          candidate: candidateViewKey === task.target.viewKey,
-          distance,
-          edge: 'start',
-          task,
-        });
+  const edges = candidateTasks
+    .filter((task) => task.primitive.presentation.kind === 'task')
+    .flatMap((task) => {
+      const verticalRect = expandedVerticalRect(task.rect, minimumHeight);
+      const values: {
+        readonly candidate: boolean;
+        readonly distance: number;
+        readonly edge: 'end' | 'start';
+        readonly task: InteractionTaskNode;
+      }[] = [];
+      if (!task.primitive.clippedStart) {
+        const distance = Math.abs(point.x - task.rect.x);
+        if (
+          distance <= edgeRadius &&
+          point.y >= verticalRect.y &&
+          point.y < verticalRect.y + verticalRect.height
+        ) {
+          values.push({
+            candidate: candidateViewKey === task.target.viewKey,
+            distance,
+            edge: 'start',
+            task,
+          });
+        }
       }
-    }
-    if (!task.primitive.clippedEnd) {
-      const distance = Math.abs(point.x - (task.rect.x + task.rect.width));
-      if (
-        distance <= edgeRadius &&
-        point.y >= verticalRect.y &&
-        point.y < verticalRect.y + verticalRect.height
-      ) {
-        values.push({
-          candidate: candidateViewKey === task.target.viewKey,
-          distance,
-          edge: 'end',
-          task,
-        });
+      if (!task.primitive.clippedEnd) {
+        const distance = Math.abs(point.x - (task.rect.x + task.rect.width));
+        if (
+          distance <= edgeRadius &&
+          point.y >= verticalRect.y &&
+          point.y < verticalRect.y + verticalRect.height
+        ) {
+          values.push({
+            candidate: candidateViewKey === task.target.viewKey,
+            distance,
+            edge: 'end',
+            task,
+          });
+        }
       }
-    }
-    return values;
-  });
+      return values;
+    });
   edges.sort(
     (left, right) =>
       Number(right.candidate) - Number(left.candidate) ||

@@ -170,6 +170,22 @@ describe('semantic task schedule commands', () => {
         title: 'Overflowing',
       }),
     ]);
+    const projectKinds = withTasks([
+      Object.freeze({
+        id: 'summary',
+        kind: 'summary',
+        schedule: Object.freeze({ end: 20, mode: 'instant', start: 10 }),
+        segments: Object.freeze([]),
+        title: 'Summary',
+      }),
+      Object.freeze({
+        id: 'milestone',
+        kind: 'milestone',
+        schedule: Object.freeze({ end: 10, mode: 'instant', start: 10 }),
+        segments: Object.freeze([]),
+        title: 'Milestone',
+      }),
+    ]);
 
     expectRejected(base, { delta: 1, id: 'missing', type: 'task.move' }, 'command.missing-target');
     expectRejected(
@@ -180,7 +196,7 @@ describe('semantic task schedule commands', () => {
     expectRejected(
       base,
       { edge: 'end', id: 'task-2', time: 30, type: 'task.resize' },
-      'command.unsupported-schedule',
+      'command.unsupported-target',
     );
     expectRejected(
       zeroWidth,
@@ -196,6 +212,16 @@ describe('semantic task schedule commands', () => {
       overflowing,
       { delta: 9e307, id: 'overflowing', type: 'task.move' },
       'command.invalid-interval',
+    );
+    expectRejected(
+      projectKinds,
+      { delta: 1, id: 'summary', type: 'task.move' },
+      'command.unsupported-target',
+    );
+    expectRejected(
+      projectKinds,
+      { edge: 'end', id: 'milestone', time: 20, type: 'task.resize' },
+      'command.unsupported-target',
     );
     expectRejected(
       base,

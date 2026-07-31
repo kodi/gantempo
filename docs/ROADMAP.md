@@ -171,7 +171,7 @@ first four slices are complete.
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-4 complete, Slice 5 next
+**Status:** `[-]` In progress; Slices 1-5 complete, Slice 6 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -216,8 +216,17 @@ milestone point semantics, paints only canonical summary progress, and rejects n
 unequal milestone edits while preserving diagnosed parse input. Point-aware stacking
 and viewport queries plus selective ancestor/callback/time-zone invalidation are
 verified. Full `mise run ci` passes 75 files / 393 tests, 171 formatted files, 160
-lint/type files, and four artifacts; the packed declaration is 46.13 kB. Slice 5
-accessible React tree integration is next.
+lint/type files, and four artifacts; the packed declaration is 46.13 kB. Slice 5 now
+integrates committed expansion with controlled/uncontrolled session ownership,
+branch-aware focus and keyboard behavior, semantic selector/slot summaries, accessible
+treegrid levels and controls, distinct summary/milestone SVG and hit surfaces, typed
+class hooks, and kind/parent/order properties workflows. Direct summary/milestone
+move, resize, and progress interaction rejects without changing canonical data. Full
+`mise run ci` passes 76 files / 401 tests, 172 formatted files, 161 lint/type files,
+and four artifacts; the packed declaration is 47.42 kB. Chrome DevTools verified the
+existing `/interactive` regression surface at 1440x1000 and 500x844 with no overflow
+or console warnings/errors; the dedicated `/project` matrix remains Slice 12/13 work.
+Slice 6 Community dependency graph analysis is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -714,6 +723,22 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 5. Project collapse is normalized committed session
+  state and participates in project topology invalidation; controlled consumers
+  receive one complete reconciled proposal and hidden descendant focus/selection
+  moves deterministically to the collapsed summary. React now exposes real treegrid
+  depth/expansion, pointer and keyboard branch controls, semantic selector and slot
+  summaries, summary bars/progress, milestone diamonds/point hit targets, and typed
+  branch/summary/milestone class hooks. The built-in properties surface edits task
+  kind, parent, and sibling order through `task.update`, while summary schedule/
+  progress and milestone progress remain read-only and direct kind-incompatible
+  interactions reject. Focused runtime, session, DOM, keyboard, properties, SSR,
+  hydration, hit-test, and axe coverage passed. Full `mise run ci` passed 76 files /
+  401 tests, 172 formatted files, 161 lint/type files, and four artifacts; the packed
+  declaration is 47.42 kB. Chrome DevTools verified `/interactive` at 1440x1000 and
+  the installed 500x844 narrow minimum with no page overflow or console warnings/
+  errors. Slice 6 dependency graph analysis is next.
 
 - 2026-07-31: Completed M5 Slice 4. A private iterative presentation engine derives
   nested summary spans, canonical fallback intervals, descendant resolution counts,

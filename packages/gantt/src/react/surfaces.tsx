@@ -32,9 +32,12 @@ interface DefaultItemPropertiesProps extends GanttItemPropertiesProps {
     readonly id: string;
     readonly title: string;
   }[];
+  readonly parentTasks: readonly {
+    readonly id: string;
+    readonly title: string;
+  }[];
   readonly readOnly: boolean;
   readonly resourceId?: string;
-  readonly taskKind?: string;
 }
 
 const TOOLTIP_MONTH_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', {
@@ -108,6 +111,15 @@ export function DefaultTooltip({ bindings, task }: GanttTooltipProps): ReactElem
   return (
     <div {...bindings}>
       <strong>{task.title}</strong>
+      <span data-gt-part="tooltip-kind">
+        {task.kind === 'task'
+          ? 'Task'
+          : task.kind === 'summary'
+            ? `Summary${
+                task.descendantCount === undefined ? '' : ` · ${task.descendantCount} descendants`
+              }`
+            : 'Milestone'}
+      </span>
       <div className="gt-gantt__tooltip-schedule" data-gt-part="tooltip-schedule">
         <CalendarClock aria-hidden="true" />
         <span data-gt-part="tooltip-range">{formatTooltipDateRange(task.start, task.end)}</span>
@@ -335,10 +347,10 @@ export function DefaultItemProperties({
   onCancel,
   onDelete,
   onSubmit,
+  parentTasks,
   pending,
   readOnly,
   resourceId,
-  taskKind,
 }: DefaultItemPropertiesProps): ReactElement {
   const taskValue = initialValue.kind === 'task' ? initialValue : undefined;
   const [title, setTitle] = useState(initialValue.title);
@@ -354,6 +366,9 @@ export function DefaultItemProperties({
   );
   const [appearance, setAppearance] = useState(initialValue.appearance?.variant ?? '');
   const [laneId, setLaneId] = useState(taskValue?.laneId ?? '');
+  const [taskKind, setTaskKind] = useState(taskValue?.taskKind ?? 'task');
+  const [parentId, setParentId] = useState(taskValue?.parentId ?? '');
+  const [order, setOrder] = useState(taskValue?.order === undefined ? '' : String(taskValue.order));
   const unavailableAppearance =
     appearance !== '' && !appearanceVariants.some((option) => option.id === appearance);
   const disabled = pending || readOnly;
@@ -372,13 +387,18 @@ export function DefaultItemProperties({
     const next: GanttItemPropertiesValue = {
       ...(appearanceReference === undefined ? {} : { appearance: appearanceReference }),
       ...(description === '' ? {} : { description }),
-      ...(end === '' ? {} : { end: Date.parse(end) }),
+      ...(end === ''
+        ? {}
+        : { end: taskKind === 'milestone' ? Date.parse(start) : Date.parse(end) }),
       kind: 'task',
       ...(laneId === '' ? {} : { laneId }),
+      ...(order === '' ? {} : { order: Number(order) }),
+      ...(parentId === '' ? {} : { parentId }),
       ...(initialValue.placementId === undefined ? {} : { placementId: initialValue.placementId }),
       ...(progress === '' ? {} : { progress: Number(progress) / 100 }),
       ...(start === '' ? {} : { start: Date.parse(start) }),
       taskId: initialValue.taskId,
+      taskKind,
       title,
     };
     onSubmit(next);
@@ -424,7 +444,7 @@ export function DefaultItemProperties({
             {initialValue.kind === 'task' ? (
               <div>
                 <dt>Kind</dt>
-                <dd>{taskKind ?? 'task'}</dd>
+                <dd>{taskKind}</dd>
               </div>
             ) : null}
             {duration === undefined ? null : (
@@ -475,7 +495,67 @@ export function DefaultItemProperties({
             </label>
           ) : null}
 
-          {initialValue.kind === 'task' && initialValue.start !== undefined ? (
+          {initialValue.kind === 'task' ? (
+            <div className="gt-gantt__editor-schedule">
+              <label>
+                <span className="gt-gantt__editor-label">
+                  <span>Kind</span>
+                  <small>Canonical task type</small>
+                </span>
+                <select
+                  aria-label="Kind"
+                  disabled={disabled}
+                  name="kind"
+                  onChange={(event) => setTaskKind(event.currentTarget.value as typeof taskKind)}
+                  value={taskKind}
+                >
+                  <option value="task">Task</option>
+                  <option value="summary">Summary</option>
+                  <option value="milestone">Milestone</option>
+                </select>
+              </label>
+              <label>
+                <span className="gt-gantt__editor-label">
+                  <span>Parent</span>
+                  <small>Summary task</small>
+                </span>
+                <select
+                  aria-label="Parent"
+                  disabled={disabled}
+                  name="parent"
+                  onChange={(event) => setParentId(event.currentTarget.value)}
+                  value={parentId}
+                >
+                  <option value="">No parent</option>
+                  {parentTasks
+                    .filter((parent) => parent.id !== initialValue.taskId)
+                    .map((parent) => (
+                      <option key={parent.id} value={parent.id}>
+                        {parent.title}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                <span className="gt-gantt__editor-label">
+                  <span>Order</span>
+                  <small>Sibling order</small>
+                </span>
+                <input
+                  aria-label="Order"
+                  disabled={disabled}
+                  name="order"
+                  onChange={(event) => setOrder(event.currentTarget.value)}
+                  type="number"
+                  value={order}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {initialValue.kind === 'task' &&
+          initialValue.start !== undefined &&
+          taskKind !== 'summary' ? (
             <div className="gt-gantt__editor-schedule">
               <label>
                 <span className="gt-gantt__editor-label">
@@ -496,25 +576,27 @@ export function DefaultItemProperties({
                   />
                 </span>
               </label>
-              <label>
-                <span className="gt-gantt__editor-label">
-                  <span>End</span>
-                  <small>Local time</small>
-                </span>
-                <span className="gt-gantt__editor-input-shell">
-                  <CalendarClock aria-hidden="true" focusable="false" strokeWidth={1.8} />
-                  <input
-                    aria-describedby={error === undefined ? undefined : errorId}
-                    aria-label="End (ISO 8601)"
-                    disabled={disabled}
-                    name="end"
-                    onChange={(event) => setEnd(event.currentTarget.value)}
-                    step={(initialValue.end ?? 0) % 60_000 === 0 ? 60 : 0.001}
-                    type="datetime-local"
-                    value={end}
-                  />
-                </span>
-              </label>
+              {taskKind === 'milestone' ? null : (
+                <label>
+                  <span className="gt-gantt__editor-label">
+                    <span>End</span>
+                    <small>Local time</small>
+                  </span>
+                  <span className="gt-gantt__editor-input-shell">
+                    <CalendarClock aria-hidden="true" focusable="false" strokeWidth={1.8} />
+                    <input
+                      aria-describedby={error === undefined ? undefined : errorId}
+                      aria-label="End (ISO 8601)"
+                      disabled={disabled}
+                      name="end"
+                      onChange={(event) => setEnd(event.currentTarget.value)}
+                      step={(initialValue.end ?? 0) % 60_000 === 0 ? 60 : 0.001}
+                      type="datetime-local"
+                      value={end}
+                    />
+                  </span>
+                </label>
+              )}
             </div>
           ) : null}
 
