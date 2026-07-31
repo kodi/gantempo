@@ -50,6 +50,7 @@ export interface TaskRecord {
   readonly title: string;
   readonly kind: TaskKind;
   readonly parentId?: EntityId;
+  readonly order?: number;
   readonly schedule?: TaskSchedule;
   readonly progress?: number;
   readonly segments: readonly TaskSegment[];

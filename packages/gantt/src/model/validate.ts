@@ -9,6 +9,7 @@ import type {
   ResourceRecord,
   TaskRecord,
 } from './types';
+import { findTaskHierarchyCycles } from '../hierarchy/task-hierarchy';
 
 type CollectionName =
   | 'assignments'
@@ -66,21 +67,74 @@ export function validateDocumentReferences(
   const resourceIds = new Set(document.resources.map((resource) => resource.id));
   const laneIds = new Set(document.lanes.map((lane) => lane.id));
 
-  const tasks = document.tasks.map((task, index): TaskRecord => {
-    if (task.parentId === undefined || taskIds.has(task.parentId)) {
+  const sourceIndexByTaskId = new Map(document.tasks.map((task, index) => [task.id, index]));
+  let tasks = document.tasks.map((task, index): TaskRecord => {
+    if (task.parentId === undefined) {
       return task;
     }
     const path = `${recordPath(sourcePaths, 'tasks', task.id, index)}/parentId`;
-    diagnostics.push(
-      referenceDiagnostic(
-        'reference.task-parent',
-        `Task "${task.id}" references missing parent task "${task.parentId}"; the parent was cleared.`,
-        path,
-        [task.id, task.parentId],
-      ),
-    );
-    return omitProperty(task, 'parentId');
+    if (task.parentId === task.id) {
+      diagnostics.push(
+        referenceDiagnostic(
+          'reference.task-parent-self',
+          `Task "${task.id}" referenced itself as parent; the parent was cleared.`,
+          path,
+          [task.id],
+        ),
+      );
+      return omitProperty(task, 'parentId');
+    }
+    if (!taskIds.has(task.parentId)) {
+      diagnostics.push(
+        referenceDiagnostic(
+          'reference.task-parent',
+          `Task "${task.id}" references missing parent task "${task.parentId}"; the parent was cleared.`,
+          path,
+          [task.id, task.parentId],
+        ),
+      );
+      return omitProperty(task, 'parentId');
+    }
+    const parent = document.tasks[sourceIndexByTaskId.get(task.parentId)!]!;
+    if (parent.kind !== 'summary') {
+      diagnostics.push(
+        referenceDiagnostic(
+          'reference.task-parent-kind',
+          `Task "${task.id}" references non-summary parent "${parent.id}"; the parent was cleared.`,
+          path,
+          [task.id, parent.id],
+        ),
+      );
+      return omitProperty(task, 'parentId');
+    }
+    return task;
   });
+
+  const cycleBreakIds = new Set<EntityId>();
+  for (const cycle of findTaskHierarchyCycles(tasks)) {
+    if (cycle.length < 2) {
+      continue;
+    }
+    const breakId = cycle[0]!;
+    cycleBreakIds.add(breakId);
+    const index = sourceIndexByTaskId.get(breakId)!;
+    const closedPath = Object.freeze([...cycle, breakId]);
+    diagnostics.push(
+      Object.freeze({
+        code: 'reference.task-parent-cycle' as const,
+        details: Object.freeze({ cyclePath: closedPath }),
+        entityIds: Object.freeze([...cycle]),
+        message: `Task hierarchy cycle ${closedPath.join(' -> ')} was broken at "${breakId}".`,
+        path: `${recordPath(sourcePaths, 'tasks', breakId, index)}/parentId`,
+        severity: 'error' as const,
+      }),
+    );
+  }
+  if (cycleBreakIds.size > 0) {
+    tasks = tasks.map((task) =>
+      cycleBreakIds.has(task.id) ? omitProperty(task, 'parentId') : task,
+    );
+  }
 
   const resources = document.resources.map((resource, index): ResourceRecord => {
     if (resource.parentId === undefined || resourceIds.has(resource.parentId)) {

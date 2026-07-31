@@ -37,10 +37,12 @@ function withTaskTree(): GanttDocument {
       }),
     ]),
     tasks: Object.freeze([
-      ...base.tasks,
+      ...base.tasks.map((task) =>
+        task.id === 'task-1' ? Object.freeze({ ...task, kind: 'summary' as const }) : task,
+      ),
       Object.freeze({
         id: 'task-child',
-        kind: 'task' as const,
+        kind: 'summary' as const,
         parentId: 'task-1',
         segments: Object.freeze([]),
         title: 'Child',
@@ -158,14 +160,14 @@ describe('referential deletion', () => {
       tasks: Object.freeze([
         Object.freeze({
           id: 'a',
-          kind: 'task' as const,
+          kind: 'summary' as const,
           parentId: 'b',
           segments: Object.freeze([]),
           title: 'A',
         }),
         Object.freeze({
           id: 'b',
-          kind: 'task' as const,
+          kind: 'summary' as const,
           parentId: 'a',
           segments: Object.freeze([]),
           title: 'B',

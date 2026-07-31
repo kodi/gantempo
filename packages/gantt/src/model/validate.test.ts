@@ -43,6 +43,50 @@ describe('validateDocumentReferences', () => {
     expect(document.tasks[0]?.parentId).toBe('missing-task');
   });
 
+  it('repairs invalid task hierarchy edges deterministically without dropping tasks', () => {
+    const document = documentWith({
+      tasks: [
+        { id: 'self', kind: 'summary', parentId: 'self', segments: [], title: 'Self' },
+        { id: 'leaf-parent', kind: 'task', segments: [], title: 'Leaf parent' },
+        {
+          id: 'leaf-child',
+          kind: 'task',
+          parentId: 'leaf-parent',
+          segments: [],
+          title: 'Leaf child',
+        },
+        { id: 'c', kind: 'summary', parentId: 'a', segments: [], title: 'C' },
+        { id: 'a', kind: 'summary', parentId: 'b', segments: [], title: 'A' },
+        { id: 'b', kind: 'summary', parentId: 'c', segments: [], title: 'B' },
+        { id: 'unrelated', kind: 'task', segments: [], title: 'Unrelated' },
+      ],
+    });
+
+    const result = validateDocumentReferences(document);
+
+    expect(result.document.tasks.map((task) => task.id)).toEqual(
+      document.tasks.map((task) => task.id),
+    );
+    expect(result.document.tasks.find((task) => task.id === 'self')).not.toHaveProperty('parentId');
+    expect(result.document.tasks.find((task) => task.id === 'leaf-child')).not.toHaveProperty(
+      'parentId',
+    );
+    expect(result.document.tasks.find((task) => task.id === 'a')).not.toHaveProperty('parentId');
+    expect(result.document.tasks.find((task) => task.id === 'b')?.parentId).toBe('c');
+    expect(result.document.tasks.find((task) => task.id === 'c')?.parentId).toBe('a');
+    expect(result.diagnostics.map((item) => item.code)).toEqual([
+      'reference.task-parent-self',
+      'reference.task-parent-kind',
+      'reference.task-parent-cycle',
+    ]);
+    expect(result.diagnostics[2]).toMatchObject({
+      details: { cyclePath: ['a', 'b', 'c', 'a'] },
+      entityIds: ['a', 'b', 'c'],
+      path: '/tasks/4/parentId',
+    });
+    expect(document.tasks.find((task) => task.id === 'a')?.parentId).toBe('b');
+  });
+
   it('omits invalid relationships and preserves valid document order', () => {
     const document = documentWith({
       assignments: [

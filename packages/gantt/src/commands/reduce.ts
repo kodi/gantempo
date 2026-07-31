@@ -134,6 +134,55 @@ function freezeAffected(affected: readonly EntityReference[]): readonly EntityRe
   return Object.freeze(result);
 }
 
+function collectTaskAncestors(tasks: readonly TaskRecord[], taskId: EntityId): readonly EntityId[] {
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+  const ancestors: EntityId[] = [];
+  const visited = new Set<EntityId>([taskId]);
+  let parentId = tasksById.get(taskId)?.parentId;
+  while (parentId !== undefined && !visited.has(parentId)) {
+    visited.add(parentId);
+    ancestors.push(parentId);
+    parentId = tasksById.get(parentId)?.parentId;
+  }
+  return ancestors;
+}
+
+function collectTaskDescendants(
+  tasks: readonly TaskRecord[],
+  taskId: EntityId,
+): readonly EntityId[] {
+  const descendants: EntityId[] = [];
+  const visited = new Set<EntityId>([taskId]);
+  let frontier = [taskId];
+  while (frontier.length > 0) {
+    const parents = new Set(frontier);
+    const next: EntityId[] = [];
+    for (const task of tasks) {
+      if (task.parentId !== undefined && parents.has(task.parentId) && !visited.has(task.id)) {
+        visited.add(task.id);
+        descendants.push(task.id);
+        next.push(task.id);
+      }
+    }
+    frontier = next;
+  }
+  return descendants;
+}
+
+function taskChangeAffected(
+  before: readonly TaskRecord[],
+  after: readonly TaskRecord[],
+  taskId: EntityId,
+): readonly EntityReference[] {
+  return [
+    { collection: 'tasks', id: taskId },
+    ...collectTaskDescendants(before, taskId).map((id) => ({ collection: 'tasks' as const, id })),
+    ...collectTaskDescendants(after, taskId).map((id) => ({ collection: 'tasks' as const, id })),
+    ...collectTaskAncestors(before, taskId).map((id) => ({ collection: 'tasks' as const, id })),
+    ...collectTaskAncestors(after, taskId).map((id) => ({ collection: 'tasks' as const, id })),
+  ];
+}
+
 function commitPatches(
   document: GanttDocument,
   patches: readonly GanttPatch[],
@@ -166,6 +215,10 @@ function addRecord<C extends DocumentCollection>(
   collection: C,
   input: unknown,
   index: unknown,
+  affectedForValue?: (
+    value: DomainRecordByCollection[C],
+    insertionIndex: number,
+  ) => readonly EntityReference[],
 ): CommandOutcome {
   const normalized = normalizeCommandRecord(collection, input, '/command/value');
   if (!normalized.value) {
@@ -206,7 +259,9 @@ function addRecord<C extends DocumentCollection>(
       target: { collection, id: normalized.value.id },
       value: normalized.value,
     } as GanttPatch,
-    [{ collection, id: normalized.value.id }],
+    affectedForValue?.(normalized.value, insertionIndex) ?? [
+      { collection, id: normalized.value.id },
+    ],
   );
 }
 
@@ -217,6 +272,10 @@ function updateRecord<C extends DocumentCollection>(
   changes: unknown,
   allowedKeys: ReadonlySet<string>,
   clearableKeys: ReadonlySet<string>,
+  affectedForValue?: (
+    current: DomainRecordByCollection[C],
+    next: DomainRecordByCollection[C],
+  ) => readonly EntityReference[],
 ): CommandOutcome {
   if (typeof id !== 'string' || id.length === 0) {
     return rejected(document, [
@@ -260,7 +319,7 @@ function updateRecord<C extends DocumentCollection>(
       target: { collection, id },
       value: normalized.value,
     } as GanttPatch,
-    [{ collection, id }],
+    affectedForValue?.(current, normalized.value) ?? [{ collection, id }],
   );
 }
 
@@ -565,8 +624,10 @@ function deleteTask(document: GanttDocument, id: unknown, cascade: unknown): Com
     ...dependencies.map((dependency) => removePatch('dependencies', dependency.id)),
   ];
   const affected: EntityReference[] = patches.map((patch) => patch.target);
-  if (target.parentId !== undefined && !taskIds.has(target.parentId)) {
-    affected.push({ collection: 'tasks', id: target.parentId });
+  for (const ancestorId of collectTaskAncestors(document.tasks, target.id)) {
+    if (!taskIds.has(ancestorId)) {
+      affected.push({ collection: 'tasks', id: ancestorId });
+    }
   }
   for (const assignment of assignments) {
     affected.push(
@@ -718,7 +779,14 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
   switch (command.type) {
     case 'task.add': {
       const invalid = commandShape(document, command, ['type', 'value', 'index']);
-      return invalid ?? addRecord(document, 'tasks', command.value, command.index);
+      return (
+        invalid ??
+        addRecord(document, 'tasks', command.value, command.index, (value, insertionIndex) => {
+          const tasks = [...document.tasks];
+          tasks.splice(insertionIndex, 0, value);
+          return taskChangeAffected(document.tasks, tasks, value.id);
+        })
+      );
     }
     case 'task.update': {
       const invalid = commandShape(document, command, ['type', 'id', 'changes']);
@@ -734,13 +802,28 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
             'description',
             'kind',
             'parentId',
+            'order',
             'schedule',
             'progress',
             'appearance',
             'segments',
             'fields',
           ]),
-          new Set(['description', 'parentId', 'schedule', 'progress', 'appearance', 'fields']),
+          new Set([
+            'description',
+            'parentId',
+            'order',
+            'schedule',
+            'progress',
+            'appearance',
+            'fields',
+          ]),
+          (current, next) =>
+            taskChangeAffected(
+              document.tasks,
+              document.tasks.map((task) => (task.id === current.id ? next : task)),
+              current.id,
+            ),
         )
       );
     }

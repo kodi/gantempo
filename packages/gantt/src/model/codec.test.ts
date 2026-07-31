@@ -11,6 +11,7 @@ function fullWireDocument() {
         id: 1,
         title: 'Implementation',
         kind: 'task',
+        order: -1.5,
         progress: 0.5,
         schedule: {
           mode: 'instant',
@@ -97,6 +98,7 @@ describe('parseGanttDocument', () => {
         {
           id: '1',
           kind: 'task',
+          order: -1.5,
           schedule: {
             end: Date.parse('2026-07-30T12:00:00+02:00'),
             mode: 'instant',
@@ -139,6 +141,30 @@ describe('parseGanttDocument', () => {
       schemaVersion: 1,
       tasks: [{ id: 'task-a', kind: 'task', segments: [], title: 'Task A' }],
     });
+  });
+
+  it('repairs task hierarchy cycles at the original wire path', () => {
+    const result = parseGanttDocument({
+      schemaVersion: 1,
+      tasks: [
+        { id: 'c', kind: 'summary', parentId: 'a', title: 'C' },
+        { id: 'a', kind: 'summary', order: 2, parentId: 'b', title: 'A' },
+        { id: 'b', kind: 'summary', parentId: 'c', title: 'B' },
+        { id: 'unrelated', title: 'Unrelated' },
+      ],
+    });
+
+    expect(result.document?.tasks.map((task) => task.id)).toEqual(['c', 'a', 'b', 'unrelated']);
+    expect(result.document?.tasks[1]).toMatchObject({ id: 'a', order: 2 });
+    expect(result.document?.tasks[1]).not.toHaveProperty('parentId');
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'reference.task-parent-cycle',
+        details: { cyclePath: ['a', 'b', 'c', 'a'] },
+        entityIds: ['a', 'b', 'c'],
+        path: '/tasks/1/parentId',
+      }),
+    );
   });
 
   it('normalizes canonical descriptions and task/lane semantic appearance', () => {

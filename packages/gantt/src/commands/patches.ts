@@ -16,6 +16,11 @@ type MutableCollections = {
 
 const EMPTY_DIAGNOSTICS = Object.freeze([]) as readonly [];
 const EMPTY_PATCHES = Object.freeze([]) as readonly [];
+const REPAIRABLE_HIERARCHY_CODES = new Set<Diagnostic['code']>([
+  'reference.task-parent-cycle',
+  'reference.task-parent-kind',
+  'reference.task-parent-self',
+]);
 
 function isPlainObject(input: unknown): input is Record<string, unknown> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
@@ -324,8 +329,11 @@ export function applyGanttPatches(
     ]);
   }
   const baseDiagnostics = validateDocumentIntegrityStrict(document);
-  if (baseDiagnostics.length > 0) {
-    return reject(document, baseDiagnostics);
+  const fatalBaseDiagnostics = baseDiagnostics.filter(
+    (item) => !REPAIRABLE_HIERARCHY_CODES.has(item.code),
+  );
+  if (fatalBaseDiagnostics.length > 0) {
+    return reject(document, fatalBaseDiagnostics);
   }
 
   const patches: GanttPatch[] = [];

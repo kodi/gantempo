@@ -106,6 +106,7 @@ describe('applyGanttCommand', () => {
         appearance: { variant: '  customer:blocked  ' },
         description: 'Canonical details',
         fields: null,
+        order: -3,
         progress: 0.5,
         title: 'Changed task',
       },
@@ -116,6 +117,7 @@ describe('applyGanttCommand', () => {
     expect(task.document.tasks[0]).toMatchObject({
       appearance: { variant: 'customer:blocked' },
       description: 'Canonical details',
+      order: -3,
       progress: 0.5,
       title: 'Changed task',
     });
@@ -167,13 +169,114 @@ describe('applyGanttCommand', () => {
     expect(placement.document.placements[0]).not.toHaveProperty('segmentId');
 
     const cleared = applyGanttCommand(placement.document, {
-      changes: { appearance: null, description: null },
+      changes: { appearance: null, description: null, order: null },
       id: 'task-1',
       type: 'task.update',
     });
     expect(cleared.status).toBe('committed');
     expect(cleared.document.tasks[0]).not.toHaveProperty('appearance');
     expect(cleared.document.tasks[0]).not.toHaveProperty('description');
+    expect(cleared.document.tasks[0]).not.toHaveProperty('order');
+  });
+
+  it('rejects invalid hierarchy intent and supports ordered atomic reparenting', () => {
+    const base = createPatchTestDocument();
+    const tree = applyGanttCommand(base, {
+      commands: [
+        { changes: { kind: 'summary' }, id: 'task-1', type: 'task.update' },
+        {
+          type: 'task.add',
+          value: {
+            id: 'summary-child',
+            kind: 'summary',
+            parentId: 'task-1',
+            title: 'Summary child',
+          },
+        },
+        {
+          type: 'task.add',
+          value: { id: 'summary-b', kind: 'summary', title: 'Summary B' },
+        },
+        {
+          type: 'task.add',
+          value: {
+            id: 'leaf',
+            parentId: 'summary-child',
+            title: 'Leaf',
+          },
+        },
+      ],
+      type: 'transaction',
+    });
+    expect(tree.status).toBe('committed');
+
+    const invalidCommands: readonly GanttCommand[] = [
+      { changes: { parentId: 'missing' }, id: 'leaf', type: 'task.update' },
+      { changes: { parentId: 'leaf' }, id: 'leaf', type: 'task.update' },
+      { changes: { parentId: 'summary-child' }, id: 'task-1', type: 'task.update' },
+      { changes: { parentId: 'task-2' }, id: 'leaf', type: 'task.update' },
+      { changes: { kind: 'task' }, id: 'summary-child', type: 'task.update' },
+    ];
+    const expectedCodes = [
+      'reference.task-parent',
+      'reference.task-parent-self',
+      'reference.task-parent-cycle',
+      'reference.task-parent-kind',
+      'reference.task-parent-kind',
+    ];
+    invalidCommands.forEach((command, index) => {
+      const outcome = applyGanttCommand(tree.document, command);
+      expect(outcome.status).toBe('rejected');
+      expect(outcome.document).toBe(tree.document);
+      expect(outcome.diagnostics[0]?.code).toBe(expectedCodes[index]);
+    });
+
+    const movedBranch = applyGanttCommand(tree.document, {
+      changes: { parentId: 'summary-b' },
+      id: 'summary-child',
+      type: 'task.update',
+    });
+    expect(movedBranch.status).toBe('committed');
+    expect(movedBranch.affected).toEqual([
+      { collection: 'tasks', id: 'summary-child' },
+      { collection: 'tasks', id: 'leaf' },
+      { collection: 'tasks', id: 'task-1' },
+      { collection: 'tasks', id: 'summary-b' },
+    ]);
+
+    const reordered = applyGanttCommand(tree.document, {
+      changes: { order: 4, parentId: 'task-1' },
+      id: 'leaf',
+      type: 'task.update',
+    });
+    expectCommittedRoundTrip(tree.document, reordered);
+    expect(reordered.document.tasks.find((task) => task.id === 'leaf')).toMatchObject({
+      order: 4,
+      parentId: 'task-1',
+    });
+    expect(reordered.affected).toEqual([
+      { collection: 'tasks', id: 'leaf' },
+      { collection: 'tasks', id: 'summary-child' },
+      { collection: 'tasks', id: 'task-1' },
+    ]);
+
+    const orderedRepair = applyGanttCommand(tree.document, {
+      commands: [
+        { changes: { parentId: 'task-1' }, id: 'leaf', type: 'task.update' },
+        { changes: { kind: 'task' }, id: 'summary-child', type: 'task.update' },
+      ],
+      type: 'transaction',
+    });
+    expect(orderedRepair.status).toBe('committed');
+    const reversedRepair = applyGanttCommand(tree.document, {
+      commands: [
+        { changes: { kind: 'task' }, id: 'summary-child', type: 'task.update' },
+        { changes: { parentId: 'task-1' }, id: 'leaf', type: 'task.update' },
+      ],
+      type: 'transaction',
+    });
+    expect(reversedRepair.status).toBe('rejected');
+    expect(reversedRepair.document).toBe(tree.document);
   });
 
   it('returns frozen deterministic no-ops without retaining mutable payload references', () => {

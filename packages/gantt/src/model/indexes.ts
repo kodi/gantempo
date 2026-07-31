@@ -9,6 +9,7 @@ import type {
   TaskRecord,
   TaskSegment,
 } from './types';
+import { buildTaskHierarchyIndexes, type TaskHierarchyIndexes } from '../hierarchy/task-hierarchy';
 
 interface IdentifiedRecord {
   readonly id: EntityId;
@@ -31,6 +32,7 @@ export interface DocumentIndexes {
   readonly resourcesById: ReadonlyMap<EntityId, ResourceRecord>;
   readonly segmentsByTaskId: ReadonlyMap<EntityId, ReadonlyMap<EntityId, TaskSegment>>;
   readonly taskChildrenByParentId: ReadonlyMap<EntityId, readonly TaskRecord[]>;
+  readonly taskHierarchy: TaskHierarchyIndexes;
   readonly tasksById: ReadonlyMap<EntityId, TaskRecord>;
 }
 
@@ -61,6 +63,7 @@ function groupBy<T>(
 }
 
 export function buildDocumentIndexes(document: GanttDocument): DocumentIndexes {
+  const taskHierarchy = buildTaskHierarchyIndexes(document.tasks);
   return Object.freeze({
     assignmentsById: primaryMap(document.assignments),
     assignmentsByResourceId: groupBy(document.assignments, (assignment) => assignment.resourceId),
@@ -85,7 +88,8 @@ export function buildDocumentIndexes(document: GanttDocument): DocumentIndexes {
         new Map(task.segments.map((segment) => [segment.id, segment])),
       ]),
     ),
-    taskChildrenByParentId: groupBy(document.tasks, (task) => task.parentId),
+    taskChildrenByParentId: taskHierarchy.childrenByParentId,
+    taskHierarchy,
     tasksById: primaryMap(document.tasks),
   });
 }

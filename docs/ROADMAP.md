@@ -171,7 +171,7 @@ contract-freeze slice is in progress.
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slice 1 complete, Slice 2 next
+**Status:** `[-]` In progress; Slices 1-2 complete, Slice 3 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -195,8 +195,16 @@ unpublished schema-version-1 model will gain optional finite task sibling `order
 this pre-publication correction is the only canonical-data change accepted by Slice
 1. The contract slice passed cross-document checks, packed-declaration inspection,
 `git diff --check`, and full `mise run ci` with 68 test files / 357 tests, 160
-formatted files, 149 lint/type files, and four package artifacts. Slice 2 now owns the
-schema correction, hierarchy integrity/recovery indexes, and strict reparenting.
+formatted files, 149 lint/type files, and four package artifacts.
+
+Slice 2 now implements optional task order, iterative pure hierarchy indexes,
+deterministic edge-preserving parse recovery, strict add/update/reparent/kind
+validation, and descendant plus old/new ancestor invalidation. Property coverage
+includes arbitrary forest order, normalized cycles, deep chains, transaction repair,
+patch/inverse/history, facade, and persistence projection. Full `mise run ci` passes
+71 test files / 368 tests, 164 formatted files, 153 lint/type files, and four package
+artifacts; the 44.69 kB declaration exposes no private hierarchy engine. Slice 3
+project-tree projection is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -693,6 +701,18 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 2. Schema version 1 now normalizes and serializes
+  optional finite task sibling order, and `task.update` can set or clear it. A private
+  iterative hierarchy boundary indexes ordered children, roots, depths, ancestry, and
+  half-open subtree ranges; a 5,000-level chain verifies non-recursive traversal.
+  Parsing clears invalid edges with stable self, parent-kind, and normalized cycle
+  diagnostics while retaining every task. Strict add/update/patch/transaction paths
+  reject invalid output but permit ordered repairs, and task changes report descendants
+  plus old/new ancestor chains. Fixed-seed forest/cycle/reparent, patch, inverse,
+  history, facade, and persistence tests pass. Full `mise run ci` passed 71 test files /
+  368 tests, 164 formatted files, 153 lint/type files, and four package artifacts; the
+  packed declaration is 44.69 kB. Slice 3 visible project-tree projection is next.
 
 - 2026-07-31: Completed M5 Slice 1 and accepted the
   [basic project Gantt contract](decisions/2026-07-31-basic-project-gantt-contract.md).

@@ -1,4 +1,5 @@
 import type { Diagnostic } from '../model/diagnostics';
+import { findTaskHierarchyCycles } from '../hierarchy/task-hierarchy';
 import { canonicalRecordSchemas } from '../model/schema/records';
 import { serializeGanttDocument } from '../model/serialize';
 import type {
@@ -130,7 +131,21 @@ export function validateDocumentIntegrityStrict(document: GanttDocument): readon
   const assignmentsById = new Map(document.assignments.map((record) => [record.id, record]));
 
   document.tasks.forEach((task, index) => {
-    if (task.parentId !== undefined && !taskIds.has(task.parentId)) {
+    if (task.parentId === undefined) {
+      return;
+    }
+    if (task.parentId === task.id) {
+      diagnostics.push(
+        diagnostic(
+          'reference.task-parent-self',
+          `Task "${task.id}" cannot reference itself as parent.`,
+          `/tasks/${index}/parentId`,
+          [task.id],
+        ),
+      );
+      return;
+    }
+    if (!taskIds.has(task.parentId)) {
       diagnostics.push(
         diagnostic(
           'reference.task-parent',
@@ -139,8 +154,38 @@ export function validateDocumentIntegrityStrict(document: GanttDocument): readon
           [task.id, task.parentId],
         ),
       );
+      return;
+    }
+    const parent = tasksById.get(task.parentId)!;
+    if (parent.kind !== 'summary') {
+      diagnostics.push(
+        diagnostic(
+          'reference.task-parent-kind',
+          `Task "${task.id}" cannot use non-summary task "${parent.id}" as parent.`,
+          `/tasks/${index}/parentId`,
+          [task.id, parent.id],
+        ),
+      );
     }
   });
+  const taskIndexById = new Map(document.tasks.map((task, index) => [task.id, index]));
+  for (const cycle of findTaskHierarchyCycles(document.tasks)) {
+    if (cycle.length < 2) {
+      continue;
+    }
+    const breakId = cycle[0]!;
+    const closedPath = Object.freeze([...cycle, breakId]);
+    diagnostics.push(
+      Object.freeze({
+        code: 'reference.task-parent-cycle' as const,
+        details: Object.freeze({ cyclePath: closedPath }),
+        entityIds: Object.freeze([...cycle]),
+        message: `Task hierarchy contains cycle ${closedPath.join(' -> ')}.`,
+        path: `/tasks/${taskIndexById.get(breakId)!}/parentId`,
+        severity: 'error' as const,
+      }),
+    );
+  }
   document.resources.forEach((resource, index) => {
     if (resource.parentId !== undefined && !resourceIds.has(resource.parentId)) {
       diagnostics.push(

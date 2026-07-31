@@ -221,6 +221,7 @@ function serializeTask(task: TaskRecord, path: string): string {
       'parentId',
       task.parentId === undefined ? undefined : serializeId(task.parentId, `${path}/parentId`),
     ],
+    ['order', task.order === undefined ? undefined : serializeNumber(task.order, `${path}/order`)],
     [
       'schedule',
       task.schedule === undefined

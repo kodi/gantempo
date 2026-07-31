@@ -15,7 +15,7 @@ function generatedTree(width: number, depth: number): GanttDocument {
   const tasks: TaskRecord[] = [
     Object.freeze({
       id: 'root',
-      kind: 'task',
+      kind: depth === 0 ? 'task' : 'summary',
       segments: Object.freeze([]),
       title: 'Root',
     }),
@@ -29,7 +29,7 @@ function generatedTree(width: number, depth: number): GanttDocument {
         tasks.push(
           Object.freeze({
             id,
-            kind: 'task',
+            kind: level === depth - 1 ? 'task' : 'summary',
             parentId,
             segments: Object.freeze([]),
             title: id,

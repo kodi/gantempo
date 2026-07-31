@@ -16,6 +16,7 @@ describe('document kernel round trip', () => {
           id: 100,
           title: 'Build 🚀',
           kind: 'task',
+          order: -4,
           progress: 0.75,
           schedule: {
             mode: 'instant',
@@ -128,6 +129,7 @@ describe('document kernel round trip', () => {
       start: -60_000,
     });
     expect(firstDocument.tasks[0]?.description).toBe('Portable description.');
+    expect(firstDocument.tasks[0]?.order).toBe(-4);
     expect(firstDocument.tasks[0]?.appearance).toEqual({ variant: 'customer:blocked' });
     expect(firstDocument.lanes[1]?.appearance).toEqual({ variant: 'customer:team-blue' });
     expect(firstDocument.tasks[1]?.schedule).toEqual({

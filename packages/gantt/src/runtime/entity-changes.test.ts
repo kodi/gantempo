@@ -131,4 +131,34 @@ describe('Gantt entity changes', () => {
       },
     ]);
   });
+
+  it('projects hierarchy and sibling-order updates as one task row change', () => {
+    const initial = createPatchTestDocument();
+    const tree = committed(initial, {
+      commands: [
+        { changes: { kind: 'summary' }, id: 'task-1', type: 'task.update' },
+        { type: 'task.add', value: { id: 'summary-b', kind: 'summary', title: 'B' } },
+        {
+          type: 'task.add',
+          value: { id: 'leaf', parentId: 'task-1', title: 'Leaf' },
+        },
+      ],
+      type: 'transaction',
+    });
+    const outcome = committed(tree.document, {
+      changes: { order: 7, parentId: 'summary-b' },
+      id: 'leaf',
+      type: 'task.update',
+    });
+
+    expect(createGanttEntityChanges(tree.document, outcome.document, outcome.patches)).toEqual([
+      {
+        after: expect.objectContaining({ id: 'leaf', order: 7, parentId: 'summary-b' }),
+        before: expect.objectContaining({ id: 'leaf', parentId: 'task-1' }),
+        collection: 'tasks',
+        id: 'leaf',
+        kind: 'update',
+      },
+    ]);
+  });
 });

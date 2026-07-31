@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slice 1 complete, Slice 2 next
+Status: In progress; Slices 1-2 complete, Slice 3 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -298,7 +298,7 @@ would force adjacent types and interaction semantics by accident.
 
 ### Slice 2: Add hierarchy integrity, indexes, and strict reparenting
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -332,6 +332,18 @@ depend on correct ancestry and stable order.
 - a reusable pure hierarchy boundary;
 - safe canonical reparenting with deterministic diagnostics and persistence changes;
 - no visual tree behavior yet.
+
+**Completed in this slice**
+
+- added optional finite task sibling order across the schema-version-1 model, codec,
+  serializer, commands, facade, and packed declaration;
+- added iterative pure hierarchy cycle, sibling, root, depth, child, ancestry, and
+  subtree-range indexes, including a 5,000-level non-recursive characterization;
+- added deterministic parse recovery for missing, self, non-summary-parent, and cyclic
+  edges while strict patches/commands reject invalid candidates and permit explicit
+  repairs;
+- expanded task add/update/delete affected references across descendants and old/new
+  ancestor chains, with transaction, patch, inverse, history, and persistence proof.
 
 **Verification**
 
@@ -957,7 +969,7 @@ owns the full shapes and rationale. In summary:
 ## Progress
 
 - [x] Slice 1: Freeze the M5 public and engine contracts
-- [ ] Slice 2: Add hierarchy integrity, indexes, and strict reparenting
+- [x] Slice 2: Add hierarchy integrity, indexes, and strict reparenting
 - [ ] Slice 3: Resolve project trees, expansion, filtering, and sorting
 - [ ] Slice 4: Resolve summary and milestone presentation semantics
 - [ ] Slice 5: Integrate hierarchical task kinds with React and accessibility
@@ -1020,16 +1032,32 @@ owns the full shapes and rationale. In summary:
   passed, and `vp pack` produced four artifacts including the 44.51 kB packed M4
   declaration. Full `mise run ci` passed 68 test files / 357 tests, formatting,
   lint/types, and the same four package artifacts. No runtime code changed.
+- 2026-07-31: Slice 2 implements the accepted hierarchy boundary without visual-tree
+  behavior. Parsed self and non-summary-parent edges clear in canonical task order;
+  normalized multi-task cycles clear the lexicographically smallest member's parent
+  and retain a closed structured path. Strict patches validate the final candidate,
+  tolerate only repairable hierarchy faults in the base, and therefore allow ordered
+  transaction or deletion repair without accepting unrelated invalid output.
+- 2026-07-31: The pure index stores explicit-order/source-order sibling groups, roots,
+  depth-first tasks, depths, and half-open subtree ranges. The range representation
+  makes descendant lookup contiguous without retaining an O(n squared) descendant
+  map. Traversal and cycle detection are iterative; a 5,000-level focused case passes.
+- 2026-07-31: Slice 2 focused hierarchy/model/command/property/facade/persistence
+  verification passed 9 files / 50 tests before the broader additions, and the full
+  suite passed 71 files / 368 tests. Final `mise run ci` passed 164 formatted files,
+  153 lint/type files, and four artifacts. The packed declaration is 44.69 kB and
+  exposes only task `order` plus its add/update inputs and the three accepted
+  diagnostic codes; hierarchy indexes and algorithms remain private.
 
 ## Next Slice
 
-Start Slice 2 in `packages/gantt/src/model/types.ts`, the private record schemas and
-codec/serializer, `packages/gantt/src/model/{diagnostics,indexes,validate}.ts`, and
-`packages/gantt/src/commands/{types,normalize,reduce,validate}.ts`. Add optional finite
-task `order`, build the pure hierarchy indexes/recovery boundary, and enforce strict
-add/update parent and kind rules with affected old/new ancestor and descendant
-references. Preserve every unrelated parsed task and existing dependency faults. Add
-fixed-seed properties for order, forests, cycles, reparenting, transactions, patches,
-inverses, history, facade types, and entity-change projection; then record focused
-evidence and run `mise run ci` before the Slice 2 commit. Do not begin visible tree
-projection in Slice 3 until Slice 2 is verified.
+Start Slice 3 in `packages/gantt/src/view/{types,resolve-view}.ts` and the private
+hierarchy boundary. Add the accepted pure project filter/comparator callbacks and
+collapsed-ID query input, then resolve a stable depth-first visible tree with explicit
+depth, child, expansion, and filter-match metadata. Preserve the existing project
+task-derived lane/placement keys; filtering must retain and force-open match ancestors
+without changing session, and sorting must remain sibling-local with canonical order
+as its tie-break. Add permutation, immutability, filter/sort/collapse composition,
+diagnostic, custom/resource/document non-regression, and fixed-seed 10,000-task/2,000-
+lane structural evidence. Record the evidence and run `mise run ci` before the Slice
+3 commit; do not begin summary/milestone geometry from Slice 4 yet.

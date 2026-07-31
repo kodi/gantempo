@@ -34,6 +34,7 @@ describe('serializeGanttDocument', () => {
           fields: { custom: true },
           id: 'task-a',
           kind: 'task',
+          order: -2,
           progress: 0,
           schedule: { end: 0, mode: 'instant', start: -1 },
           segments: [],
@@ -43,7 +44,7 @@ describe('serializeGanttDocument', () => {
     };
 
     expect(serializeGanttDocument(document)).toContain(
-      '"revision":-1,"tasks":[{"id":"task-a","title":"Task A","description":"Details","kind":"task","appearance":{"variant":"customer:blocked"},"schedule":{"mode":"instant","start":-1,"end":0},"progress":0,"segments":[],"fields":{"custom":true}}]',
+      '"revision":-1,"tasks":[{"id":"task-a","title":"Task A","description":"Details","kind":"task","appearance":{"variant":"customer:blocked"},"order":-2,"schedule":{"mode":"instant","start":-1,"end":0},"progress":0,"segments":[],"fields":{"custom":true}}]',
     );
     expect(serializeGanttDocument(document)).not.toContain('undefined');
   });

@@ -49,6 +49,7 @@ describe('public change-kernel facade', () => {
             description: 'Public portable properties',
             fields: { source: 'facade' },
             id: 42,
+            order: 3,
             schedule: { end: 20, mode: 'instant', start: 10 },
             title: 'Public change',
           },
@@ -56,7 +57,7 @@ describe('public change-kernel facade', () => {
         move,
         resize,
         {
-          changes: { progress: 0.5 },
+          changes: { order: 1, progress: 0.5 },
           id: '42',
           type: 'task.update',
         },
@@ -72,6 +73,7 @@ describe('public change-kernel facade', () => {
       description: 'Public portable properties',
       fields: { source: 'facade' },
       id: '42',
+      order: 1,
       progress: 0.5,
       schedule: { end: 30, mode: 'instant', start: 15 },
     });

@@ -103,6 +103,7 @@ export interface TaskInput {
   readonly id: EntityIdInput;
   readonly kind?: TaskRecord['kind'];
   readonly parentId?: EntityIdInput;
+  readonly order?: number;
   readonly progress?: number;
   readonly schedule?: TaskScheduleInput;
   readonly segments?: readonly TaskSegmentInput[];
@@ -170,6 +171,7 @@ export interface TaskUpdateCommand {
     fields?: JsonObject | null;
     kind?: TaskRecord['kind'];
     parentId?: EntityIdInput | null;
+    order?: number | null;
     progress?: number | null;
     schedule?: TaskScheduleInput | null;
     segments?: readonly TaskSegmentInput[];
