@@ -306,7 +306,7 @@ remain unchanged; M5 detailed planning is the next action.
 
 ### Post-M4 Interactive Custom consumer integration
 
-**Status:** `[-]` Slice 3 complete; live browser gate next
+**Status:** `[x]` Complete
 
 The
 [Interactive Custom integration plan](plans/2026-07-31-interactive-custom-integration-plan.md)
@@ -334,7 +334,13 @@ transaction, while Cancel and unchanged saves create no history. Focused route,
 display/edit, validation, acknowledgement, history, stale deletion, no-dialog,
 no-API-log, and axe coverage passes 2 files / 7 tests. `mise run build-playground`
 and `mise run ci` with 68 files / 357 tests pass. Desktop and narrow live browser
-verification is next.
+verification at 1440 x 900 and 560 x 900 confirms application-owned display/edit
+focus, pointer and keyboard menu handoff, transactional task/placement Save,
+Undo/Redo, Cancel, deletion closure, zero page/chart horizontal overflow, no
+dialog/API-log/raw-JSON surface, a clean final console, and four successful
+production requests. Chrome's initial form-field warning was resolved by naming the
+custom controls before the clean rerun. The final focused test, production build,
+`git diff --check`, and `mise run ci` with 68 files / 357 tests pass.
 
 ### Post-M4 persistence entity-change projection
 
@@ -879,6 +885,20 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — Interactive Custom consumer verified
+
+- Completed the production `/interactive-custom` Chrome gate at 1440 x 900 and
+  560 x 900.
+- Verified named display/edit panels, pointer and Shift+F10 menu paths, canonical
+  task/placement Save, Undo/Redo, Cancel, stale deletion closure, focus/live status,
+  zero page/chart horizontal overflow, and the intentional absence of dialog,
+  persistence log, and raw JSON surfaces.
+- Fixed the only live issue by naming the custom form controls, then confirmed a
+  clean console and four successful production requests.
+- Passed the focused page test, production playground build, `git diff --check`, and
+  final `mise run ci` with 68 files / 357 tests. The bounded integration plan is
+  complete.
 
 ### 2026-07-31 — Interactive Custom consumer implemented
 

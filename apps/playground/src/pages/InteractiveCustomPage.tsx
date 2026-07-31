@@ -882,6 +882,7 @@ export function InteractiveCustomPage(): ReactElement {
                     <input
                       aria-describedby={form.errors.title ? 'custom-title-error' : undefined}
                       aria-invalid={form.errors.title ? 'true' : undefined}
+                      name="title"
                       onChange={(event) => updateFormValue('title', event.currentTarget.value)}
                       ref={titleInputRef}
                       type="text"
@@ -894,6 +895,7 @@ export function InteractiveCustomPage(): ReactElement {
                   <label className="custom-details__wide-field">
                     <span>Description</span>
                     <textarea
+                      name="description"
                       onChange={(event) =>
                         updateFormValue('description', event.currentTarget.value)
                       }
@@ -906,6 +908,7 @@ export function InteractiveCustomPage(): ReactElement {
                     <input
                       aria-describedby={form.errors.start ? 'custom-start-error' : undefined}
                       aria-invalid={form.errors.start ? 'true' : undefined}
+                      name="start"
                       onChange={(event) => updateFormValue('start', event.currentTarget.value)}
                       type="datetime-local"
                       value={form.values.start}
@@ -919,6 +922,7 @@ export function InteractiveCustomPage(): ReactElement {
                     <input
                       aria-describedby={form.errors.end ? 'custom-end-error' : undefined}
                       aria-invalid={form.errors.end ? 'true' : undefined}
+                      name="end"
                       onChange={(event) => updateFormValue('end', event.currentTarget.value)}
                       type="datetime-local"
                       value={form.values.end}
@@ -934,6 +938,7 @@ export function InteractiveCustomPage(): ReactElement {
                       aria-invalid={form.errors.progress ? 'true' : undefined}
                       max="100"
                       min="0"
+                      name="progress"
                       onChange={(event) => updateFormValue('progress', event.currentTarget.value)}
                       step="1"
                       type="number"
@@ -946,6 +951,7 @@ export function InteractiveCustomPage(): ReactElement {
                   <label>
                     <span>Appearance</span>
                     <select
+                      name="appearance"
                       onChange={(event) => updateFormValue('appearance', event.currentTarget.value)}
                       value={form.values.appearance}
                     >
@@ -961,6 +967,7 @@ export function InteractiveCustomPage(): ReactElement {
                     <span>Current lane</span>
                     <select
                       disabled={openPlacement === undefined}
+                      name="laneId"
                       onChange={(event) => updateFormValue('laneId', event.currentTarget.value)}
                       value={form.values.laneId}
                     >

@@ -1,6 +1,6 @@
 # Interactive Custom Integration Plan
 
-Status: Active; Slice 3 complete
+Status: Complete
 Date: 2026-07-31
 Milestone: Post-M4 consumer integration proof
 
@@ -340,7 +340,7 @@ Dependencies: Slice 2.
 
 ### Slice 4: Live browser gate and documentation closeout
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Verify the actual integration at desktop and narrow widths and record exact
 evidence.
@@ -480,12 +480,54 @@ Dependencies: Slice 3 and a reachable Chrome DevTools MCP page.
   - axe checks in display and edit/history flows;
   - `git diff --check`.
 
+### 2026-07-31 — Slice 4 live browser gate and closeout
+
+- Served the production playground and inspected only
+  `http://127.0.0.1:4173/interactive-custom` with Chrome DevTools MCP at
+  1440 x 900 and 560 x 900.
+- At 1440 x 900, pointer activation selected `Work item 1`, opened the named
+  `Work item 1 details` region in display mode, and focused the application-owned
+  panel. No package dialog appeared.
+- Opened the built-in task menu from a pointer `contextmenu` event at the task's live
+  chart geometry and from Shift+F10 after focusing the task. Both menus exposed one
+  accessible `Edit properties` item; selecting it focused the title field in the
+  same panel's named edit form.
+- Saved title, description, UTC start/end, progress, semantic appearance, and lane
+  changes together. The chart and canonical display panel reflected the renamed
+  task, new dates, 65% progress, `At risk` appearance, and move from Discovery to
+  Delivery. Undo restored all original task and placement values; Redo reapplied all
+  saved values.
+- Changing the title and selecting Cancel returned to display mode without
+  persisting the draft. Opening `Work item 3` in edit mode and removing that latest
+  task closed the panel with the live status
+  `The application-owned panel closed because its canonical task was deleted.`
+- The first console inspection found Chrome's form-field issue because the custom
+  controls lacked `id` or `name`. Added stable field names, rebuilt, reloaded without
+  cache, and repeated the edit-form inspection; the final console contained no
+  messages.
+- The accessibility snapshot exposed named chart, controls, status, task buttons,
+  task menu, panel, form, labels, Save, and Cancel. Focus moved to the panel after
+  activation, the title input after edit request, and a surviving chart task after
+  stale-target deletion.
+- At 1440 x 900, document/page width was 1440 px and the 1323 px chart viewport fit
+  its 1324.8 px frame. At 560 x 900, the scrollbar-adjusted document/page width was
+  545 px; the 515 px chart viewport, 517 px panel, 479 px form, and every form
+  control stayed within that width. Neither viewport had page-level horizontal
+  overflow.
+- Both viewports contained zero `.api-log`, `pre`, or `[role="dialog"]` elements.
+  Final network inspection showed the document, JavaScript, CSS, and data-image
+  requests all completed with status 200.
+- Verification passed:
+  - `vp test run apps/playground/src/pages/InteractiveCustomPage.dom.test.tsx`
+    (1 file, 5 tests);
+  - `mise run build-playground`;
+  - final `mise run ci` (68 files, 357 tests, formatting, lint, types, and package
+    build);
+  - final `mise run build-playground`;
+  - `git diff --check`.
+
 ## Final Verification
 
-- `git diff --check` passed for the tracked documentation change.
-- All files named as existing Slice 1–3 dependencies were confirmed present.
-- Source tests, package builds, and browser checks were not run because this turn
-  intentionally stops at planning after confirming the missing public capability.
 - Slice 1: link-target checks and focused terminology search passed;
   `mise run ci` passed 67 test files / 348 tests plus formatting, lint, type, and
   package-build gates.
@@ -495,11 +537,13 @@ Dependencies: Slice 3 and a reachable Chrome DevTools MCP page.
 - Slice 3: focused playground and regression tests passed 2 files / 7 tests with axe
   coverage, `mise run build-playground` passed, and `mise run ci` passed 68 files /
   357 tests plus formatting, lint, types, and package build.
+- Slice 4: the production `/interactive-custom` route passed its 1440 x 900 and
+  560 x 900 Chrome DevTools MCP interaction, responsive, accessibility, console, and
+  network gates. The focused page test, final production build, `git diff --check`,
+  and final `mise run ci` passed.
 
 ## Next Slice
 
-Commit Slice 3, then start Slice 4 by serving the production playground and inspecting
-`/interactive-custom` at 1440 x 900 and 560 x 900 with Chrome DevTools MCP. Exercise
-display and edit focus, pointer and keyboard menus, Save, placement change, Undo/Redo,
-Cancel, deletion closure, overflow, accessible names, console, and requests. Record
-exact evidence here and in the roadmap before the final commit.
+None. The accepted package seam, controlled consumer, and live desktop/narrow
+integration proof are complete. Future work should start from a separately accepted
+plan rather than extending this bounded consumer proof.
