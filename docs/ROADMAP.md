@@ -171,7 +171,7 @@ first four slices are complete.
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-5 complete, Slice 6 next
+**Status:** `[-]` In progress; Slices 1-6 complete, Slice 7 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -226,7 +226,14 @@ move, resize, and progress interaction rejects without changing canonical data. 
 and four artifacts; the packed declaration is 47.42 kB. Chrome DevTools verified the
 existing `/interactive` regression surface at 1440x1000 and 500x844 with no overflow
 or console warnings/errors; the dedicated `/project` matrix remains Slice 12/13 work.
-Slice 6 Community dependency graph analysis is next.
+Slice 6 now adds deterministic incoming/outgoing indexes, iterative SCC and
+reachability analysis, bounded cycle paths, parsed duplicate/cycle preservation,
+working-lag warnings without interpretation, and strict new duplicate/cycle mutation
+rejection without globally locking diagnosed documents. Public `dependency.update`
+uses the existing patch/inverse/transaction/history/persistence path and never changes
+task dates. Full `mise run ci` passes 78 files / 412 tests, 175 formatted files, 164
+lint/type files, and four artifacts; the 47.84 kB declaration keeps graph engines
+private. Slice 7 dependency route geometry and rendering is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -723,6 +730,21 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 6. One private React-free graph analyzer builds
+  normalized incoming/outgoing indexes, iterative SCCs and reachability, semantic
+  duplicate diagnostics, bounded cycle paths, and working-lag preservation warnings.
+  Parsed duplicates and cycles remain in canonical data; all four types, every task
+  kind, and signed lag remain preservable without schedule propagation. Strict
+  dependency add/update rejects missing/self endpoints, semantic duplicates, and only
+  newly introduced cycles, while existing diagnosed graphs can still be repaired,
+  deleted from, or changed through unrelated fields. Public `dependency.update`
+  supports endpoint/type/lag/fields changes and null clearing through normalized
+  patches, inverses, one-entry transactions/history, affected old/new endpoints, and
+  entity-change projection. Focused coverage passed 7 files / 38 tests, including a
+  fixed-seed DAG property and 5,000-task chain/cycle. Full `mise run ci` passed 78
+  files / 412 tests, 175 formatted files, 164 lint/type files, and four artifacts; the
+  packed declaration is 47.84 kB. Slice 7 dependency route geometry/rendering is next.
 
 - 2026-07-31: Completed M5 Slice 5. Project collapse is normalized committed session
   state and participates in project topology invalidation; controlled consumers

@@ -63,6 +63,7 @@ export type {
   DependencyAddCommand,
   DependencyDeleteCommand,
   DependencyInput,
+  DependencyUpdateCommand,
   DocumentCollection,
   DomainRecordByCollection,
   DurationInput,

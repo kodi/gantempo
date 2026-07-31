@@ -1,4 +1,5 @@
 import type { Diagnostic } from './diagnostics';
+import { analyzeDependencyGraph } from '../scheduler/analyze-dependency-graph';
 import type {
   AssignmentRecord,
   DependencyRecord,
@@ -340,6 +341,7 @@ export function validateDocumentReferences(
     schemaVersion: document.schemaVersion,
     tasks: Object.freeze(tasks),
   });
+  diagnostics.push(...analyzeDependencyGraph(validatedDocument).diagnostics);
 
   return {
     diagnostics: Object.freeze(diagnostics),

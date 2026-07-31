@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-5 complete, Slice 6 next
+Status: In progress; Slices 1-6 complete, Slice 7 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -506,7 +506,7 @@ second relationship interaction mode.
 
 ### Slice 6: Add the Community dependency graph and cycle diagnostics
 
-Status: `[ ]` Not started
+Status: `[x]` Done and verified
 
 **Goal**
 
@@ -535,6 +535,21 @@ endpoint, type, or cycle rules.
 
 - one React-free graph analysis boundary for validation, rendering, and editing;
 - complete command support for the accepted basic link editor.
+
+**Completed in this slice**
+
+- added deterministic incoming/outgoing indexes, iterative reachability, normalized
+  strongly connected components, bounded cycle paths, and stable duplicate/cycle/
+  working-lag diagnostics without interpreting lag or moving task schedules;
+- preserved parsed semantic duplicates, cycles, all four dependency types, all task
+  endpoint kinds, and positive/zero/negative elapsed or working lag values while
+  keeping invalid missing/self relationships on the existing recovery path;
+- added public `DependencyUpdateCommand` normalization, replacement/inverse patches,
+  affected old/new endpoints, transactions, history, entity-change projection, null
+  clearing, and strict missing/self/semantic-duplicate/new-cycle rejection;
+- allowed unrelated commands, dependency deletion, and endpoint repairs to operate on
+  documents that already contain diagnosed cycles rather than making graph faults a
+  global mutation lock.
 
 **Verification**
 
@@ -989,7 +1004,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 3: Resolve project trees, expansion, filtering, and sorting
 - [x] Slice 4: Resolve summary and milestone presentation semantics
 - [x] Slice 5: Integrate hierarchical task kinds with React and accessibility
-- [ ] Slice 6: Add the Community dependency graph and cycle diagnostics
+- [x] Slice 6: Add the Community dependency graph and cycle diagnostics
 - [ ] Slice 7: Route and render dependency paths
 - [ ] Slice 8: Add dependency selection and editing workflows
 - [ ] Slice 9: Add adaptive scales, zoom, and fit-to-project
@@ -1128,14 +1143,35 @@ owns the full shapes and rationale. In summary:
   the installed narrow minimum of 500x844 with four level-one treegrid rows, no page
   overflow, ordinary-task resize handles intact, and no console warnings/errors. The
   dedicated `/project` browser matrix remains correctly owned by Slice 12/13.
+- 2026-07-31: Slice 6 adds one React-free Community graph analyzer. Dependency and
+  task iteration order is normalized before indexing and diagnostics; SCC discovery
+  and a 5,000-edge chain/cycle characterization are iterative. Cycle paths are capped
+  at 32 task IDs with explicit truncation metadata, while complete normalized SCC
+  membership remains available internally. Duplicate identity is exactly source,
+  target, and type; lag and fields do not make another semantic link.
+- 2026-07-31: Parsed valid-endpoint duplicates and cycles survive unchanged with
+  deterministic graph diagnostics. Working lag is preserved with a Community warning
+  and no scheduling interpretation. Strict add/update commands reject only the new
+  missing/self/duplicate/cycle intent; endpoint repairs and unrelated field changes
+  remain possible on an already cyclic document. `dependency.update` changes source,
+  target, type, lag, and fields through one normalized replacement patch and never
+  changes any task schedule.
+- 2026-07-31: Focused graph/model/command/transaction/delete/entity-change coverage
+  passed 7 files / 38 tests, including fixed-seed arbitrary DAG order, disconnected
+  tasks, parallel types, a 5,000-task chain and cycle, all endpoint kinds, inverse
+  replay, atomic transactions, history, repair, and persistence projection. Full
+  `mise run ci` passed 78 files / 412 tests, 175 formatted files, 164 lint/type files,
+  and four package artifacts; the packed declaration is 47.84 kB and adds only the
+  public dependency-update command while graph engines remain private.
 
 ## Next Slice
 
-Start Slice 6 with one React-free Community dependency graph boundary. Index incoming
-and outgoing dependencies, validate accepted type/endpoints/duplicates/kind policy,
-diagnose existing cycles deterministically without moving dates, and add the accepted
-`dependency.update` command across patches, inverses, history, transactions, affected
-references, persistence projection, and the public facade. Verify arbitrary order,
-deep chains, disconnected graphs, parallel links, invalid mutations, and immutability;
-run `mise run ci` before the Slice 6 commit. Do not begin dependency geometry or React
-link rendering from Slice 7 yet.
+Start Slice 7 with pure dependency endpoint projection and deterministic orthogonal
+routing over the existing project scene. Resolve summary/milestone anchors, collapsed
+ancestor proxies, filtered omission, same-proxy omission, offscreen clipping, route
+identity, marker orientation, and selective invalidation before adding SVG paths.
+Then render semantic path/marker/hit parts plus a complete non-visual relationship
+summary with selected/focused/invalid states and forced-colors behavior. Verify nested
+trees, milestones, viewport clipping, preparatory RTL parity, SSR, styles, and package
+boundaries; run `mise run ci` before the Slice 7 commit. Do not begin dependency edit
+gestures or properties workflows from Slice 8 yet.

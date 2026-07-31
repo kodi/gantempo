@@ -1,5 +1,12 @@
 import type { Diagnostic } from '../model/diagnostics';
-import type { EntityId, GanttDocument, InstantTaskSchedule, TaskRecord } from '../model/types';
+import type {
+  DependencyRecord,
+  EntityId,
+  GanttDocument,
+  InstantTaskSchedule,
+  TaskRecord,
+} from '../model/types';
+import { dependencyPathExists, dependencySemanticKey } from '../scheduler/analyze-dependency-graph';
 import { normalizeCommandRecord, normalizeUpdatedRecord } from './normalize';
 import { applyGanttPatches } from './patches';
 import type {
@@ -352,6 +359,84 @@ function invalidMilestoneSchedule(task: TaskRecord, path: string): Diagnostic | 
     path,
     [task.id],
   );
+}
+
+function invalidDependencyMutation(
+  document: GanttDocument,
+  next: DependencyRecord,
+  current?: DependencyRecord,
+): Diagnostic | undefined {
+  const taskIds = new Set(document.tasks.map((task) => task.id));
+  if (!taskIds.has(next.fromTaskId)) {
+    return diagnostic(
+      'reference.dependency-source',
+      `Dependency "${next.id}" references missing source task "${next.fromTaskId}".`,
+      '/command/changes/fromTaskId',
+      [next.id, next.fromTaskId],
+    );
+  }
+  if (!taskIds.has(next.toTaskId)) {
+    return diagnostic(
+      'reference.dependency-target',
+      `Dependency "${next.id}" references missing target task "${next.toTaskId}".`,
+      '/command/changes/toTaskId',
+      [next.id, next.toTaskId],
+    );
+  }
+  if (next.fromTaskId === next.toTaskId) {
+    return diagnostic(
+      'reference.dependency-self',
+      `Dependency "${next.id}" must connect two distinct tasks.`,
+      '/command/changes/toTaskId',
+      [next.id, next.fromTaskId],
+    );
+  }
+  const duplicate = document.dependencies.find(
+    (dependency) =>
+      dependency.id !== next.id &&
+      dependencySemanticKey(dependency) === dependencySemanticKey(next),
+  );
+  if (duplicate !== undefined) {
+    return diagnostic(
+      'dependency.duplicate',
+      `Dependency "${next.id}" duplicates semantic relationship "${duplicate.id}".`,
+      '/command/changes',
+      [next.id, duplicate.id],
+    );
+  }
+  const endpointsChanged =
+    current === undefined ||
+    current.fromTaskId !== next.fromTaskId ||
+    current.toTaskId !== next.toTaskId;
+  if (
+    endpointsChanged &&
+    dependencyPathExists(document, next.toTaskId, next.fromTaskId, current?.id)
+  ) {
+    return diagnostic(
+      'dependency.cycle',
+      `Dependency "${next.id}" would introduce a directed cycle.`,
+      '/command/changes',
+      [next.id, next.fromTaskId, next.toTaskId],
+    );
+  }
+  return undefined;
+}
+
+function dependencyAffected(
+  current: DependencyRecord | undefined,
+  next: DependencyRecord,
+): readonly EntityReference[] {
+  return [
+    { collection: 'dependencies', id: next.id },
+    ...(current === undefined
+      ? []
+      : [
+          { collection: 'tasks' as const, id: current.fromTaskId },
+          { collection: 'tasks' as const, id: current.toTaskId },
+        ]),
+    { collection: 'tasks', id: next.fromTaskId },
+    { collection: 'tasks', id: next.toTaskId },
+  ];
 }
 
 type InstantScheduledTask = TaskRecord & {
@@ -1000,7 +1085,33 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
     }
     case 'dependency.add': {
       const invalid = commandShape(document, command, ['type', 'value', 'index']);
-      return invalid ?? addRecord(document, 'dependencies', command.value, command.index);
+      return (
+        invalid ??
+        addRecord(
+          document,
+          'dependencies',
+          command.value,
+          command.index,
+          (value) => dependencyAffected(undefined, value),
+          (value) => invalidDependencyMutation(document, value),
+        )
+      );
+    }
+    case 'dependency.update': {
+      const invalid = commandShape(document, command, ['type', 'id', 'changes']);
+      return (
+        invalid ??
+        updateRecord(
+          document,
+          'dependencies',
+          command.id,
+          command.changes,
+          new Set(['fromTaskId', 'toTaskId', 'type', 'lag', 'fields']),
+          new Set(['lag', 'fields']),
+          (current, next) => dependencyAffected(current, next),
+          (current, next) => invalidDependencyMutation(document, next, current),
+        )
+      );
     }
     case 'dependency.delete': {
       const invalid = commandShape(document, command, ['type', 'id']);

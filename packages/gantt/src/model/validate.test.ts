@@ -114,6 +114,36 @@ describe('validateDocumentReferences', () => {
     );
   });
 
+  it('preserves parsed dependency duplicates and cycles with graph diagnostics', () => {
+    const result = parseGanttDocument({
+      dependencies: [
+        { fromTaskId: 'a', id: 'ab-2', toTaskId: 'b', type: 'finish-to-start' },
+        { fromTaskId: 'b', id: 'ba', toTaskId: 'a', type: 'start-to-start' },
+        { fromTaskId: 'a', id: 'ab-1', toTaskId: 'b', type: 'finish-to-start' },
+      ],
+      schemaVersion: 1,
+      tasks: [
+        { id: 'a', kind: 'task', title: 'A' },
+        { id: 'b', kind: 'milestone', title: 'B' },
+      ],
+    });
+
+    expect(result.document?.dependencies.map((dependency) => dependency.id)).toEqual([
+      'ab-2',
+      'ba',
+      'ab-1',
+    ]);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'dependency.cycle' }),
+        expect.objectContaining({
+          code: 'dependency.duplicate',
+          entityIds: ['ab-1', 'ab-2'],
+        }),
+      ]),
+    );
+  });
+
   it('omits invalid relationships and preserves valid document order', () => {
     const document = documentWith({
       assignments: [

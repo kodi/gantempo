@@ -288,6 +288,18 @@ export interface DependencyDeleteCommand {
   readonly type: 'dependency.delete';
 }
 
+export interface DependencyUpdateCommand {
+  readonly changes: Readonly<{
+    fields?: JsonObject | null;
+    fromTaskId?: EntityIdInput;
+    lag?: DurationInput | null;
+    toTaskId?: EntityIdInput;
+    type?: DependencyType;
+  }>;
+  readonly id: EntityId;
+  readonly type: 'dependency.update';
+}
+
 export interface TransactionCommand {
   readonly commands: readonly GanttCommand[];
   readonly type: 'transaction';
@@ -298,6 +310,7 @@ export type GanttCommand =
   | AssignmentSetCommand
   | DependencyAddCommand
   | DependencyDeleteCommand
+  | DependencyUpdateCommand
   | LaneAddCommand
   | LaneUpdateCommand
   | PlacementAddCommand

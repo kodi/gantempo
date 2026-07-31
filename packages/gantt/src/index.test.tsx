@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   Gantt,
+  applyGanttCommand,
   type AssignmentRecord,
   type DependencyRecord,
+  type DependencyUpdateCommand,
   type Diagnostic,
   type GanttDocument,
   type JsonValue,
@@ -41,6 +43,27 @@ function render(document: GanttDocument): string {
 }
 
 describe('Gantt', () => {
+  it('exports the dependency update command through the package root', () => {
+    const document: GanttDocument = {
+      ...EMPTY_COLLECTIONS,
+      dependencies: [{ fromTaskId: 'a', id: 'dependency', toTaskId: 'b', type: 'finish-to-start' }],
+      lanes: [],
+      placements: [],
+      schemaVersion: 1,
+      tasks: [
+        { id: 'a', kind: 'task', segments: [], title: 'A' },
+        { id: 'b', kind: 'task', segments: [], title: 'B' },
+      ],
+    };
+    const command: DependencyUpdateCommand = {
+      changes: { lag: { unit: 'day', value: 1 } },
+      id: 'dependency',
+      type: 'dependency.update',
+    };
+
+    expect(applyGanttCommand(document, command)).toMatchObject({ status: 'committed' });
+  });
+
   it('fails clearly when a selector is rendered outside its owning chart', () => {
     function OutsideSelector() {
       useGanttSelector((snapshot) => snapshot.canUndo);
