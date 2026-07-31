@@ -717,7 +717,7 @@ describe('Gantt React facade in a DOM environment', () => {
           pointerType,
         });
         dispatchPointer(timeline, 'pointermove', {
-          clientX: 330,
+          clientX: 333,
           clientY: 29,
           pointerId: 27,
           pointerType,
@@ -728,19 +728,39 @@ describe('Gantt React facade in a DOM environment', () => {
         mounted.container
           .querySelector('[data-preview-kind="progress"]')
           ?.getAttribute('data-preview-progress'),
-      ).toBe('0.7');
+      ).toBe('0.75');
+      expect(
+        mounted.container.querySelector('[data-gt-part="progress-preview-value"]')?.textContent,
+      ).toBe('75%');
+      expect(
+        mounted.container
+          .querySelector('[data-gt-part="progress-preview-value"]')
+          ?.getAttribute('aria-hidden'),
+      ).toBe('true');
+      expect(
+        (
+          mounted.container.querySelector<HTMLElement>('[data-gt-part="progress-preview-value"]') ??
+          undefined
+        )?.style.left,
+      ).toContain('clamp(');
+      expect(
+        mounted.container
+          .querySelector('[data-gt-part="progress-preview-value"]')
+          ?.closest('.gt-gantt__timeline'),
+      ).toBeNull();
 
       await act(async () => {
         dispatchPointer(timeline, 'pointerup', {
-          clientX: 330,
+          clientX: 333,
           clientY: 29,
           pointerId: 27,
           pointerType,
         });
       });
-      expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.7);
+      expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.75);
       expect(sources).toEqual(['pointer']);
       expect(ref.current?.canUndo()).toBe(true);
+      expect(mounted.container.querySelector('[data-gt-part="progress-preview-value"]')).toBeNull();
 
       await act(async () => {
         await ref.current?.undo();

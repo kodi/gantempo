@@ -8,6 +8,23 @@
 
 ## Documentation governance
 
+These rules apply to changes of substance, not to every edit. Use judgment and keep
+documentation proportional to the change.
+
+- Treat new features and meaningful changes to user-visible behavior, public
+  contracts, data models, system boundaries, architecture, milestone scope or order,
+  release acceptance criteria, or other durable product decisions as substantial.
+- Minor fixes, cosmetic or copy changes (including isolated color/style tweaks),
+  small interaction polish (including hover/focus presentation), obvious
+  improvements, and implementation details that can and should be inferred from the
+  code and tests do not require a plan or roadmap update.
+- Straightforward continuation of already documented work does not require a new
+  plan, a standalone roadmap entry, or a per-change note. Update existing documents
+  only when status, scope, evidence, decisions, deviations, or the actionable next
+  step materially changes.
+- If a seemingly minor change reveals a substantial deviation or changes a durable
+  contract, document that substantial consequence.
+
 ### Architecture
 
 - `docs/ARCHITECTURE.md` owns the durable target state: system boundaries,
@@ -27,24 +44,24 @@
 
 ### Detailed plans and decisions
 
-- Every repository change must belong to an active
+- Every substantial repository change or new feature must belong to an active
   `docs/plans/YYYY-MM-DD-<topic>-plan.md` before implementation begins.
 - Detailed plans own scope, exclusions, decisions, ordered slices, exact files or
   systems involved, per-slice verification, working notes, deviations, and the
   actionable next slice.
-- This does not require a new plan file for every commit. Related changes may remain
-  in one active plan, but every change must be recorded in that plan.
+- Related substantial changes may remain in one active plan. Do not create or update
+  a plan solely to narrate minor edits or obvious implementation details.
 - Cross-plan decisions with durable architectural consequences belong in
   `docs/decisions/` and must be linked from the architecture, roadmap, and active plan
   where relevant.
 
-### Mandatory synchronization
+### Synchronization for substantial changes
 
-- Every repository change and every discovered deviation must update both the
-  active detailed plan and `docs/ROADMAP.md` in the same change set.
-- Record a deviation in the active plan as soon as it is discovered. Update the
-  roadmap even when the deviation does not change milestone order or scope; a compact
-  roadmap change-log entry is sufficient in that case.
+- Every new feature, substantial change, and deviation of substance must update both
+  the active detailed plan and `docs/ROADMAP.md` in the same change set.
+- Record a deviation of substance in the active plan as soon as it is discovered.
+  Update the roadmap when the deviation affects milestone status, order, scope,
+  dependencies, outcomes, exit conditions, or current focus.
 - If a deviation changes the intended system boundary, public contract, architectural
   principle, or release acceptance criteria, update `docs/ARCHITECTURE.md` and add or
   update a decision record in the same change set.

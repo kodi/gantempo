@@ -22,6 +22,7 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain('.gt-gantt__task-progress');
     expect(stylesheet).toContain("[data-gt-part='progress-handle']");
     expect(stylesheet).toContain("[data-gt-part='progress-hit-target']");
+    expect(stylesheet).toContain("[data-gt-part='progress-preview-value']");
     expect(stylesheet).toContain('@media (pointer: coarse)');
     expect(stylesheet).toContain('width: 44px');
   });
@@ -36,6 +37,7 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain('@media (forced-colors: active)');
     expect(stylesheet).toContain('fill: Canvas');
     expect(stylesheet).toContain('fill: Highlight');
+    expect(stylesheet).toContain('forced-color-adjust: none');
     expect(stylesheet).toContain('transition: none');
   });
 });

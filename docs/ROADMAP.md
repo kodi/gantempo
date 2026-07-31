@@ -1,7 +1,7 @@
 # Gantempo Roadmap
 
 Status: Active execution roadmap
-Last updated: 2026-07-30
+Last updated: 2026-07-31
 
 ## Purpose
 
@@ -171,6 +171,12 @@ semantic-color, and progress appendix are complete. M5 detailed planning is next
 ### M4 appendix: item properties, semantic appearance, and progress
 
 **Status:** `[x]` Complete; M5 detailed planning next
+
+The bounded
+[progress-drag feedback follow-up](plans/2026-07-31-progress-drag-feedback-plan.md)
+is complete. It keeps the completed appendix boundary intact while making direct
+progress adjustment snap to five-point increments and visibly report the immutable
+preview percentage during the gesture. M5 detailed planning remains next.
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -610,8 +616,11 @@ chart-owned interaction, session, or imperative contracts.
 - Do not begin interaction work before the document and change kernels are verified.
 - Do not claim performance, accessibility, compatibility, or scheduling behavior
   without evidence at the scope of the claim.
-- Every repository change and every discovered deviation must be recorded in the
-  active detailed plan and reflected in this roadmap in the same change set.
+- Keep governance proportional: new features and substantial changes or deviations
+  update the active detailed plan and this roadmap in the same change set. Minor
+  fixes, cosmetic polish, obvious improvements, code-inferable implementation
+  details, and straightforward continuation of already documented work do not
+  require standalone planning or roadmap updates.
 
 ## Change Log
 
@@ -838,6 +847,47 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — Proportional documentation governance
+
+- Limited mandatory plan and roadmap synchronization to new features, substantial
+  changes, and substantial deviations.
+- Explicitly exempted minor fixes, cosmetic or interaction polish, obvious
+  improvements, code-inferable implementation details, and straightforward
+  continuation of already documented work.
+- Preserved documentation requirements when status, scope, evidence, durable
+  decisions, significant deviations, or the actionable next step materially changes.
+- This policy refinement is owned by Slice 4 of the
+  [documentation-governance plan](plans/2026-07-30-roadmap-documentation-governance-plan.md).
+
+### 2026-07-31 — Progress drag feedback complete
+
+- Recorded the user-reported ambiguity in direct progress dragging: the existing
+  preview changes completed width but does not visibly report the amount.
+- Started one bounded M4 appendix follow-up to snap pointer progress to `5%`
+  increments and show the current percentage during the gesture.
+- Preserved canonical `0..1` data, keyboard `1%`/`10%` adjustment, one-command
+  commit/history behavior, assistive announcements, and the public facade.
+- Selected focused pure/DOM/style regressions, full CI/build/diff gates, and live
+  desktop/narrow Chrome verification as the completion evidence.
+- The first narrow live check found the preview-owned badge could clip on a short
+  task at the timeline boundary, and the timeline itself can be narrower than the
+  badge in the two-column narrow layout. The private presentation now clamps a
+  body-level badge to visible chart bounds without changing interaction or public
+  contracts.
+- Pointer-derived progress now snaps to `5%`; keyboard `1%`/`10%`, canonical
+  `0..1` storage, controlled acknowledgement, cancellation, history, and the public
+  facade remain unchanged.
+- The drag-only percentage badge is `aria-hidden`, pointer-transparent, clamped to
+  chart bounds, and absent from keyboard, pending, committed, and cancelled states.
+- Focused verification passed 4 files / 53 tests. Final `mise run ci` passed 158
+  formatted files, 147 lint/type files, 67 test files / 348 tests, and four package
+  artifacts; the production playground transformed 1,918 modules.
+- Because Chrome DevTools was profile-locked, the in-app browser fallback verified
+  `/interactive` at 1440 x 1000 and 390 x 844. Live drag values, five-point commits,
+  badge containment/lifecycle, zero document overflow, and an empty warning/error
+  console passed. The fallback exposes neither touch emulation nor a network panel,
+  so those live claims remain unmade; mouse/pen/touch paths are covered in DOM tests.
 
 ### 2026-07-31 — M4 item-properties appendix complete
 

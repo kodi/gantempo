@@ -324,6 +324,7 @@ describe('Gantt keyboard and accessibility integration', () => {
         .querySelector('[data-preview-kind="progress"]')
         ?.getAttribute('data-preview-progress'),
     ).toBe('0.26');
+    expect(mounted.container.querySelector('[data-gt-part="progress-preview-value"]')).toBeNull();
     await user.keyboard('{Shift>}{ArrowUp}{/Shift}');
     expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain('36%');
     await user.keyboard('{Home}');

@@ -211,7 +211,7 @@ describe('pure interaction gesture state', () => {
   });
 
   it.each(['mouse', 'pen', 'touch'] as const)(
-    'previews and commits percentage-point progress for %s input',
+    'previews and commits five-point progress for %s input',
     (pointerType) => {
       const { options } = fixture();
       let state = event(
@@ -231,22 +231,22 @@ describe('pure interaction gesture state', () => {
           progressCandidateViewKey: 'task-a-view',
           type: 'move',
           pointerId: 6,
-          point: { x: 260, y: 30 },
+          point: { x: 267, y: 30 },
         },
         options,
       );
       expect(state).toMatchObject({
-        intent: { kind: 'progress', sourceValue: 0.25, value: 0.8 },
+        intent: { kind: 'progress', sourceValue: 0.25, value: 0.85 },
         preview: {
-          description: 'Set Task A progress to 80%.',
+          description: 'Set Task A progress to 85%.',
           kind: 'progress',
-          progress: 0.8,
-          width: 160,
+          progress: 0.85,
+          width: 170,
         },
         status: 'active',
       });
       expect(event(state, { type: 'release', pointerId: 6 }, options)).toMatchObject({
-        intent: { kind: 'progress', value: 0.8 },
+        intent: { kind: 'progress', value: 0.85 },
         status: 'committed',
       });
     },

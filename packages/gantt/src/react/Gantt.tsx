@@ -2814,6 +2814,21 @@ function GanttSurface({
                   />
                 ) : null}
               </div>
+              {'preview' in interaction &&
+              interaction.status === 'progressing' &&
+              interaction.preview.kind === 'progress' &&
+              interaction.preview.progress !== undefined ? (
+                <span
+                  aria-hidden="true"
+                  data-gt-part="progress-preview-value"
+                  style={{
+                    left: `clamp(20px, calc(var(--gt-lane-column-width) + ${interaction.preview.x + interaction.preview.width}px), calc(100% - 20px))`,
+                    top: interaction.preview.y + interaction.preview.height / 2,
+                  }}
+                >
+                  {Math.round(interaction.preview.progress * 100)}%
+                </span>
+              ) : null}
             </div>
           </div>
         )}

@@ -117,7 +117,7 @@ function progressIntent(
   current: InteractionHit,
 ): InteractionProgressIntent {
   const ratio = (current.point.x - origin.task.rect.x) / origin.task.rect.width;
-  const value = Math.round(Math.min(1, Math.max(0, ratio)) * 100) / 100;
+  const value = Math.round(Math.min(1, Math.max(0, ratio)) * 20) / 20;
   return Object.freeze({
     destination: origin.lane.target,
     end: origin.task.primitive.end,

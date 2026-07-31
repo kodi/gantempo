@@ -6,8 +6,9 @@ Create the repository's living execution roadmap and define durable ownership an
 synchronization rules for architecture, roadmap, detailed plans, decisions,
 deviations, and verification evidence.
 
-This plan bootstraps the governance rule it introduces. Future repository changes must
-belong to their own active plan or an existing active plan with matching scope.
+This plan bootstraps the governance rule it introduces. Future new features and
+substantial repository changes must belong to their own active plan or an existing
+active plan with matching scope; minor, obvious, and code-inferable work is exempt.
 
 ## Decisions
 
@@ -18,8 +19,11 @@ belong to their own active plan or an existing active plan with matching scope.
 - Detailed plans under `docs/plans/` own implementation scope, slices, findings,
   deviations, verification, and handoff state.
 - Cross-plan decisions with durable consequences live under `docs/decisions/`.
-- Every repository change and deviation updates its active plan and the roadmap in the
-  same change set.
+- New features and substantial changes or deviations update their active plan and the
+  roadmap in the same change set.
+- Minor fixes, cosmetic polish, obvious improvements, code-inferable details, and
+  straightforward continuation of already documented work do not require standalone
+  plan or roadmap updates.
 
 ## Scope
 
@@ -68,6 +72,19 @@ Status: `[x]` Done
 - Verify the policy wording and documentation synchronization without changing
   application behavior.
 
+### Slice 4: Make documentation governance proportional
+
+Status: `[x]` Done
+
+- Limit mandatory plan and roadmap synchronization to new features, substantial
+  changes, and substantial deviations.
+- Define representative substantial changes without trying to enumerate every case.
+- Exempt minor fixes, cosmetic or interaction polish, obvious improvements,
+  code-inferable implementation details, and straightforward continuation of
+  documented work.
+- Preserve synchronization when work materially changes status, scope, evidence,
+  decisions, deviations, or the actionable next step.
+
 ## Verification
 
 - `git diff --check`
@@ -94,6 +111,15 @@ Slice 3 verification passed on 2026-07-30:
 - `git log -n 30 --format=%s` confirmed that recent history uses Conventional Commits
   subjects, including scoped subjects.
 
+Slice 4 verification passed on 2026-07-31:
+
+- `git diff --check`
+- a focused search confirmed the former every-change rule is replaced consistently
+  in `AGENTS.md`, `docs/ROADMAP.md`, and this plan
+- a cross-document read confirmed that all three documents require synchronization
+  for new features and substantial work while exempting minor, obvious,
+  code-inferable, and already documented continuation work
+
 ## Working Notes
 
 ### 2026-07-30 — Governance bootstrap
@@ -110,15 +136,25 @@ Slice 3 verification passed on 2026-07-30:
   `docs:`, and scoped `chore(repo):`.
 - Slice 3 records the convention by name and makes it mandatory for future commits.
 
+### 2026-07-31 — Proportional-governance refinement
+
+- Requiring documentation churn for trivial changes made plans and the roadmap less
+  useful as records of meaningful execution and decisions.
+- Slice 4 narrows the rule to work of substance while explicitly trusting code and
+  tests to explain minor and obvious implementation details.
+- This governance-policy change is itself substantial, so it is synchronized here
+  and in the roadmap.
+
 ## Progress
 
 - [x] Slice 1: Create the living roadmap
 - [x] Slice 2: Add repository documentation governance
 - [x] Verification
 - [x] Slice 3: Name and require the commit-message convention
+- [x] Slice 4: Make documentation governance proportional
 
 ## Next Slice
 
-Proceed with Slice 1 of
-`docs/plans/2026-07-30-document-kernel-foundation-plan.md`: create and link the
-focused document-codec decision record before editing implementation modules.
+No further documentation-governance slice is active. Apply the proportional rule to
+future work and revisit it only if observed agent behavior exposes a material
+ambiguity.
