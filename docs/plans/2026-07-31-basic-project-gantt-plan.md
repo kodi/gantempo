@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-8 complete, Slice 9 next
+Status: In progress; Slices 1-9 complete, Slice 10 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -705,7 +705,7 @@ editor can propose valid semantic intent.
 
 ### Slice 9: Add adaptive scales, zoom, and fit-to-project
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -744,6 +744,29 @@ locale direction until the following slice.
 - existing pan, viewport, SSR, hydration, and scene pipeline suites
 - fixed-seed large-range zoom observations with no release threshold
 - `mise run ci`
+
+**Completion evidence**
+
+- Pure adaptive selection covers minute through year levels, configured level bounds,
+  width-bounded major/minor tick density, explicit locale/time-zone labels, stable
+  anchor calculations, finite epoch limits, and symmetric pixel-padded fit ranges.
+- Public props now express exclusive controlled/uncontrolled range ownership and
+  exclusive legacy-fixed/adaptive scale ownership. Selectors expose the accepted
+  range and resolved level; inverted adaptive bounds diagnose and fall back to the
+  minimum bound.
+- Controlled range changes remain proposals until acknowledgement. Uncontrolled
+  changes adopt before callback and retain their accepted value across reconcile.
+  `zoomTo` and `fitToProject`, toolbar buttons, plain `+`/`-`/`0`, and pointer-
+  anchored Alt/Option-wheel share the same typed range-event lifecycle.
+- Fit includes every resolvable project presentation even when collapsed or filtered,
+  ignores dependency detours, and announces an empty/unscheduled no-op. Browser
+  Ctrl/Meta-wheel, native pinch, and ordinary vertical page scrolling remain native.
+- Focused time/scene/runtime/facade/keyboard/wheel/axe suites passed, including fixed-
+  seed property runs for monotonic levels, anchor invariance, repeated drift, fit
+  padding, collision density, invalid bounds, and extreme epochs. Final `mise run ci`
+  passed 82 test files / 454 tests, 182 formatted files, 171 lint/type files, and four
+  package artifacts; the packed declaration is 52.35 kB. Mise emitted only the known
+  non-fatal user-cache sandbox warning.
 
 **Dependencies**
 
@@ -1253,12 +1276,30 @@ owns the full shapes and rationale. In summary:
   rejection and cancellation created no history. Final `mise run ci` passed 81 files /
   443 tests, 179 formatted files, 168 lint/type files, and four artifacts; the packed
   declaration is 50.78 kB with only the known non-fatal Mise cache warning.
+- 2026-07-31: Slice 9 replaces fixed-interval-only orchestration with one pure semantic
+  scale/range boundary. Adaptive level selection uses the accepted range and measured
+  width after a deterministic 960px SSR baseline; tick density is width bounded and
+  calendar labels always receive explicit locale and time-zone inputs. Zoom and fit
+  calculations are finite, immutable, anchor stable, and independent from document or
+  dependency mutation.
+- 2026-07-31: Range ownership is now an exact controlled/default union. Controlled
+  gestures and handle calls publish typed proposals and wait; uncontrolled calls
+  adopt first and preserve the accepted range through later prop reconciliation.
+  Runtime controls, keyboard, and Alt/Option-wheel report runtime semantic sources,
+  while public handle calls remain imperative. Ctrl/Meta-wheel, native pinch, and
+  unmodified vertical scrolling are not intercepted.
+- 2026-07-31: Focused time/property/scene/runtime/facade/keyboard/wheel/customization/
+  axe coverage passed. The first full gate exposed and fixed an isolated-declaration
+  annotation and an always-present disabled-control compatibility issue; the rerun
+  passed 82 test files / 454 tests, 182 formatted files, 171 lint/type files, and four
+  artifacts. The declaration is 52.35 kB with only the known non-fatal Mise cache
+  warning.
 
 ## Next Slice
 
-Start Slice 9 with the pure adaptive scale-selection and fit-range kernels. Define
-deterministic level thresholds, calendar-aware ticks, minimum/maximum span clamps,
-dataset extents that include final task and dependency geometry, and exact anchor
-preservation before adding controlled/uncontrolled range ownership or browser gesture
-bindings. Then integrate toolbar, wheel/pinch, keyboard, imperative, and fit actions
-through one range proposal lifecycle without entering link or item-edit gestures.
+Start Slice 10 with the accepted built-in message catalog and bounded formatter
+override contract. Route every hierarchy, dependency, zoom, properties, diagnostic,
+and interaction message through it, then add instance-scoped direction to pure
+coordinate conversion before mirroring SVG, pointer, keyboard, overlay, and column
+behavior. Verify explicit locale/time-zone SSR and opposite-direction instance
+isolation before changing playground consumers.

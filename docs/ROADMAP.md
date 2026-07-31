@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first eight slices are complete.
+first nine slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-8 complete, Slice 9 next
+**Status:** `[-]` In progress; Slices 1-9 complete, Slice 10 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -233,7 +233,18 @@ rejection without globally locking diagnosed documents. Public `dependency.updat
 uses the existing patch/inverse/transaction/history/persistence path and never changes
 task dates. Full `mise run ci` passes 78 files / 412 tests, 175 formatted files, 164
 lint/type files, and four artifacts; the 47.84 kB declaration keeps graph engines
-private. Slice 7 dependency route geometry and rendering is next.
+private. Slice 7 added deterministic semantic dependency routes, viewport proxy and
+clipping behavior, SVG/nonvisual rendering, selection hooks, and selective cache
+reuse. Slice 8 added canonical dependency targets, pointer/touch/keyboard creation,
+controlled acknowledgement, properties editing, selection/focus restoration, and
+nonvisual inspection/removal through the existing graph command path. Slice 9 now
+adds exclusive controlled/default range ownership, fixed/adaptive scale ownership,
+minute-through-year semantic levels, width-bounded major/minor ticks, stable-anchor
+zoom, all-presentation fit, handle orchestration, accessible controls and keys, and
+pointer-anchored Alt/Option-wheel without intercepting browser zoom or ordinary page
+scrolling. Full `mise run ci` passes 82 test files / 454 tests, 182 formatted files,
+171 lint/type files, and four artifacts; the packed declaration is 52.35 kB. Slice 10
+localization and RTL parity is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -730,6 +741,20 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 9. Public props now require exactly one controlled or
+  default range and exactly one legacy fixed or explicit fixed/adaptive scale policy.
+  The selector exposes accepted range plus resolved minute-through-year level;
+  inverted adaptive bounds diagnose and fall back deterministically. Pure kernels
+  provide width-bounded major/minor ticks, explicit locale/time-zone labels, finite
+  stable-anchor zoom, configured clamps, and symmetric fit padding over every
+  resolvable project presentation, including collapsed and filtered items. Controlled
+  changes wait for acknowledgement; uncontrolled changes adopt before callback and
+  survive reconcile. Public `zoomTo`/`fitToProject`, accessible toolbar buttons, plain
+  `+`/`-`/`0`, and Alt/Option-wheel share typed range events, while Ctrl/Meta-wheel,
+  native pinch, and ordinary vertical scrolling stay native. Full `mise run ci`
+  passed 82 files / 454 tests, 182 formatted files, 171 lint/type files, and four
+  artifacts; the declaration is 52.35 kB. Slice 10 localization and RTL is next.
 
 - 2026-07-31: Completed M5 Slice 8. Dependencies now have canonical occurrence-
   independent public targets, immutable selector summaries, normalized session

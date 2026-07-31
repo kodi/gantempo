@@ -133,7 +133,12 @@ let panProps: GanttProps = {
   document,
   onRangeChange(range) {
     panRange = range;
-    panProps = { ...panProps, range };
+    panProps = {
+      ...baseProps,
+      document,
+      onRangeChange: panProps.onRangeChange!,
+      range,
+    };
     panRuntime.updateCallbacks(panProps);
     panRuntime.reconcile(panProps);
   },

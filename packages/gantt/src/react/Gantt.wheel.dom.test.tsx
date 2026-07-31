@@ -71,6 +71,18 @@ function installGeometry(container: ParentNode): {
     scrollHeight: { configurable: true, value: 290 },
   });
   Object.defineProperty(timeline, 'clientWidth', { configurable: true, value: 700 });
+  timeline.getBoundingClientRect = () =>
+    ({
+      bottom: 100,
+      height: 100,
+      left: 160,
+      right: 860,
+      top: 0,
+      width: 700,
+      x: 160,
+      y: 0,
+      toJSON() {},
+    }) as DOMRect;
   return { body, chart, timeline };
 }
 
@@ -100,6 +112,35 @@ afterEach(async () => {
 });
 
 describe('Gantt wheel and trackpad navigation', () => {
+  it('zooms around the pointer with Alt-wheel and exposes accessible controls', async () => {
+    const proposals: Array<{
+      readonly event: Parameters<NonNullable<GanttProps['onRangeChange']>>[1];
+      readonly range: TimeRange;
+    }> = [];
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        onRangeChange={(range, event) => proposals.push({ event, range })}
+      />,
+    );
+    const { timeline } = installGeometry(mounted.container);
+    const controls = mounted.container.querySelector('[data-gt-part="zoom-controls"]')!;
+    expect(controls.querySelectorAll('button')).toHaveLength(3);
+    expect(controls.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')!.disabled).toBe(
+      false,
+    );
+
+    const event = wheel(timeline, { altKey: true, clientX: 335, deltaY: -70 });
+    expect(event.defaultPrevented).toBe(true);
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]!.event).toMatchObject({
+      anchorTime: START + 1.75 * DAY,
+      reason: 'zoom',
+      source: 'runtime',
+    });
+    expect(proposals[0]!.range.end - proposals[0]!.range.start).toBe(2 * DAY);
+  });
+
   it('accepts horizontal input while leaving ordinary vertical input native', async () => {
     const ranges: TimeRange[] = [];
     const mounted = await render(

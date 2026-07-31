@@ -86,6 +86,7 @@ export type DiagnosticCode =
   | 'schema.migration-result'
   | 'schema.missing-version'
   | 'schema.unsupported-version'
+  | 'time-scale.invalid-bounds'
   | 'value.invalid-all-day-date'
   | 'value.invalid-enum'
   | 'value.invalid-id'

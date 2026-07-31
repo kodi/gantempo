@@ -17,6 +17,7 @@ import { buildDocumentIndexes, type DocumentIndexes } from '../model/indexes';
 import type { GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences, type ValidateDocumentResult } from '../model/validate';
 import { generateFixedIntervalTicks } from '../time/fixed-interval-ticks';
+import { generateAdaptiveTimeTicks } from '../time/adaptive-ticks';
 import { createLinearTimeScale } from '../time/linear-time-scale';
 import { resolveView } from '../view/resolve-view';
 import { sameViewDefinition } from '../view/definition-equality';
@@ -39,6 +40,7 @@ import {
   type ChartScene,
   type DependencyPathPrimitive,
   type DependencySummaryPrimitive,
+  type GridLinePrimitive,
   type LaneRowPrimitive,
   type TaskBarPrimitive,
   type TimeTickPrimitive,
@@ -233,6 +235,8 @@ function tickSignature(options: BuildChartSceneOptions): string {
     options.tickInterval,
     options.timeZone,
     options.locale,
+    options.timeScaleLevel,
+    options.timeScaleWidth,
   ]);
 }
 
@@ -1029,17 +1033,26 @@ export function createChartScenePipeline(): ChartScenePipeline {
       const dependencies =
         topology === cache?.topology ? cache.dependencies : buildDependencies(topology);
 
-      const ticks =
+      const ticks: readonly TimeTickPrimitive[] =
         !forceAll && cache !== undefined && tickSignature(cache.options) === tickSignature(options)
           ? cache.ticks
           : Object.freeze(
-              generateFixedIntervalTicks({
-                range: options.range,
-                anchor: options.tickAnchor,
-                interval: options.tickInterval,
-                timeZone: options.timeZone,
-                ...(options.locale === undefined ? {} : { locale: options.locale }),
-              }).map((tick) =>
+              (options.timeScaleLevel === undefined
+                ? generateFixedIntervalTicks({
+                    range: options.range,
+                    anchor: options.tickAnchor,
+                    interval: options.tickInterval,
+                    timeZone: options.timeZone,
+                    ...(options.locale === undefined ? {} : { locale: options.locale }),
+                  })
+                : generateAdaptiveTimeTicks(
+                    options.range,
+                    options.timeScaleLevel,
+                    options.locale ?? 'en-US',
+                    options.timeZone,
+                    options.timeScaleWidth,
+                  )
+              ).map((tick) =>
                 Object.freeze({
                   ...tick,
                   x: createLinearTimeScale(options.range, { start: 0, end: 1 }).timeToX(tick.time),
@@ -1249,6 +1262,16 @@ export function createChartScenePipeline(): ChartScenePipeline {
         diagnostics,
         cache,
       );
+      const gridLines: readonly GridLinePrimitive[] = Object.freeze(
+        ticks.map(
+          (tick): GridLinePrimitive =>
+            Object.freeze({
+              ...(tick.kind === undefined ? {} : { kind: tick.kind }),
+              time: tick.time,
+              x: tick.x,
+            }),
+        ),
+      );
       const scene: ChartScene = Object.freeze({
         range: Object.freeze({ ...options.range }),
         bounds: Object.freeze({
@@ -1259,9 +1282,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
           totalHeight: metrics.headerHeight + layoutStage.layout.totalHeight,
         }),
         ticks,
-        gridLines: Object.freeze(
-          ticks.map((tick) => Object.freeze({ time: tick.time, x: tick.x })),
-        ),
+        gridLines,
         lanes,
         taskBars: Object.freeze(taskBars),
         dependencyPaths: dependencyPrimitives.paths,

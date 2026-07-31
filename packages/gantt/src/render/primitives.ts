@@ -16,6 +16,7 @@ import type {
   ViewPlacementSource,
 } from '../view/types';
 import type { ResolveProjectViewQuery } from '../view/types';
+import type { GanttTimeScaleLevel } from '../time/adaptive-scale';
 import type { EffectiveAppearancePrimitive, GanttAppearanceVariantOption } from './appearance';
 
 export interface ChartLayoutMetrics {
@@ -49,12 +50,14 @@ export interface ChartBoundsPrimitive {
 }
 
 export interface TimeTickPrimitive {
+  readonly kind?: 'major' | 'minor';
   readonly time: EpochMilliseconds;
   readonly x: number;
   readonly label: string;
 }
 
 export interface GridLinePrimitive {
+  readonly kind?: 'major' | 'minor';
   readonly time: EpochMilliseconds;
   readonly x: number;
 }
@@ -176,4 +179,6 @@ export interface BuildChartSceneOptions {
   readonly metrics?: Partial<ChartLayoutMetrics>;
   readonly projectQuery?: ResolveProjectViewQuery;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;
+  readonly timeScaleLevel?: GanttTimeScaleLevel;
+  readonly timeScaleWidth?: number;
 }

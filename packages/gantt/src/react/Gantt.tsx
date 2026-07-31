@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom';
 import { ChevronRight, EllipsisVertical } from 'lucide-react';
 
 import type { GanttCommand } from '../commands/types';
+import { adjacentTimeScaleLevel } from '../time/adaptive-scale';
 import {
   normalizeNavigationDelta,
   type NavigationDeltaUnit,
@@ -806,6 +807,11 @@ function keyboardActionForEvent(
       type: 'page',
     };
   }
+  if (!event.altKey && !event.ctrlKey && !event.metaKey) {
+    if (event.key === '+' || event.key === '=') return { direction: 'in', type: 'zoom' };
+    if (event.key === '-' || event.key === '_') return { direction: 'out', type: 'zoom' };
+    if (event.key === '0' && !event.shiftKey) return { type: 'fit' };
+  }
   if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return undefined;
   }
@@ -1176,6 +1182,7 @@ function GanttSurface({
   const dependencySummaries = useGanttSelector((snapshot) => snapshot.dependencies);
   const focused = useGanttSelector((snapshot) => snapshot.session.focused);
   const selection = useGanttSelector((snapshot) => snapshot.session.selection);
+  const scaleLevel = useGanttSelector((snapshot) => snapshot.scaleLevel);
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
   const accessibilityId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -2305,6 +2312,7 @@ function GanttSurface({
         disabled &&
         action?.type !== 'navigate' &&
         action?.type !== 'page' &&
+        !(panCapable && (action?.type === 'fit' || action?.type === 'zoom')) &&
         !(propertiesEnabled && action?.type === 'activate')
       ) {
         return;
@@ -2312,7 +2320,10 @@ function GanttSurface({
       const bounds = geometry();
       if (
         action === undefined ||
-        (bounds === undefined && action.type !== 'history') ||
+        (bounds === undefined &&
+          action.type !== 'fit' &&
+          action.type !== 'history' &&
+          action.type !== 'zoom') ||
         !runtime.keyboardAction({
           action,
           ...(bounds === undefined ? {} : { geometry: bounds }),
@@ -3004,12 +3015,37 @@ function GanttSurface({
         or E to resize, N to create, Delete to remove, and platform undo or redo shortcuts. In link,
         move, progress, or resize mode, viewport gestures do not edit tasks; use arrow keys, Home or
         End for progress boundaries, Enter to commit, and Escape to cancel. Focus a dependency and
-        press Enter to inspect it or Delete to remove it. All-day task editing is not available in
-        this interaction version.
+        press Enter to inspect it or Delete to remove it. Use plus and minus to zoom and zero to fit
+        the project. All-day task editing is not available in this interaction version.
         {propertiesEnabled
           ? ' Use each visible lane properties button to inspect or edit a persisted lane.'
           : ''}
       </p>
+      {panCapable ? (
+        <div
+          aria-label="Timeline zoom"
+          className="gt-gantt__zoom-controls"
+          data-gt-part="zoom-controls"
+        >
+          <button
+            aria-label="Zoom in"
+            onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'in'))}
+            type="button"
+          >
+            +
+          </button>
+          <button
+            aria-label="Zoom out"
+            onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'out'))}
+            type="button"
+          >
+            −
+          </button>
+          <button aria-label="Fit project" onClick={() => runtime.fitToProject()} type="button">
+            0
+          </button>
+        </div>
+      ) : null}
       {dependencySummaries.length > 0 ? (
         <section
           aria-label="Dependencies"
@@ -3177,15 +3213,17 @@ function GanttSurface({
           onPointerMove={onHeaderPointerMove}
           onPointerUp={onHeaderPointerUp}
         >
-          {scene.ticks.map((tick) => (
-            <span
-              data-edge={tick.x < 0.05 ? 'start' : tick.x > 0.95 ? 'end' : undefined}
-              key={tick.time}
-              style={{ left: percent(tick.x) }}
-            >
-              {tick.label}
-            </span>
-          ))}
+          {scene.ticks
+            .filter((tick) => tick.kind !== 'minor')
+            .map((tick) => (
+              <span
+                data-edge={tick.x < 0.05 ? 'start' : tick.x > 0.95 ? 'end' : undefined}
+                key={tick.time}
+                style={{ left: percent(tick.x) }}
+              >
+                {tick.label}
+              </span>
+            ))}
         </div>
 
         {scene.emptyState ? (
@@ -3361,6 +3399,7 @@ function GanttSurface({
                   <g aria-hidden="true" data-gt-part="grid">
                     {scene.gridLines.map((line) => (
                       <line
+                        data-tick-kind={line.kind}
                         key={line.time}
                         x1={percent(line.x)}
                         x2={percent(line.x)}
@@ -3784,6 +3823,23 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
       if (event.ctrlKey || event.metaKey || excludesChartWheel(event.target)) {
         return;
       }
+      if (event.altKey) {
+        const current = runtime.getSnapshot().selector;
+        const direction = event.deltaY < 0 ? 'in' : event.deltaY > 0 ? 'out' : undefined;
+        const level =
+          direction === undefined
+            ? current.scaleLevel
+            : adjacentTimeScaleLevel(current.scaleLevel, direction);
+        if (direction === undefined || level === current.scaleLevel) return;
+        const bounds = timeline.getBoundingClientRect();
+        if (bounds.width <= 0) return;
+        const anchorRatio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+        const anchorTime =
+          current.range.start + (current.range.end - current.range.start) * anchorRatio;
+        if (!runtime.zoomTo(level, { anchorRatio, anchorTime })) return;
+        event.preventDefault();
+        return;
+      }
       const unit = wheelDeltaUnit(event.deltaMode);
       const horizontalDelta = normalizeNavigationDelta(event.deltaX, unit, {
         lineSize: WHEEL_LINE_SIZE,
@@ -3842,7 +3898,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         label={label}
         onTaskEditRequest={onTaskEditRequest}
         overlayContainer={overlayContainer}
-        panCapable={props.onRangeChange !== undefined}
+        panCapable={props.defaultRange !== undefined || props.onRangeChange !== undefined}
         runtime={runtime}
         scene={scene}
         slots={slots}

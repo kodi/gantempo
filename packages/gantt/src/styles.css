@@ -26,6 +26,27 @@
     font-family: inherit;
   }
 
+  :where(.gt-gantt__zoom-controls) {
+    position: absolute;
+    z-index: 2;
+    top: 5px;
+    right: 6px;
+    display: flex;
+    gap: 3px;
+  }
+
+  :where(.gt-gantt__zoom-controls button) {
+    display: inline-grid;
+    width: 30px;
+    min-height: 30px;
+    place-items: center;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 4px;
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface);
+    font: inherit;
+  }
+
   :where(.gt-gantt__table) {
     display: grid;
     grid-template-columns: minmax(105px, var(--gt-lane-column-width)) minmax(0, 1fr);

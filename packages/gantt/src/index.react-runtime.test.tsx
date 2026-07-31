@@ -72,6 +72,12 @@ describe('public React runtime facade', () => {
       } satisfies GanttInteractionCommandMappers,
       interactionSnap: { anchor: 0, step: 1 },
     } satisfies GanttProps;
+    const adaptive = {
+      defaultDocument: document,
+      defaultRange: { end: 14, start: 0 },
+      timeScale: { kind: 'adaptive', maxLevel: 'month', minLevel: 'hour' },
+      timeZone: 'UTC',
+    } satisfies GanttProps;
     const selector = (snapshot: GanttSelectorSnapshot) => snapshot.occurrences;
     const interaction: GanttInteractionState = { status: 'idle' };
     const action: GanttInteractionAction = 'move';
@@ -137,6 +143,7 @@ describe('public React runtime facade', () => {
     const ref = createRef<GanttHandle>();
     const controlledElement = <Gantt {...controlled} ref={ref} />;
     const uncontrolledElement = <Gantt {...uncontrolled} />;
+    const adaptiveElement = <Gantt {...adaptive} />;
 
     expect(selector).toBeTypeOf('function');
     expect(interaction.status).toBe('idle');
@@ -149,6 +156,7 @@ describe('public React runtime facade', () => {
     expect(editRequest.source).toBe('context-menu');
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
+    expect(adaptiveElement.type).toBe(Gantt);
   });
 
   it('rejects ambiguous or missing document ownership at compile time', () => {
@@ -156,8 +164,22 @@ describe('public React runtime facade', () => {
     const ambiguous: GanttProps = { ...common, defaultDocument: document, document };
     // @ts-expect-error A chart must have exactly one document owner.
     const missing: GanttProps = { ...common };
+    // @ts-expect-error A chart cannot have controlled and uncontrolled ranges simultaneously.
+    const ambiguousRange: GanttProps = {
+      ...common,
+      defaultDocument: document,
+      defaultRange: common.range,
+    };
+    // @ts-expect-error Legacy fixed tick props and a timeScale are exclusive.
+    const ambiguousScale: GanttProps = {
+      ...common,
+      defaultDocument: document,
+      timeScale: { kind: 'adaptive' },
+    };
 
     expect(ambiguous).toBeDefined();
     expect(missing).toBeDefined();
+    expect(ambiguousRange).toBeDefined();
+    expect(ambiguousScale).toBeDefined();
   });
 });

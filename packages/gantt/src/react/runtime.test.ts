@@ -109,6 +109,109 @@ function commonProps() {
 }
 
 describe('React runtime adapter', () => {
+  it('proposes controlled adaptive zoom with a stable anchor and waits for acknowledgement', () => {
+    let proposal:
+      | {
+          readonly event: Parameters<NonNullable<GanttProps['onRangeChange']>>[1];
+          readonly range: Parameters<NonNullable<GanttProps['onRangeChange']>>[0];
+        }
+      | undefined;
+    const props: GanttProps = {
+      defaultDocument: documentFixture(),
+      onRangeChange(range, event) {
+        proposal = { event, range };
+      },
+      range: { end: START + 14 * DAY, start: START },
+      timeScale: { kind: 'adaptive', maxLevel: 'month', minLevel: 'hour' },
+      timeZone: 'UTC',
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+
+    const accepted = runtime.getSnapshot().selector.range;
+    expect(runtime.getSnapshot().selector.scaleLevel).toBe('day');
+    expect(
+      runtime.getHandle().zoomTo('minute', { anchorRatio: 0.25, anchorTime: START + DAY }),
+    ).toBe(true);
+    expect(proposal).toMatchObject({
+      event: { anchorTime: START + DAY, reason: 'zoom', source: 'imperative' },
+    });
+    expect(proposal!.range.end - proposal!.range.start).toBe(2 * DAY);
+    expect(runtime.getSnapshot().selector.range).toEqual(accepted);
+
+    const acknowledged = { ...props, range: proposal!.range } satisfies GanttProps;
+    runtime.updateCallbacks(acknowledged);
+    runtime.reconcile(acknowledged);
+    expect(runtime.getSnapshot().selector.range).toEqual(proposal!.range);
+    expect(runtime.getSnapshot().selector.scaleLevel).toBe('hour');
+    runtime.dispose();
+  });
+
+  it('adopts uncontrolled fit and includes collapsed project presentations', () => {
+    const changes: Array<{
+      readonly event: Parameters<NonNullable<GanttProps['onRangeChange']>>[1];
+      readonly range: Parameters<NonNullable<GanttProps['onRangeChange']>>[0];
+    }> = [];
+    const props: GanttProps = {
+      defaultDocument: projectDocumentFixture(),
+      defaultRange: { end: START + DAY, start: START },
+      defaultSession: {
+        project: { collapsedTaskIds: ['summary'] },
+        selection: [],
+        viewport: { verticalStart: 0 },
+      },
+      onRangeChange(range, event) {
+        changes.push({ event, range });
+      },
+      timeScale: { kind: 'adaptive' },
+      timeZone: 'UTC',
+      view: { kind: 'project' },
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    runtime.measure({ clientHeight: 58, clientWidth: 1_000, verticalStart: 0 });
+
+    expect(runtime.getHandle().fitToProject({ padding: 100 })).toBe(true);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]!.event).toMatchObject({ reason: 'fit', source: 'imperative' });
+    expect(runtime.getSnapshot().selector.range).toEqual(changes[0]!.range);
+    expect(changes[0]!.range.start).toBe(START + 0.75 * DAY);
+    expect(changes[0]!.range.end).toBe(START + 3.25 * DAY);
+    runtime.reconcile(props);
+    expect(runtime.getSnapshot().selector.range).toEqual(changes[0]!.range);
+    runtime.dispose();
+  });
+
+  it('announces fit as a no-op for a wholly unscheduled project', () => {
+    const runtime = createGanttReactRuntime({
+      defaultDocument: { ...documentFixture(), tasks: [] },
+      defaultRange: { end: START + DAY, start: START },
+      tickAnchor: START,
+      tickInterval: DAY,
+      timeZone: 'UTC',
+    });
+    expect(runtime.getHandle().fitToProject()).toBe(false);
+    expect(runtime.getSnapshot().selector.interaction).toMatchObject({
+      announcement: 'No scheduled project items to fit.',
+      status: 'idle',
+    });
+    runtime.dispose();
+  });
+
+  it('diagnoses inverted adaptive bounds and falls back to the minimum level', () => {
+    const runtime = createGanttReactRuntime({
+      defaultDocument: documentFixture(),
+      defaultRange: { end: START + 365 * DAY, start: START },
+      timeScale: { kind: 'adaptive', maxLevel: 'hour', minLevel: 'day' },
+      timeZone: 'UTC',
+    });
+    expect(runtime.getSnapshot().selector.scaleLevel).toBe('day');
+    expect(runtime.getSnapshot().scene.diagnostics).toContainEqual(
+      expect.objectContaining({ code: 'time-scale.invalid-bounds', path: '/timeScale' }),
+    );
+    runtime.dispose();
+  });
+
   it('adopts project collapse and reconciles a controlled proposal atomically', () => {
     let proposal: Parameters<NonNullable<GanttProps['onSessionChange']>>[0] | undefined;
     const document = projectDocumentFixture();

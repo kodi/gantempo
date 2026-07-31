@@ -23,6 +23,12 @@ import type {
 import type { GanttViewDefinition } from '../view/types';
 import type { GanttAppearanceVariantOption } from '../render/appearance';
 import type {
+  GanttFitToProjectOptions,
+  GanttTimeScaleDefinition,
+  GanttTimeScaleLevel,
+  GanttZoomOptions,
+} from '../time/adaptive-scale';
+import type {
   GanttCommandCommittedEvent,
   GanttCommandInterceptor,
   GanttCommandRejectedEvent,
@@ -39,6 +45,18 @@ import type {
 export interface GanttSemanticEvent {
   readonly source: 'controlled-prop' | 'imperative' | 'runtime';
 }
+
+export interface GanttRangeChangeEvent extends GanttSemanticEvent {
+  readonly anchorTime?: EpochMilliseconds;
+  readonly reason: 'fit' | 'pan' | 'scroll' | 'zoom';
+}
+
+export type {
+  GanttFitToProjectOptions,
+  GanttTimeScaleDefinition,
+  GanttTimeScaleLevel,
+  GanttZoomOptions,
+} from '../time/adaptive-scale';
 
 export interface GanttTaskEditRequest {
   readonly source: 'context-menu';
@@ -174,6 +192,7 @@ export interface GanttSelectorSnapshot {
   readonly interaction: GanttInteractionState;
   readonly occurrences: readonly GanttVisibleOccurrence[];
   readonly range: TimeRange;
+  readonly scaleLevel: GanttTimeScaleLevel;
   readonly session: GanttSessionState;
   readonly viewport: GanttMeasuredViewportState;
 }
@@ -183,6 +202,7 @@ export interface GanttHandle {
   canUndo(): boolean;
   dispatch(command: GanttCommand, options?: GanttDispatchOptions): Promise<GanttDispatchResult>;
   focusTask(target: GanttTaskTarget): boolean;
+  fitToProject(options?: GanttFitToProjectOptions): boolean;
   getDocument(): GanttDocument;
   getSelection(): readonly GanttInteractionTarget[];
   getSession(): GanttSessionState;
@@ -190,6 +210,7 @@ export interface GanttHandle {
   scrollToTask(target: GanttTaskTarget, options?: GanttScrollOptions): boolean;
   scrollToTime(time: EpochMilliseconds, options?: GanttScrollOptions): boolean;
   undo(): Promise<GanttDispatchResult>;
+  zoomTo(level: GanttTimeScaleLevel, options?: GanttZoomOptions): boolean;
 }
 
 export interface GanttTaskSummary {
@@ -440,7 +461,7 @@ interface GanttBaseProps {
     focused: GanttInteractionTarget | undefined,
     event: GanttSemanticEvent,
   ) => void;
-  readonly onRangeChange?: (range: TimeRange, event: GanttSemanticEvent) => void;
+  readonly onRangeChange?: (range: TimeRange, event: GanttRangeChangeEvent) => void;
   readonly onRuntimeError?: (event: GanttRuntimeErrorEvent) => void;
   readonly onSelectionChange?: (
     selection: readonly GanttInteractionTarget[],
@@ -451,11 +472,8 @@ interface GanttBaseProps {
   readonly onTaskEditRequest?: (request: GanttTaskEditRequest) => void;
   readonly onViewportChange?: (viewport: GanttViewportChange, event: GanttSemanticEvent) => void;
   readonly overlayContainer?: GanttOverlayContainer;
-  readonly range: TimeRange;
   readonly slots?: GanttSlots;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;
-  readonly tickAnchor: EpochMilliseconds;
-  readonly tickInterval: number;
   readonly timeZone: string;
   readonly view?: GanttViewDefinition;
 }
@@ -482,7 +500,27 @@ type GanttSessionOwnership =
       readonly session?: never;
     };
 
-export type GanttProps = GanttBaseProps & GanttDocumentOwnership & GanttSessionOwnership;
+export type GanttRangeOwnership =
+  | { readonly defaultRange?: never; readonly range: TimeRange }
+  | { readonly defaultRange: TimeRange; readonly range?: never };
+
+type GanttScaleOwnership =
+  | {
+      readonly tickAnchor: EpochMilliseconds;
+      readonly tickInterval: number;
+      readonly timeScale?: never;
+    }
+  | {
+      readonly tickAnchor?: never;
+      readonly tickInterval?: never;
+      readonly timeScale: GanttTimeScaleDefinition;
+    };
+
+export type GanttProps = GanttBaseProps &
+  GanttDocumentOwnership &
+  GanttRangeOwnership &
+  GanttScaleOwnership &
+  GanttSessionOwnership;
 
 export type GanttSelector<T> = (snapshot: GanttSelectorSnapshot) => T;
 export type GanttSelectorEquality<T> = (previous: T, next: T) => boolean;

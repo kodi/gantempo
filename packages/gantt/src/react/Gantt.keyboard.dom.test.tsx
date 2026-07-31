@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import type { GanttDocument } from '../model/types';
 import type { GanttCommandInterception } from '../runtime/types';
 import { Gantt } from './Gantt';
-import type { GanttHandle } from './types';
+import type { GanttHandle, GanttProps } from './types';
 
 const DAY = 24 * 60 * 60 * 1_000;
 const START = Date.UTC(2026, 6, 29);
@@ -510,6 +510,26 @@ describe('Gantt keyboard and accessibility integration', () => {
       'Alt plus PageUp or PageDown',
     );
     await expectNoSemanticViolations(mounted.container);
+  });
+
+  it('provides plain keyboard zoom and fit bindings', () => {
+    const events: Array<Parameters<NonNullable<GanttProps['onRangeChange']>>[1]> = [];
+    const mounted = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        onRangeChange={(_range, event) => events.push(event)}
+      />,
+    );
+    installGeometry(mounted.container, 116);
+    const root = mounted.getByRole('region', { name: 'Gantt chart' });
+    root.focus();
+
+    fireEvent.keyDown(root, { key: '+' });
+    fireEvent.keyDown(root, { key: '-' });
+    fireEvent.keyDown(root, { key: '0' });
+
+    expect(events.map((event) => event.reason)).toEqual(['zoom', 'zoom', 'fit']);
   });
 
   it('keeps geometric task navigation focusable when document editing is read-only', async () => {

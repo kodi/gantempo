@@ -39,6 +39,7 @@ import type {
 import type { Diagnostic } from '../model/diagnostics';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences } from '../model/validate';
+import { resolveTaskPresentations } from '../presentation/resolve-task-presentations';
 import { createChartScenePipeline, type ChartSceneOccurrence } from '../render/scene-pipeline';
 import type { ChartScene, TaskBarPrimitive } from '../render/primitives';
 import {
@@ -48,6 +49,16 @@ import {
 import { sessionEqual } from '../runtime/session';
 import { createGanttRuntimeStore } from '../runtime/store';
 import { createRangeProposalController } from '../runtime/range-proposals';
+import {
+  adjacentTimeScaleLevel,
+  clampTimeScaleLevel,
+  fitTimeRange,
+  resolveAdaptiveScaleLevel,
+  timeScaleLevelSpan,
+  zoomRangeToLevel,
+  type GanttTimeScaleDefinition,
+  type GanttTimeScaleLevel,
+} from '../time/adaptive-scale';
 import type {
   GanttCommandBus,
   GanttCommandSource,
@@ -98,6 +109,7 @@ export interface GanttReactRuntime {
       readonly target: GanttInteractionTarget;
     },
   ): Promise<GanttDispatchResult>;
+  fitToProject(options?: Parameters<GanttHandle['fitToProject']>[0]): boolean;
   getHandle(): GanttHandle;
   getSnapshot(): GanttReactRuntimeSnapshot;
   inspectLane(viewKey: string): boolean;
@@ -121,6 +133,7 @@ export interface GanttReactRuntime {
   toggleProjectTask(taskId: EntityId, expanded?: boolean): boolean;
   updateDependencyLink(viewKey?: string): boolean;
   updateCallbacks(props: GanttProps): void;
+  zoomTo(level: GanttTimeScaleLevel, options?: Parameters<GanttHandle['zoomTo']>[1]): boolean;
 }
 
 export interface GanttPointerGeometry {
@@ -150,6 +163,7 @@ export interface GanttPointerMoveInput {
 
 export interface GanttViewportNavigationInput {
   readonly horizontalDelta?: number;
+  readonly reason?: 'pan' | 'scroll';
   readonly source?: Extract<GanttSemanticEvent['source'], 'imperative' | 'runtime'>;
   readonly verticalDelta?: number;
   readonly viewportHeight: number;
@@ -200,6 +214,8 @@ export type GanttKeyboardAction =
       readonly type: 'page';
     }
   | { readonly action: 'redo' | 'undo'; readonly type: 'history' }
+  | { readonly direction: 'in' | 'out'; readonly type: 'zoom' }
+  | { readonly type: 'fit' }
   | { readonly type: 'toggle-selection' };
 
 export interface GanttKeyboardActionInput {
@@ -212,6 +228,7 @@ interface DisplayInputs {
   readonly locale: string;
   readonly range: TimeRange;
   readonly taskVariants: GanttProps['taskVariants'];
+  readonly timeScale: GanttTimeScaleDefinition;
   readonly tickAnchor: number;
   readonly tickInterval: number;
   readonly timeZone: string;
@@ -235,14 +252,20 @@ function initialSession(props: GanttProps) {
     : { kind: 'uncontrolled' as const, value: props.defaultSession };
 }
 
-function displayInputs(props: GanttProps): DisplayInputs {
+function displayInputs(props: GanttProps, rangeOverride?: TimeRange): DisplayInputs {
+  const timeScale: GanttTimeScaleDefinition = props.timeScale ?? {
+    kind: 'fixed',
+    tickAnchor: props.tickAnchor!,
+    tickInterval: props.tickInterval!,
+  };
   return Object.freeze({
     appearanceVariants: props.appearanceVariants,
     locale: props.locale ?? 'en-US',
-    range: Object.freeze({ ...props.range }),
+    range: Object.freeze({ ...(rangeOverride ?? props.range ?? props.defaultRange) }),
     taskVariants: props.taskVariants,
-    tickAnchor: props.tickAnchor,
-    tickInterval: props.tickInterval,
+    tickAnchor: timeScale.kind === 'fixed' ? timeScale.tickAnchor : 0,
+    tickInterval: timeScale.kind === 'fixed' ? timeScale.tickInterval : timeScaleLevelSpan('day'),
+    timeScale: Object.freeze({ ...timeScale }),
     timeZone: props.timeZone,
     view: props.view,
   });
@@ -256,10 +279,30 @@ function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
     previous.range.end === next.range.end &&
     previous.tickAnchor === next.tickAnchor &&
     previous.tickInterval === next.tickInterval &&
+    JSON.stringify(previous.timeScale) === JSON.stringify(next.timeScale) &&
     previous.timeZone === next.timeZone &&
     JSON.stringify(previous.taskVariants) === JSON.stringify(next.taskVariants) &&
     sameViewDefinition(previous.view, next.view)
   );
+}
+
+function timeScaleDiagnostics(timeScale: GanttTimeScaleDefinition): readonly Diagnostic[] {
+  if (
+    timeScale.kind !== 'adaptive' ||
+    timeScale.minLevel === undefined ||
+    timeScale.maxLevel === undefined ||
+    timeScaleLevelSpan(timeScale.minLevel) <= timeScaleLevelSpan(timeScale.maxLevel)
+  ) {
+    return Object.freeze([]);
+  }
+  return Object.freeze([
+    Object.freeze({
+      code: 'time-scale.invalid-bounds' as const,
+      message: 'Adaptive minimum level exceeds its maximum; the minimum bound is used.',
+      path: '/timeScale',
+      severity: 'warning' as const,
+    }),
+  ]);
 }
 
 function projectSessionPart(session: GanttSessionState) {
@@ -436,6 +479,7 @@ function createSelectorSnapshot(
   dependencies: GanttSelectorSnapshot['dependencies'],
   visible: readonly GanttVisibleOccurrence[],
   interaction: GanttInteractionState,
+  scaleLevel: GanttTimeScaleLevel,
 ): GanttSelectorSnapshot {
   return Object.freeze({
     canRedo: store.history.canRedo,
@@ -445,6 +489,7 @@ function createSelectorSnapshot(
     interaction,
     occurrences: visible,
     range: display.range,
+    scaleLevel,
     session: store.session,
     viewport: store.viewport,
   });
@@ -505,9 +550,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   const initialValidation = validateDocumentReferences(initialDocument(initialProps));
   let callbacks = initialProps;
   let display = displayInputs(initialProps);
-  let inputDiagnostics = initialValidation.diagnostics;
+  let inputDiagnostics = Object.freeze([
+    ...initialValidation.diagnostics,
+    ...timeScaleDiagnostics(display.timeScale),
+  ]);
   const documentControlled = controlledDocument(initialProps) !== undefined;
   const sessionControlled = initialProps.session !== undefined;
+  const rangeControlled = initialProps.range !== undefined;
   let active = false;
   let activationVersion = 0;
   let disposed = false;
@@ -528,6 +577,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     | undefined;
   let dependencyFocusRestore: GanttTaskTarget | undefined;
   let pendingRangeAnnouncement = false;
+  let rangeChangeContext: {
+    readonly anchorTime?: number;
+    readonly reason: import('./types').GanttRangeChangeEvent['reason'];
+  } = { reason: 'pan' };
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
   const pipeline = createChartScenePipeline();
@@ -552,14 +605,42 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     },
   });
   const rangeProposals = createRangeProposalController({
-    canPublish: () => callbacks.onRangeChange !== undefined,
+    canPublish: () => !rangeControlled || callbacks.onRangeChange !== undefined,
     initialRange: display.range,
     publish(range, source) {
-      const event = Object.freeze({ source });
+      if (!rangeControlled) {
+        display = Object.freeze({ ...display, range: Object.freeze({ ...range }) });
+        rangeProposals.adopt(range);
+        rebuild();
+      }
+      const event = Object.freeze({
+        ...(rangeChangeContext.anchorTime === undefined
+          ? {}
+          : { anchorTime: rangeChangeContext.anchorTime }),
+        reason: rangeChangeContext.reason,
+        source,
+      });
       emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
     },
     schedule: scheduleFrame,
   });
+
+  function requestRange(
+    range: TimeRange,
+    reason: import('./types').GanttRangeChangeEvent['reason'],
+    source: 'imperative' | 'runtime',
+    anchorTime?: number,
+  ): boolean {
+    rangeChangeContext = Object.freeze({
+      ...(anchorTime === undefined ? {} : { anchorTime }),
+      reason,
+    });
+    return rangeProposals.requestRange(range, source);
+  }
+
+  function canChangeRange(): boolean {
+    return !rangeControlled || callbacks.onRangeChange !== undefined;
+  }
 
   const bus: GanttCommandBus = createGanttCommandBus({
     canProposeControlledDocument: () => callbacks.onDocumentChange !== undefined,
@@ -777,6 +858,15 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             verticalStart: storeSnapshot.viewport.queryVerticalStart,
           }
         : undefined;
+    const scaleWidth =
+      storeSnapshot.viewport.status === 'measured' && storeSnapshot.viewport.clientWidth > 0
+        ? storeSnapshot.viewport.clientWidth
+        : 960;
+    const scaleLevel = resolveAdaptiveScaleLevel(
+      display.range,
+      scaleWidth,
+      display.timeScale.kind === 'adaptive' ? display.timeScale : { kind: 'adaptive' },
+    );
     const derived = pipeline.build(
       {
         ...(display.appearanceVariants === undefined
@@ -786,6 +876,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         range: display.range,
         tickAnchor: display.tickAnchor,
         tickInterval: display.tickInterval,
+        ...(display.timeScale.kind === 'adaptive' ? { timeScaleLevel: scaleLevel } : {}),
+        ...(display.timeScale.kind === 'adaptive' ? { timeScaleWidth: scaleWidth } : {}),
         timeZone: display.timeZone,
         locale: display.locale,
         ...(storeSnapshot.session.project === undefined
@@ -818,6 +910,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         sceneOccurrences.dependencies,
         sceneOccurrences.visible,
         composedInteraction(reconciledStore),
+        scaleLevel,
       ),
       version: (snapshot?.version ?? -1) + 1,
     });
@@ -1216,11 +1309,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         : undefined;
     if (
       (sessionControlled && callbacks.onSessionChange === undefined) ||
-      (horizontalRange !== undefined && callbacks.onRangeChange === undefined)
+      (horizontalRange !== undefined && !canChangeRange())
     ) {
       return false;
     }
-    if (horizontalRange !== undefined && !rangeProposals.requestRange(horizontalRange, 'runtime')) {
+    if (horizontalRange !== undefined && !requestRange(horizontalRange, 'scroll', 'runtime')) {
       return false;
     }
     return updateSession(
@@ -1241,11 +1334,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   ): boolean {
     if (axis === 'horizontal') {
       const range = pageTimeRange(display.range, direction);
-      if (range === undefined || callbacks.onRangeChange === undefined) {
+      if (range === undefined || !canChangeRange()) {
         return false;
       }
       pendingRangeAnnouncement = true;
-      if (!rangeProposals.requestRange(range, 'runtime')) {
+      if (!requestRange(range, 'scroll', 'runtime')) {
         pendingRangeAnnouncement = false;
         return false;
       }
@@ -1372,6 +1465,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
   function navigateViewport(input: GanttViewportNavigationInput): GanttViewportNavigationResult {
     const source = input.source ?? 'runtime';
+    rangeChangeContext = Object.freeze({ reason: input.reason ?? 'scroll' });
     const horizontal =
       input.horizontalDelta === undefined
         ? false
@@ -1405,7 +1499,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       disposed ||
       gesture.status !== 'idle' ||
       panGesture.status !== 'idle' ||
-      callbacks.onRangeChange === undefined ||
+      !canChangeRange() ||
       !Number.isFinite(input.geometry.width) ||
       input.geometry.width <= 0 ||
       !Number.isFinite(input.geometry.height) ||
@@ -1426,6 +1520,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     navigateViewport({
       ...(moved.deltaX === 0 ? {} : { horizontalDelta: moved.deltaX }),
       ...(moved.deltaY === 0 ? {} : { verticalDelta: moved.deltaY }),
+      reason: 'pan',
       viewportHeight: input.geometry.height,
       viewportWidth: input.geometry.width,
     });
@@ -1475,8 +1570,53 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       relativeX < edge ? -1 : relativeX > input.geometry.width - edge ? 1 : 0;
     if (horizontalDirection !== 0) {
       const shift = horizontalDirection * options.snap.step;
+      rangeChangeContext = Object.freeze({ reason: 'scroll' });
       rangeProposals.shiftByTime(shift, 'runtime');
     }
+  }
+
+  function fitProject(
+    fitOptions: Parameters<GanttHandle['fitToProject']>[0],
+    source: 'imperative' | 'runtime',
+  ): boolean {
+    const presentations = resolveTaskPresentations(
+      store.getSnapshot().document,
+      display.timeZone,
+    ).presentations;
+    const intervals = presentations.flatMap((presentation) =>
+      presentation.interval === undefined ? [] : [presentation.interval],
+    );
+    if (intervals.length === 0) {
+      setInteraction(
+        Object.freeze({ announcement: 'No scheduled project items to fit.', status: 'idle' }),
+      );
+      return false;
+    }
+    const bounds = Object.freeze({
+      end: Math.max(...intervals.map((interval) => interval.end)),
+      start: Math.min(...intervals.map((interval) => interval.start)),
+    });
+    const width =
+      snapshot.selector.viewport.status === 'measured'
+        ? snapshot.selector.viewport.clientWidth
+        : 960;
+    const range = fitTimeRange(bounds, width, fitOptions);
+    return range === undefined ? false : requestRange(range, 'fit', source);
+  }
+
+  function zoomLevel(
+    level: GanttTimeScaleLevel,
+    zoomOptions: Parameters<GanttHandle['zoomTo']>[1],
+    source: 'imperative' | 'runtime',
+  ): boolean {
+    const acceptedLevel =
+      display.timeScale.kind === 'adaptive' ? clampTimeScaleLevel(level, display.timeScale) : level;
+    const range = zoomRangeToLevel(display.range, acceptedLevel, zoomOptions);
+    const anchorRatio = zoomOptions?.anchorRatio ?? 0.5;
+    const anchorTime =
+      zoomOptions?.anchorTime ??
+      display.range.start + (display.range.end - display.range.start) * anchorRatio;
+    return range === undefined ? false : requestRange(range, 'zoom', source, anchorTime);
   }
 
   const handleValue: GanttHandle = {
@@ -1498,6 +1638,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         }),
       );
     },
+    fitToProject: (options) => fitProject(options, 'imperative'),
     getDocument: () => store.getSnapshot().document,
     getSelection: () => store.getSnapshot().session.selection,
     getSession: () => store.getSnapshot().session,
@@ -1512,14 +1653,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const verticalChanged = verticalStart !== session.viewport.verticalStart;
       const horizontalChanged = task.start < display.range.start || task.end > display.range.end;
       if (
-        (horizontalChanged && callbacks.onRangeChange === undefined) ||
+        (horizontalChanged && !canChangeRange()) ||
         (verticalChanged && sessionControlled && callbacks.onSessionChange === undefined)
       ) {
         return false;
       }
       if (horizontalChanged) {
         const range = alignedTaskRange(task, options);
-        if (!rangeProposals.requestRange(range, 'imperative')) {
+        if (!requestRange(range, 'scroll', 'imperative')) {
           return false;
         }
       }
@@ -1544,9 +1685,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const start =
         align === 'start' ? time : align === 'end' ? time - duration : time - duration / 2;
       const range = Object.freeze({ start, end: start + duration });
-      return rangeProposals.requestRange(range, 'imperative');
+      return requestRange(range, 'scroll', 'imperative');
     },
     undo: () => bus.undo(),
+    zoomTo: (level, options) => zoomLevel(level, options, 'imperative'),
   };
   const handle: GanttHandle = Object.freeze(handleValue);
 
@@ -1654,6 +1796,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
     dispatchAction,
 
+    fitToProject: (options) => fitProject(options, 'runtime'),
+
     getHandle() {
       return handle;
     },
@@ -1674,6 +1818,17 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (input.action.type === 'history' && keyboardGesture === undefined) {
         void dispatchKeyboardHistory(input.action.action, focusedKeyboardTarget());
         return true;
+      }
+      if (keyboardGesture === undefined && dependencyLink === undefined) {
+        if (input.action.type === 'fit') return fitProject(undefined, 'runtime');
+        if (input.action.type === 'zoom') {
+          const level = adjacentTimeScaleLevel(
+            snapshot.selector.scaleLevel,
+            input.action.direction,
+            display.timeScale.kind === 'adaptive' ? display.timeScale : { kind: 'adaptive' },
+          );
+          return zoomLevel(level, undefined, 'runtime');
+        }
       }
       if (dependencyLink !== undefined) {
         if (input.action.type === 'cancel') return runtime.cancelDependencyLink();
@@ -2199,32 +2354,35 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       const nextDocumentControlled = controlledDocument(props) !== undefined;
       const nextSessionControlled = props.session !== undefined;
+      const nextRangeControlled = props.range !== undefined;
       if (
         nextDocumentControlled !== documentControlled ||
-        nextSessionControlled !== sessionControlled
+        nextSessionControlled !== sessionControlled ||
+        nextRangeControlled !== rangeControlled
       ) {
         throw new Error('Gantt ownership modes cannot change after mount.');
       }
       bus.updateInterceptors(props.interceptors ?? []);
-      const nextDisplay = displayInputs(props);
+      const nextDisplay = displayInputs(props, rangeControlled ? undefined : display.range);
       const changedDisplay = !displayEqual(display, nextDisplay);
-      const validation = documentControlled
-        ? validateDocumentReferences(props.document!)
-        : undefined;
+      const validation = validateDocumentReferences(
+        documentControlled ? props.document! : store.getSnapshot().document,
+      );
+      const nextInputDiagnostics = Object.freeze([
+        ...validation.diagnostics,
+        ...timeScaleDiagnostics(nextDisplay.timeScale),
+      ]);
       const changedDiagnostics =
-        validation !== undefined &&
-        JSON.stringify(validation.diagnostics) !== JSON.stringify(inputDiagnostics);
+        JSON.stringify(nextInputDiagnostics) !== JSON.stringify(inputDiagnostics);
       const previousSelector = snapshot.selector;
       const previousVersion = snapshot.version;
       display = nextDisplay;
       rangeProposals.adopt(display.range);
-      if (validation !== undefined) {
-        inputDiagnostics = validation.diagnostics;
-      }
+      inputDiagnostics = nextInputDiagnostics;
       semanticSource = 'controlled-prop';
       try {
         if (documentControlled) {
-          bus.updateControlledDocument(validation!.document);
+          bus.updateControlledDocument(validation.document);
         }
         if (sessionControlled) {
           store.updateControlledSession(props.session!);
@@ -2383,6 +2541,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     updateCallbacks(props) {
       callbacks = props;
     },
+
+    zoomTo: (level, options) => zoomLevel(level, options, 'runtime'),
   };
   return Object.freeze(runtime);
 }
