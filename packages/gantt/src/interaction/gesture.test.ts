@@ -21,6 +21,7 @@ function fixture(): {
         id: 'task-a',
         kind: 'task',
         title: 'Task A',
+        progress: 0.25,
         segments: [],
         schedule: { mode: 'instant', start: 100, end: 300 },
       },
@@ -76,6 +77,7 @@ function fixture(): {
           laneId: 'lane-a',
         },
         title: 'Task A',
+        progress: { value: 0.25, width: 0.05, x: 0.1 },
         start: 100,
         end: 300,
         x: 0.1,
@@ -91,13 +93,17 @@ function fixture(): {
   return {
     document,
     options: {
-      index: createInteractionHitTestIndex(scene, {
-        x: 0,
-        y: 0,
-        width: 1_000,
-        height: 120,
-        verticalStart: 0,
-      }),
+      index: createInteractionHitTestIndex(
+        scene,
+        {
+          x: 0,
+          y: 0,
+          width: 1_000,
+          height: 120,
+          verticalStart: 0,
+        },
+        { progressTaskIds: ['task-a'] },
+      ),
       snap: { anchor: 0, step: 100 },
     },
   };
@@ -203,4 +209,46 @@ describe('pure interaction gesture state', () => {
     expect(state).toEqual({ reason: 'cancelled', status: 'cancelled' });
     expect(event(state, { type: 'reset' }, options)).toBe(IDLE_INTERACTION_GESTURE);
   });
+
+  it.each(['mouse', 'pen', 'touch'] as const)(
+    'previews and commits percentage-point progress for %s input',
+    (pointerType) => {
+      const { options } = fixture();
+      let state = event(
+        IDLE_INTERACTION_GESTURE,
+        {
+          progressCandidateViewKey: 'task-a-view',
+          type: 'press',
+          pointerId: 6,
+          pointerType,
+          point: { x: 150, y: 30 },
+        },
+        options,
+      );
+      state = event(
+        state,
+        {
+          progressCandidateViewKey: 'task-a-view',
+          type: 'move',
+          pointerId: 6,
+          point: { x: 260, y: 30 },
+        },
+        options,
+      );
+      expect(state).toMatchObject({
+        intent: { kind: 'progress', sourceValue: 0.25, value: 0.8 },
+        preview: {
+          description: 'Set Task A progress to 80%.',
+          kind: 'progress',
+          progress: 0.8,
+          width: 160,
+        },
+        status: 'active',
+      });
+      expect(event(state, { type: 'release', pointerId: 6 }, options)).toMatchObject({
+        intent: { kind: 'progress', value: 0.8 },
+        status: 'committed',
+      });
+    },
+  );
 });

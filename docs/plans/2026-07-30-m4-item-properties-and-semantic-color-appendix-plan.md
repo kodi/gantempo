@@ -615,7 +615,7 @@ Canonical properties, commands, rendering, and M4 editor behavior are stable.
 
 ### Appendix Slice A6: Add direct and keyboard progress editing
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -808,7 +808,7 @@ Resolved in Appendix Slice A1:
 - [x] Appendix Slice A3: Resolve appearance and progress primitives
 - [x] Appendix Slice A4: Render accessible semantic color and progress
 - [x] Appendix Slice A5: Add task and lane properties surfaces
-- [ ] Appendix Slice A6: Add direct and keyboard progress editing
+- [x] Appendix Slice A6: Add direct and keyboard progress editing
 - [ ] Appendix Slice A7: Prove consumers and close the appendix
 - [ ] Final automated/package/SSR gate
 - [ ] Final browser/accessibility gate
@@ -978,11 +978,40 @@ Resolved in Appendix Slice A1:
   task activation with every data field disabled and only Close available. Console
   warnings/errors/issues were empty and all 74 inspected development requests
   returned 200 or cache-valid 304 responses.
+- 2026-07-31: Appendix Slice A6 adds renderer-independent `task-progress` hit,
+  intent, immutable preview, keyboard state, and strict command mapping. Ordinary
+  tasks expose a visible `progress-handle`; resize edges retain generic hit
+  precedence, while targeting the marker or its private coarse-pointer surface
+  selects progress deterministically. Pointer values round to percentage points and
+  one release maps to one `task.update`. Progress does not trigger edge auto-pan or
+  reuse move/resize state.
+- 2026-07-31: The additive public interaction summary now names `progress`,
+  `progressing`, preview `progress`, the `progressing` class state, and
+  `classNames.progressHandle`. This expected direct-interaction contract is recorded
+  in the accepted decision, architecture, and theming docs; private hit-test intent
+  and coarse-target geometry remain unexported.
+- 2026-07-31: Pure progress hit/intent/preview/keyboard/command coverage passed as
+  part of 4 files / 21 tests. DOM and keyboard integration passed 2 files / 43 tests
+  across mouse, pen, touch, controlled acknowledgement, rejection, cancellation,
+  one-command/one-history behavior, 1/10-point adjustment, Home/End, focus
+  retention, live announcements, and stable milestone/summary reasons. The broader
+  focused matrix passed 10 files / 98 tests. `vp check` covered 157 formatted and
+  146 lint/type files; packed declarations and the production playground build
+  passed. The required full `mise run ci` passed 66 files / 343 tests and four
+  package artifacts.
+- 2026-07-31: Chrome DevTools verified `/interactive` at 1440x1000 and 390x844.
+  Desktop keyboard preview changed 80% to 81% and then 91%, committed one controlled
+  persistence row, retained task focus, and Undo restored 80%. A live pen flow
+  exposed `progressing` plus an immutable 47% preview before committing. At narrow
+  touch width, the transparent coarse hit surface measured 44x24 px around a 2 px
+  marker; touch preview/cancel kept canonical progress at 80%, and the document had
+  no horizontal overflow. The console had no warnings/errors/issues and all 76
+  inspected requests returned 200 or cache-valid 304 responses.
 
 ## Next Slice
 
-Begin Appendix Slice A6 with renderer-independent progress intent, hit testing, and
-preview. Add pointer, pen, touch, and keyboard adjustment through the same strict
-`task.update` lifecycle, preserve move/resize precedence and unsupported-kind
-reasons, and prove cancellation, acknowledgement, history, announcements, and focus
-retention before the final consumer and release-evidence slice.
+Begin Appendix Slice A7 by completing the controlled and runtime-owned consumer
+proofs through root imports, documenting field/direct/keyboard progress and
+appearance precedence in the playground, and closing the compatibility, packed
+artifact, SSR, responsive, accessibility, forced-colors, reduced-motion, console,
+network, and final release gates.

@@ -144,15 +144,6 @@ function taskForIntent(
       ),
     );
   }
-  if (task.schedule?.mode !== 'instant') {
-    return rejected(
-      diagnostic(
-        'command.unsupported-schedule',
-        `Task "${task.id}" requires an instant schedule for built-in interaction.`,
-        [task.id],
-      ),
-    );
-  }
   return task;
 }
 
@@ -207,6 +198,47 @@ export function mapInteractionIntent(
   const task = taskForIntent(intent, options);
   if ('status' in task) {
     return task;
+  }
+  if (intent.kind === 'progress') {
+    if (intent.source.segmentId !== undefined) {
+      return rejected(
+        diagnostic(
+          'command.unsupported-target',
+          'Built-in progress editing does not modify task segments.',
+          [intent.source.taskId, intent.source.segmentId],
+        ),
+      );
+    }
+    if (task.kind !== 'task') {
+      return rejected(
+        diagnostic(
+          'command.unsupported-target',
+          `Progress editing is not available for ${task.kind} tasks.`,
+          [task.id],
+        ),
+      );
+    }
+    if (!Number.isFinite(intent.value) || intent.value < 0 || intent.value > 1) {
+      return rejected(
+        diagnostic('command.invalid-payload', 'Progress must be finite from 0 through 1.', [
+          task.id,
+        ]),
+      );
+    }
+    return mapped({
+      changes: { progress: intent.value },
+      id: task.id,
+      type: 'task.update',
+    });
+  }
+  if (task.schedule?.mode !== 'instant') {
+    return rejected(
+      diagnostic(
+        'command.unsupported-schedule',
+        `Task "${task.id}" requires an instant schedule for built-in interaction.`,
+        [task.id],
+      ),
+    );
   }
   if (intent.kind === 'resize') {
     if (intent.source.segmentId !== undefined) {

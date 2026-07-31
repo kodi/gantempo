@@ -293,6 +293,88 @@ describe('Gantt keyboard and accessibility integration', () => {
     expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain('Redo committed');
   });
 
+  it('adjusts progress by normal, accelerated, and boundary keys in one command', async () => {
+    const ref = createRef<GanttHandle>();
+    const sources: string[] = [];
+    const user = userEvent.setup();
+    const base = documentFixture();
+    const mounted = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={{
+          ...base,
+          tasks: [{ ...base.tasks[0]!, progress: 0.25 }, ...base.tasks.slice(1)],
+        }}
+        onDocumentChange={(change) => sources.push(change.source.kind)}
+        ref={ref}
+      />,
+    );
+    installGeometry(mounted.container);
+    await user.tab();
+    const task = mounted.container.querySelector<SVGGElement>('[data-task-id="task-a"]')!;
+
+    await user.keyboard('p');
+    expect(mounted.getByRole('region', { name: 'Gantt chart' }).dataset.interactionState).toBe(
+      'keyboard',
+    );
+    expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain('Progress mode');
+    await user.keyboard('{ArrowRight}');
+    expect(
+      mounted.container
+        .querySelector('[data-preview-kind="progress"]')
+        ?.getAttribute('data-preview-progress'),
+    ).toBe('0.26');
+    await user.keyboard('{Shift>}{ArrowUp}{/Shift}');
+    expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain('36%');
+    await user.keyboard('{Home}');
+    expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain('0%');
+    await user.keyboard('{End}{Enter}');
+
+    expect(ref.current?.getDocument().tasks[0]?.progress).toBe(1);
+    expect(sources).toEqual(['keyboard']);
+    expect(document.activeElement).toBe(task);
+    expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain(
+      'Progress committed',
+    );
+    await act(async () => {
+      await ref.current?.undo();
+    });
+    expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.25);
+    expect(ref.current?.canUndo()).toBe(false);
+  });
+
+  it.each(['milestone', 'summary'] as const)(
+    'announces the stable unsupported %s progress reason',
+    async (kind) => {
+      const user = userEvent.setup();
+      const base = documentFixture();
+      const mounted = render(
+        <Gantt
+          {...commonProps()}
+          defaultDocument={{
+            ...base,
+            tasks: [{ ...base.tasks[0]!, kind }, ...base.tasks.slice(1)],
+          }}
+        />,
+      );
+      installGeometry(mounted.container);
+      await user.tab();
+      await user.keyboard('p');
+
+      expect(mounted.getByRole('region', { name: 'Gantt chart' }).dataset.interactionState).toBe(
+        'rejected',
+      );
+      expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain(
+        `Progress editing is not available for ${kind} tasks.`,
+      );
+      expect(
+        mounted.container
+          .querySelector('[data-task-id="task-a"]')
+          ?.querySelector('[data-gt-part="progress-handle"]'),
+      ).toBeNull();
+    },
+  );
+
   it('keeps empty and rejected states coherent for assistive technology', async () => {
     const empty = render(
       <Gantt

@@ -129,6 +129,7 @@ export interface GanttPointerInput {
   readonly point: InteractionPoint;
   readonly pointerId: number;
   readonly pointerType: InteractionPointerType;
+  readonly progressCandidateViewKey?: string;
 }
 
 export interface GanttPointerMoveInput {
@@ -136,6 +137,7 @@ export interface GanttPointerMoveInput {
   readonly geometry: GanttPointerGeometry;
   readonly point: InteractionPoint;
   readonly pointerId: number;
+  readonly progressCandidateViewKey?: string;
 }
 
 export interface GanttViewportNavigationInput {
@@ -175,7 +177,12 @@ export interface GanttPanPointerEndResult {
 }
 
 export type GanttKeyboardAction =
-  | { readonly direction: InteractionKeyboardAdjustment; readonly type: 'adjust' }
+  | {
+      readonly accelerated?: boolean;
+      readonly boundary?: 'end' | 'start';
+      readonly direction: InteractionKeyboardAdjustment;
+      readonly type: 'adjust';
+    }
   | { readonly mode: InteractionKeyboardMode; readonly type: 'begin' }
   | { readonly type: 'activate' | 'cancel' | 'commit' | 'create' | 'delete' }
   | { readonly direction: InteractionNavigationDirection; readonly type: 'navigate' }
@@ -358,6 +365,28 @@ function runtimeDiagnostic(callback: GanttRuntimeErrorEvent['callback']): Diagno
     code: 'runtime.callback-threw',
     message: `${callback} threw while observing an adopted runtime state.`,
     path: `/runtime/${callback}`,
+    severity: 'error',
+  });
+}
+
+function progressEditingDiagnostic(document: GanttDocument, target: GanttTaskTarget): Diagnostic {
+  const task = document.tasks.find((candidate) => candidate.id === target.taskId);
+  const message =
+    task === undefined
+      ? `Cannot edit progress for missing task "${target.taskId}".`
+      : target.segmentId !== undefined
+        ? 'Built-in progress editing does not modify task segments.'
+        : task.kind !== 'task'
+          ? `Progress editing is not available for ${task.kind} tasks.`
+          : 'Progress editing is not available for this occurrence.';
+  return Object.freeze({
+    code: task === undefined ? 'command.missing-target' : 'command.unsupported-target',
+    entityIds: Object.freeze([
+      target.taskId,
+      ...(target.segmentId === undefined ? [] : [target.segmentId]),
+    ]),
+    message,
+    path: '/interaction',
     severity: 'error',
   });
 }
@@ -757,13 +786,22 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       ...(callbacks.interactionCreationDuration === undefined
         ? {}
         : { creationDuration: callbacks.interactionCreationDuration }),
-      index: createInteractionHitTestIndex(snapshot.scene, {
-        height: geometry.height,
-        verticalStart: geometry.verticalStart,
-        width: geometry.width,
-        x: geometry.x,
-        y: geometry.y,
-      }),
+      index: createInteractionHitTestIndex(
+        snapshot.scene,
+        {
+          height: geometry.height,
+          verticalStart: geometry.verticalStart,
+          width: geometry.width,
+          x: geometry.x,
+          y: geometry.y,
+        },
+        {
+          progressTaskIds: store
+            .getSnapshot()
+            .document.tasks.filter((task) => task.kind === 'task')
+            .map((task) => task.id),
+        },
+      ),
       snap: Object.freeze({ anchor: snap.anchor, step: snap.step }),
     };
   }
@@ -778,6 +816,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       end: preview.end,
       height: preview.height,
       kind: preview.kind,
+      ...(preview.progress === undefined ? {} : { progress: preview.progress }),
       ...(preview.source === undefined ? {} : { source: preview.source }),
       start: preview.start,
       width: preview.width,
@@ -1041,10 +1080,17 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   ): boolean {
     const next = beginKeyboardInteraction(target, mode, interactionOptions(geometry));
     if (next === undefined) {
+      if (mode === 'progress') {
+        rejectKeyboardInteraction(
+          progressEditingDiagnostic(store.getSnapshot().document, target),
+          target,
+        );
+        return true;
+      }
       return false;
     }
     keyboardGesture = next;
-    const action = mode === 'move' ? 'move' : 'resize';
+    const action = mode === 'move' ? 'move' : mode === 'progress' ? 'progress' : 'resize';
     setInteraction(
       Object.freeze({
         action,
@@ -1144,7 +1190,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   }
 
   function autoPan(input: GanttPointerMoveInput, options: InteractionGestureOptions): void {
-    if (gesture.status !== 'active') {
+    if (gesture.status !== 'active' || gesture.intent.kind === 'progress') {
       return;
     }
     const edge = Math.min(40, input.geometry.height / 3, input.geometry.width / 3);
@@ -1356,10 +1402,20 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         if (input.action.type !== 'adjust') {
           return false;
         }
-        const next = adjustKeyboardInteraction(keyboardGesture, input.action.direction, options);
+        const next = adjustKeyboardInteraction(keyboardGesture, input.action.direction, options, {
+          ...(input.action.accelerated === undefined
+            ? {}
+            : { accelerated: input.action.accelerated }),
+          ...(input.action.boundary === undefined ? {} : { boundary: input.action.boundary }),
+        });
         keyboardGesture = next;
         const target = next.intent.source;
-        const action = next.intent.kind === 'resize' ? 'resize' : 'move';
+        const action =
+          next.intent.kind === 'resize'
+            ? 'resize'
+            : next.intent.kind === 'progress'
+              ? 'progress'
+              : 'move';
         setInteraction(
           Object.freeze({
             action,
@@ -1542,6 +1598,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           ...(input.candidateViewKey === undefined
             ? {}
             : { candidateViewKey: input.candidateViewKey }),
+          ...(input.progressCandidateViewKey === undefined
+            ? {}
+            : { progressCandidateViewKey: input.progressCandidateViewKey }),
           point: input.point,
           pointerId: input.pointerId,
           pointerType: input.pointerType,
@@ -1583,6 +1642,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           ...(input.candidateViewKey === undefined
             ? {}
             : { candidateViewKey: input.candidateViewKey }),
+          ...(input.progressCandidateViewKey === undefined
+            ? {}
+            : { progressCandidateViewKey: input.progressCandidateViewKey }),
           point: input.point,
           pointerId: input.pointerId,
           type: 'move',
@@ -1607,7 +1669,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
               ? 'dragging'
               : next.intent.kind === 'resize'
                 ? 'resizing'
-                : 'creating',
+                : next.intent.kind === 'progress'
+                  ? 'progressing'
+                  : 'creating',
           target,
         }),
       );

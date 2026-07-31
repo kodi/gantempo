@@ -7,6 +7,7 @@ import type {
   InteractionKeyboardMode,
   InteractionKeyboardState,
   InteractionMoveIntent,
+  InteractionProgressIntent,
   InteractionResizeIntent,
   InteractionTaskNode,
 } from './types';
@@ -74,9 +75,22 @@ function resizeIntent(
   });
 }
 
+function progressIntent(task: InteractionTaskNode, value: number): InteractionProgressIntent {
+  return Object.freeze({
+    destination: task.lane.target,
+    end: task.primitive.end,
+    kind: 'progress',
+    source: task.target,
+    sourceValue: task.primitive.progress?.value ?? 0,
+    start: task.primitive.start,
+    task,
+    value,
+  });
+}
+
 function withPreview(
   mode: InteractionKeyboardMode,
-  intent: InteractionMoveIntent | InteractionResizeIntent,
+  intent: InteractionMoveIntent | InteractionProgressIntent | InteractionResizeIntent,
   options: InteractionGestureOptions,
 ): InteractionKeyboardState {
   return Object.freeze({
@@ -96,14 +110,19 @@ export function beginKeyboardInteraction(
   if (task === undefined) {
     return undefined;
   }
+  if (mode === 'progress' && !task.progressEditable) {
+    return undefined;
+  }
   const intent =
     mode === 'move'
       ? moveIntent(task, task.primitive.start, task.lane.index, options)
-      : resizeIntent(
-          task,
-          mode === 'resize-start' ? 'start' : 'end',
-          mode === 'resize-start' ? task.primitive.start : task.primitive.end,
-        );
+      : mode === 'progress'
+        ? progressIntent(task, task.primitive.progress?.value ?? 0)
+        : resizeIntent(
+            task,
+            mode === 'resize-start' ? 'start' : 'end',
+            mode === 'resize-start' ? task.primitive.start : task.primitive.end,
+          );
   return withPreview(mode, intent, options);
 }
 
@@ -111,7 +130,24 @@ export function adjustKeyboardInteraction(
   state: InteractionKeyboardState,
   adjustment: InteractionKeyboardAdjustment,
   options: InteractionGestureOptions,
+  progressOptions: {
+    readonly accelerated?: boolean;
+    readonly boundary?: 'end' | 'start';
+  } = {},
 ): InteractionKeyboardState {
+  if (state.intent.kind === 'progress') {
+    const delta = progressOptions.accelerated ? 0.1 : 0.01;
+    const value =
+      progressOptions.boundary === 'start'
+        ? 0
+        : progressOptions.boundary === 'end'
+          ? 1
+          : state.intent.value + (adjustment === 'left' || adjustment === 'down' ? -delta : delta);
+    const rounded = Math.round(Math.min(1, Math.max(0, value)) * 100) / 100;
+    return rounded === state.intent.value
+      ? state
+      : withPreview(state.mode, progressIntent(state.intent.task, rounded), options);
+  }
   const step = positive(options.snap.step, 'Keyboard interaction snap step');
   if (state.intent.kind === 'move') {
     const horizontalDelta = adjustment === 'left' ? -step : adjustment === 'right' ? step : 0;

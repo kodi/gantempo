@@ -3,6 +3,7 @@ import type { ChartScene, LaneRowPrimitive, TaskBarPrimitive } from '../render/p
 import type { GanttLaneTarget, GanttTaskTarget } from '../runtime/types';
 import type {
   InteractionHit,
+  InteractionHitTestOptions,
   InteractionHitTestIndex,
   InteractionLaneNode,
   InteractionPoint,
@@ -93,6 +94,10 @@ function pointerEdgeRadius(pointerType: InteractionPointerType): number {
   return pointerType === 'touch' ? 22 : pointerType === 'pen' ? 8 : 6;
 }
 
+function pointerProgressRadius(pointerType: InteractionPointerType): number {
+  return pointerType === 'touch' ? 22 : pointerType === 'pen' ? 10 : 7;
+}
+
 function pointerMinimumHeight(pointerType: InteractionPointerType): number {
   return pointerType === 'touch' ? 44 : pointerType === 'pen' ? 28 : 0;
 }
@@ -149,6 +154,7 @@ export function snapInteractionTime(
 export function createInteractionHitTestIndex(
   scene: ChartScene,
   timeline: InteractionTimelineBounds,
+  options: InteractionHitTestOptions = {},
 ): InteractionHitTestIndex {
   const frozenTimeline = Object.freeze({
     ...freezeRect(timeline),
@@ -171,6 +177,7 @@ export function createInteractionHitTestIndex(
     }),
   );
   const lanesByKey = new Map(lanes.map((lane) => [lane.primitive.viewKey, lane]));
+  const progressTaskIds = new Set(options.progressTaskIds ?? []);
   const tasks: InteractionTaskNode[] = [];
   scene.taskBars.forEach((primitive, paintOrder) => {
     const lane = lanesByKey.get(primitive.laneViewKey);
@@ -182,6 +189,8 @@ export function createInteractionHitTestIndex(
         lane,
         paintOrder,
         primitive,
+        progressEditable:
+          progressTaskIds.has(primitive.taskId) && primitive.segmentId === undefined,
         rect: freezeRect({
           x: frozenTimeline.x + primitive.x * frozenTimeline.width,
           y: frozenTimeline.y + primitive.y - frozenTimeline.verticalStart,
@@ -216,6 +225,7 @@ export function hitTestInteraction(
   inputPoint: InteractionPoint,
   pointerType: InteractionPointerType,
   candidateViewKey?: string,
+  progressCandidateViewKey?: string,
 ): InteractionHit | undefined {
   const point = freezePoint(inputPoint);
   if (!contains(index.timeline, point)) {
@@ -223,6 +233,7 @@ export function hitTestInteraction(
   }
   const time = coordinateToTime(index.timeline, index.range, point.x);
   const edgeRadius = pointerEdgeRadius(pointerType);
+  const progressRadius = pointerProgressRadius(pointerType);
   const minimumHeight = pointerMinimumHeight(pointerType);
   const lane = hitLane(index, point);
   const candidateTasks =
@@ -235,6 +246,40 @@ export function hitTestInteraction(
               point.y < candidate.rect.y + candidate.rect.height + minimumHeight / 2,
           )
           .flatMap((candidate) => index.tasksByLane[candidate.index] ?? []);
+  const progressHits = candidateTasks
+    .filter((task) => task.progressEditable)
+    .flatMap((task) => {
+      const verticalRect = expandedVerticalRect(task.rect, minimumHeight);
+      const value = task.primitive.progress?.value ?? 0;
+      const distance = Math.abs(point.x - (task.rect.x + task.rect.width * value));
+      return distance <= progressRadius &&
+        point.y >= verticalRect.y &&
+        point.y < verticalRect.y + verticalRect.height
+        ? [
+            {
+              candidate: progressCandidateViewKey === task.target.viewKey,
+              distance,
+              task,
+            },
+          ]
+        : [];
+    })
+    .sort(
+      (left, right) =>
+        Number(right.candidate) - Number(left.candidate) ||
+        left.distance - right.distance ||
+        right.task.paintOrder - left.task.paintOrder,
+    );
+  const explicitProgress = progressHits.find((hit) => hit.candidate);
+  if (explicitProgress !== undefined) {
+    return Object.freeze({
+      kind: 'task-progress',
+      lane: explicitProgress.task.lane,
+      point,
+      task: explicitProgress.task,
+      time,
+    });
+  }
   const edges = candidateTasks.flatMap((task) => {
     const verticalRect = expandedVerticalRect(task.rect, minimumHeight);
     const values: {
@@ -290,6 +335,17 @@ export function hitTestInteraction(
       lane: edge.task.lane,
       point,
       task: edge.task,
+      time,
+    });
+  }
+
+  const progress = progressHits[0];
+  if (progress !== undefined) {
+    return Object.freeze({
+      kind: 'task-progress',
+      lane: progress.task.lane,
+      point,
+      task: progress.task,
       time,
     });
   }

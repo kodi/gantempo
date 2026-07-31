@@ -13,6 +13,7 @@ import type {
   InteractionIntent,
   InteractionMoveIntent,
   InteractionPoint,
+  InteractionProgressIntent,
   InteractionPreviewPrimitive,
   InteractionResizeIntent,
 } from './types';
@@ -54,6 +55,9 @@ function description(intent: InteractionIntent): string {
   if (intent.kind === 'resize') {
     return `Resize ${title} ${intent.edge} to ${intent.time}.`;
   }
+  if (intent.kind === 'progress') {
+    return `Set ${title} progress to ${Math.round(intent.value * 100)}%.`;
+  }
   const laneChanged = intent.source.laneViewKey !== intent.destination.viewKey;
   return laneChanged
     ? `Move ${title} to ${intent.start} in ${intent.destination.viewKey}.`
@@ -64,6 +68,21 @@ export function createInteractionPreview(
   intent: InteractionIntent,
   options: InteractionGestureOptions,
 ): InteractionPreviewPrimitive {
+  if (intent.kind === 'progress') {
+    return Object.freeze({
+      description: description(intent),
+      destination: intent.destination,
+      end: intent.end,
+      height: intent.task.rect.height,
+      kind: intent.kind,
+      progress: intent.value,
+      source: intent.source,
+      start: intent.start,
+      width: intent.task.rect.width * intent.value,
+      x: intent.task.rect.x,
+      y: intent.task.rect.y,
+    });
+  }
   const timeline = options.index.timeline;
   const startX = timeToCoordinate(timeline, options.index.range, intent.start);
   const endX = timeToCoordinate(timeline, options.index.range, intent.end);
@@ -90,6 +109,24 @@ export function createInteractionPreview(
     width: Math.abs(endX - startX),
     x: Math.min(startX, endX),
     y: lane.rect.y + Math.max(0, Math.min(sourceOffset, lane.rect.height - taskHeight)),
+  });
+}
+
+function progressIntent(
+  origin: Extract<InteractionHit, { readonly kind: 'task-progress' }>,
+  current: InteractionHit,
+): InteractionProgressIntent {
+  const ratio = (current.point.x - origin.task.rect.x) / origin.task.rect.width;
+  const value = Math.round(Math.min(1, Math.max(0, ratio)) * 100) / 100;
+  return Object.freeze({
+    destination: origin.lane.target,
+    end: origin.task.primitive.end,
+    kind: 'progress',
+    source: origin.task.target,
+    sourceValue: origin.task.primitive.progress?.value ?? 0,
+    start: origin.task.primitive.start,
+    task: origin.task,
+    value,
   });
 }
 
@@ -164,6 +201,9 @@ function intentFromHit(
   if (origin.kind === 'task-edge') {
     return resizeIntent(origin, current, options);
   }
+  if (origin.kind === 'task-progress') {
+    return progressIntent(origin, current);
+  }
   return createIntent(current, options);
 }
 
@@ -209,6 +249,7 @@ export function reduceInteractionGesture(
       event.point,
       event.pointerType,
       event.candidateViewKey,
+      event.progressCandidateViewKey,
     );
     return hit === undefined
       ? IDLE_INTERACTION_GESTURE
@@ -241,6 +282,7 @@ export function reduceInteractionGesture(
     event.point,
     state.pointerType,
     event.candidateViewKey,
+    event.progressCandidateViewKey,
   );
   if (current === undefined) {
     return state;

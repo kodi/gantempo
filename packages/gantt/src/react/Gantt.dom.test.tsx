@@ -688,6 +688,230 @@ describe('Gantt React facade in a DOM environment', () => {
     },
   );
 
+  it.each(['mouse', 'pen', 'touch'] as const)(
+    'adjusts progress through one history-capable %s pointer command',
+    async (pointerType) => {
+      const ref = createRef<GanttHandle>();
+      const sources: string[] = [];
+      const base = documentFixture();
+      const mounted = await render(
+        <Gantt
+          {...commonProps()}
+          defaultDocument={{
+            ...base,
+            tasks: [{ ...base.tasks[0]!, progress: 0.25 }],
+          }}
+          onDocumentChange={(change) => sources.push(change.source.kind)}
+          ref={ref}
+        />,
+      );
+      const { timeline } = installPointerGeometry(mounted.container);
+      const task = mounted.container.querySelector('[data-task-id="task-a"]')!;
+      const handle = task.querySelector('[data-gt-part="progress-handle"]')!;
+
+      await act(async () => {
+        dispatchPointer(handle, 'pointerdown', {
+          clientX: 285,
+          clientY: 29,
+          pointerId: 27,
+          pointerType,
+        });
+        dispatchPointer(timeline, 'pointermove', {
+          clientX: 330,
+          clientY: 29,
+          pointerId: 27,
+          pointerType,
+        });
+      });
+      expect(task.getAttribute('data-progressing')).toBe('true');
+      expect(
+        mounted.container
+          .querySelector('[data-preview-kind="progress"]')
+          ?.getAttribute('data-preview-progress'),
+      ).toBe('0.7');
+
+      await act(async () => {
+        dispatchPointer(timeline, 'pointerup', {
+          clientX: 330,
+          clientY: 29,
+          pointerId: 27,
+          pointerType,
+        });
+      });
+      expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.7);
+      expect(sources).toEqual(['pointer']);
+      expect(ref.current?.canUndo()).toBe(true);
+
+      await act(async () => {
+        await ref.current?.undo();
+      });
+      expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.25);
+      expect(ref.current?.canUndo()).toBe(false);
+    },
+  );
+
+  it('holds controlled progress preview until acknowledgement', async () => {
+    const ref = createRef<GanttHandle>();
+    const base = documentFixture();
+    let document: GanttDocument = {
+      ...base,
+      tasks: [{ ...base.tasks[0]!, progress: 0.25 }],
+    };
+    let candidate: GanttDocument | undefined;
+    const props: GanttProps = {
+      ...commonProps(),
+      document,
+      onDocumentChange(change) {
+        candidate = change.document;
+      },
+    };
+    const mounted = await render(<Gantt {...props} ref={ref} />);
+    const { timeline } = installPointerGeometry(mounted.container);
+    const handle = mounted.container.querySelector('[data-gt-part="progress-handle"]')!;
+
+    await act(async () => {
+      dispatchPointer(handle, 'pointerdown', {
+        clientX: 285,
+        clientY: 29,
+        pointerId: 28,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 330,
+        clientY: 29,
+        pointerId: 28,
+        pointerType: 'mouse',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 330,
+        clientY: 29,
+        pointerId: 28,
+        pointerType: 'mouse',
+      });
+    });
+    expect(candidate?.tasks[0]?.progress).toBe(0.7);
+    expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.25);
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('pending');
+    expect(mounted.container.querySelector('[data-preview-kind="progress"]')).not.toBeNull();
+
+    document = candidate!;
+    await act(async () => {
+      mounted.root.render(<Gantt {...props} document={document} ref={ref} />);
+    });
+    expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.7);
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('idle');
+    expect(mounted.container.querySelector('[data-preview-kind="progress"]')).toBeNull();
+  });
+
+  it('rejects direct progress without mutating the canonical value', async () => {
+    const ref = createRef<GanttHandle>();
+    const base = documentFixture();
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={{
+          ...base,
+          tasks: [{ ...base.tasks[0]!, progress: 0.25 }],
+        }}
+        interceptors={[
+          () => ({
+            diagnostic: {
+              code: 'command.unsupported-target',
+              message: 'Progress rejected by the consumer.',
+              severity: 'error',
+            },
+            kind: 'reject',
+          }),
+        ]}
+        ref={ref}
+      />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const handle = mounted.container.querySelector('[data-gt-part="progress-handle"]')!;
+
+    await act(async () => {
+      dispatchPointer(handle, 'pointerdown', {
+        clientX: 285,
+        clientY: 29,
+        pointerId: 29,
+        pointerType: 'pen',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 330,
+        clientY: 29,
+        pointerId: 29,
+        pointerType: 'pen',
+      });
+      dispatchPointer(timeline, 'pointerup', {
+        clientX: 330,
+        clientY: 29,
+        pointerId: 29,
+        pointerType: 'pen',
+      });
+    });
+    expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.25);
+    expect(
+      mounted.container
+        .querySelector('[data-gt-part="root"]')
+        ?.getAttribute('data-interaction-state'),
+    ).toBe('rejected');
+    expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain(
+      'Progress rejected by the consumer.',
+    );
+  });
+
+  it('cancels direct progress preview without a command or history entry', async () => {
+    const ref = createRef<GanttHandle>();
+    const base = documentFixture();
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={{
+          ...base,
+          tasks: [{ ...base.tasks[0]!, progress: 0.25 }],
+        }}
+        ref={ref}
+      />,
+    );
+    const { timeline } = installPointerGeometry(mounted.container);
+    const handle = mounted.container.querySelector('[data-gt-part="progress-handle"]')!;
+
+    await act(async () => {
+      dispatchPointer(handle, 'pointerdown', {
+        clientX: 285,
+        clientY: 29,
+        pointerId: 30,
+        pointerType: 'touch',
+      });
+      dispatchPointer(timeline, 'pointermove', {
+        clientX: 330,
+        clientY: 29,
+        pointerId: 30,
+        pointerType: 'touch',
+      });
+      dispatchPointer(timeline, 'pointercancel', {
+        clientX: 330,
+        clientY: 29,
+        pointerId: 30,
+        pointerType: 'touch',
+      });
+    });
+    expect(ref.current?.getDocument().tasks[0]?.progress).toBe(0.25);
+    expect(ref.current?.canUndo()).toBe(false);
+    expect(mounted.container.querySelector('[data-preview-kind="progress"]')).toBeNull();
+    expect(mounted.container.querySelector('[aria-live]')?.textContent).toContain(
+      'Interaction cancelled',
+    );
+  });
+
   it('resizes by an edge, moves a persisted placement, and maps empty-lane creation', async () => {
     const ref = createRef<GanttHandle>();
     const mounted = await render(

@@ -122,6 +122,14 @@ Arrow Left/Down decrease, Home proposes 0%, and End proposes 100%. Pointer and
 keyboard interaction use immutable preview state and commit exactly one
 `task.update`; the properties field uses that same fraction and command path.
 
+Direct progress editing extends the public M4 interaction summary additively:
+`GanttInteractionAction` includes `"progress"`, pointer preview uses
+`status: "progressing"`, keyboard preview uses `mode: "progress"`, and
+`GanttInteractionPreview.progress` publishes the proposed canonical fraction. The
+class-name state includes `progressing`, `classNames.progressHandle` owns the visible
+marker, and `data-gt-part="progress-handle"` is the stable rendered part. The larger
+coarse-pointer hit target remains private DOM structure.
+
 ### Extend, rather than replace, the M4 editor boundary
 
 The appendix adds:
@@ -186,10 +194,11 @@ deferred.
 
 ## Public API Impact
 
-The appendix will add canonical appearance types, registry types and props, and the
-item-properties slot/value types. Existing root imports remain the only public
-boundary. The packed declaration must not expose private resolver, diagnostic
-deduplication, form reducer, scene-cache, or hit-test implementations.
+The appendix adds canonical appearance types, registry types and props, the
+item-properties slot/value types, and the narrow additive progress interaction
+members named above. Existing root imports remain the only public boundary. The
+packed declaration must not expose private resolver, diagnostic deduplication, form
+reducer, scene-cache, or hit-test implementations.
 
 ## Consequences
 

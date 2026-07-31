@@ -774,6 +774,12 @@ persisting theme values. The exact persistence, precedence, compatibility, edito
 and accessibility contract is fixed by the
 [item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md).
 
+The public interaction summary names direct progress explicitly: pointer preview is
+`progressing`, keyboard mode/action is `progress`, and the preview carries the
+proposed canonical fraction. The visible `progress-handle`, its typed class hook, and
+the `progressing` class state are public; renderer hit geometry and enlarged
+coarse-pointer targets remain private.
+
 ### 9.6 Subscriptions and React ownership
 
 The public API remains declarative in controlled and uncontrolled modes. Internally,

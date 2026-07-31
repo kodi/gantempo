@@ -268,6 +268,37 @@
     pointer-events: none;
   }
 
+  :where(.gt-gantt [data-gt-part='progress-hit-target']) {
+    fill: transparent;
+    pointer-events: auto;
+    transform: translateX(-6px);
+    cursor: ew-resize;
+  }
+
+  :where(.gt-gantt [data-gt-part='progress-handle']) {
+    fill: var(--gt-task-text);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-1px);
+    vector-effect: non-scaling-stroke;
+    transition: opacity 120ms ease;
+  }
+
+  :where(
+    .gt-gantt
+      [data-gt-part='task']:is(:hover, :focus, [data-progressing='true'])
+      [data-gt-part='progress-handle']
+  ) {
+    opacity: 0.72;
+  }
+
+  @media (pointer: coarse) {
+    :where(.gt-gantt [data-gt-part='progress-hit-target']) {
+      width: 44px;
+      transform: translateX(-22px);
+    }
+  }
+
   :where(.gt-gantt:focus-visible) {
     outline: 3px solid var(--gt-color-focus);
     outline-offset: 3px;
@@ -293,7 +324,14 @@
     opacity: 0.84;
   }
 
-  :where(.gt-gantt [data-gt-part='task']:is([data-dragging='true'], [data-resizing='true']))
+  :where(
+      .gt-gantt
+        [data-gt-part='task']:is(
+          [data-dragging='true'],
+          [data-progressing='true'],
+          [data-resizing='true']
+        )
+    )
     :is(.gt-gantt__task-bar, .gt-gantt__task-progress) {
     opacity: 0.42;
   }
@@ -328,9 +366,19 @@
     border-style: dashed;
   }
 
+  :where(.gt-gantt__interaction-preview[data-preview-kind='progress']) {
+    border-color: var(--gt-task-border);
+    background: var(--gt-task-progress-fill);
+    box-shadow: none;
+  }
+
   :where(.gt-gantt[data-interaction-active='true']) {
     cursor: grabbing;
     user-select: none;
+  }
+
+  :where(.gt-gantt[data-interaction-state='progressing']) {
+    cursor: ew-resize;
   }
 
   :where(.gt-gantt__task-label) {
@@ -971,6 +1019,7 @@
     :where(
       .gt-gantt__task-bar,
       .gt-gantt__task-progress,
+      .gt-gantt [data-gt-part='progress-handle'],
       .gt-gantt__interaction-preview,
       .gt-gantt__context-menu-item,
       .gt-gantt__editor input,
@@ -1070,6 +1119,10 @@
       fill: Highlight;
     }
 
+    :where(.gt-gantt [data-gt-part='progress-handle']) {
+      fill: Highlight;
+    }
+
     :where(.gt-gantt__lane-accent) {
       background: CanvasText;
     }
@@ -1078,6 +1131,10 @@
       border-color: Highlight;
       background: Canvas;
       box-shadow: none;
+    }
+
+    :where(.gt-gantt__interaction-preview[data-preview-kind='progress']) {
+      background: Highlight;
     }
 
     :where(.gt-gantt__tooltip, .gt-gantt__context-menu, .gt-gantt__editor) {

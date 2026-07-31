@@ -67,6 +67,7 @@ export interface GanttInteractionPreview {
   readonly end: EpochMilliseconds;
   readonly height: number;
   readonly kind: InteractionPreviewPrimitive['kind'];
+  readonly progress?: number;
   readonly source?: GanttTaskTarget;
   readonly start: EpochMilliseconds;
   readonly width: number;
@@ -80,6 +81,7 @@ export type GanttInteractionAction =
   | 'delete'
   | 'edit'
   | 'move'
+  | 'progress'
   | 'redo'
   | 'resize'
   | 'undo';
@@ -98,13 +100,13 @@ export type GanttInteractionState =
   | {
       readonly pointerType: InteractionPointerType;
       readonly preview: GanttInteractionPreview;
-      readonly status: 'creating' | 'dragging' | 'resizing';
+      readonly status: 'creating' | 'dragging' | 'progressing' | 'resizing';
       readonly target?: GanttInteractionTarget;
     }
   | {
-      readonly action: 'move' | 'resize';
+      readonly action: 'move' | 'progress' | 'resize';
       readonly announcement: string;
-      readonly mode: 'move' | 'resize-end' | 'resize-start';
+      readonly mode: 'move' | 'progress' | 'resize-end' | 'resize-start';
       readonly preview: GanttInteractionPreview;
       readonly status: 'keyboard';
       readonly target: GanttTaskTarget;
@@ -167,6 +169,7 @@ export interface GanttClassNameState {
   readonly focused: boolean;
   readonly invalid: boolean;
   readonly pending: boolean;
+  readonly progressing: boolean;
   readonly resizing: boolean;
   readonly selected: boolean;
   readonly target?: GanttInteractionTarget;
@@ -181,6 +184,7 @@ export interface GanttClassNames {
   readonly lane?: GanttClassNameValue;
   readonly laneHeader?: GanttClassNameValue;
   readonly liveRegion?: GanttClassNameValue;
+  readonly progressHandle?: GanttClassNameValue;
   readonly resizeHandle?: GanttClassNameValue;
   readonly root?: GanttClassNameValue;
   readonly task?: GanttClassNameValue;

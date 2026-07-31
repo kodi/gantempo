@@ -48,6 +48,7 @@ function fixture(): InteractionGestureOptions {
         laneId: 'lane-a',
         laneViewKey: 'lane-a-view',
         placementId: 'placement-a',
+        progress: { value: 0.25, width: 0.05, x: 0.1 },
         source: {
           kind: 'document-placement',
           laneId: 'lane-a',
@@ -66,13 +67,17 @@ function fixture(): InteractionGestureOptions {
   };
   return {
     creationDuration: 200,
-    index: createInteractionHitTestIndex(scene, {
-      height: 120,
-      verticalStart: 0,
-      width: 1_000,
-      x: 0,
-      y: 0,
-    }),
+    index: createInteractionHitTestIndex(
+      scene,
+      {
+        height: 120,
+        verticalStart: 0,
+        width: 1_000,
+        x: 0,
+        y: 0,
+      },
+      { progressTaskIds: ['task-a'] },
+    ),
     snap: { anchor: 0, step: 100 },
   };
 }
@@ -138,5 +143,32 @@ describe('pure keyboard interaction intent', () => {
         options,
       ),
     ).toBeUndefined();
+  });
+
+  it('adjusts progress by one or ten percentage points and supports boundaries', () => {
+    const options = fixture();
+    const target = options.index.tasks[0]!.target;
+    const initial = beginKeyboardInteraction(target, 'progress', options)!;
+    const normal = adjustKeyboardInteraction(initial, 'right', options);
+    const accelerated = adjustKeyboardInteraction(normal, 'up', options, {
+      accelerated: true,
+    });
+    const home = adjustKeyboardInteraction(accelerated, 'left', options, {
+      boundary: 'start',
+    });
+    const end = adjustKeyboardInteraction(home, 'right', options, { boundary: 'end' });
+
+    expect(initial).toMatchObject({
+      intent: { kind: 'progress', value: 0.25 },
+      preview: { progress: 0.25, width: 50 },
+    });
+    expect(normal.intent).toMatchObject({ value: 0.26 });
+    expect(accelerated).toMatchObject({
+      intent: { value: 0.36 },
+      preview: { description: 'Set Task A progress to 36%.' },
+    });
+    expect(home.intent).toMatchObject({ value: 0 });
+    expect(end.intent).toMatchObject({ value: 1 });
+    expect(adjustKeyboardInteraction(end, 'right', options)).toBe(end);
   });
 });

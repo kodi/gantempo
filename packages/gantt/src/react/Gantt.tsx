@@ -334,6 +334,7 @@ function idleClassState(
     focused: false,
     invalid: false,
     pending: false,
+    progressing: false,
     resizing: false,
     selected: false,
     ...(target === undefined ? {} : { target }),
@@ -616,8 +617,8 @@ function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeForm
 }
 
 function targetStateEqual(
-  previous: readonly [boolean, boolean, boolean, boolean, boolean, boolean, boolean],
-  next: readonly [boolean, boolean, boolean, boolean, boolean, boolean, boolean],
+  previous: readonly [boolean, boolean, boolean, boolean, boolean, boolean, boolean, boolean],
+  next: readonly [boolean, boolean, boolean, boolean, boolean, boolean, boolean, boolean],
 ): boolean {
   return previous.every((value, index) => value === next[index]);
 }
@@ -628,7 +629,7 @@ function targetsInteraction(interaction: GanttInteractionState, viewKey: string)
 
 function keyboardActionForEvent(
   event: ReactKeyboardEvent<HTMLElement>,
-  editing: boolean,
+  editingMode?: Extract<GanttInteractionState, { readonly status: 'keyboard' }>['mode'],
 ): GanttKeyboardAction | undefined {
   const adjustment =
     event.key === 'ArrowLeft'
@@ -640,12 +641,26 @@ function keyboardActionForEvent(
           : event.key === 'ArrowDown'
             ? 'down'
             : undefined;
-  if (editing) {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+  if (editingMode !== undefined) {
+    if (event.altKey || event.ctrlKey || event.metaKey) {
       return undefined;
     }
+    if (editingMode === 'progress' && (event.key === 'Home' || event.key === 'End')) {
+      return {
+        boundary: event.key === 'Home' ? 'start' : 'end',
+        direction: event.key === 'Home' ? 'left' : 'right',
+        type: 'adjust',
+      };
+    }
     if (adjustment !== undefined) {
-      return { direction: adjustment, type: 'adjust' };
+      return {
+        ...(editingMode === 'progress' && event.shiftKey ? { accelerated: true } : {}),
+        direction: adjustment,
+        type: 'adjust',
+      };
+    }
+    if (event.shiftKey) {
+      return undefined;
     }
     if (event.key === 'Enter') {
       return { type: 'commit' };
@@ -690,6 +705,9 @@ function keyboardActionForEvent(
   if (key === 'm') {
     return { mode: 'move', type: 'begin' };
   }
+  if (key === 'p') {
+    return { mode: 'progress', type: 'begin' };
+  }
   if (key === 's') {
     return { mode: 'resize-start', type: 'begin' };
   }
@@ -715,6 +733,7 @@ function GanttTask({
   onMouseLeave,
   slots,
   task,
+  progressEditable,
   tabIndex,
   timelineHeight,
 }: {
@@ -730,11 +749,12 @@ function GanttTask({
   readonly onMouseLeave: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
   readonly slots?: GanttProps['slots'];
   readonly task: TaskBarPrimitive;
+  readonly progressEditable: boolean;
   readonly tabIndex: -1 | 0;
   readonly timelineHeight: number;
 }): ReactElement {
-  const [selected, focused, pressing, dragging, resizing, pending, rejected] = useGanttSelector(
-    (snapshot) => {
+  const [selected, focused, pressing, dragging, resizing, progressing, pending, rejected] =
+    useGanttSelector((snapshot) => {
       const targeted = targetsInteraction(snapshot.interaction, task.viewKey);
       return [
         snapshot.session.selection.some(
@@ -750,12 +770,14 @@ function GanttTask({
           (snapshot.interaction.status === 'resizing' ||
             (snapshot.interaction.status === 'keyboard' &&
               snapshot.interaction.action === 'resize')),
+        targeted &&
+          (snapshot.interaction.status === 'progressing' ||
+            (snapshot.interaction.status === 'keyboard' &&
+              snapshot.interaction.action === 'progress')),
         targeted && snapshot.interaction.status === 'pending',
         targeted && snapshot.interaction.status === 'rejected',
       ] as const;
-    },
-    targetStateEqual,
-  );
+    }, targetStateEqual);
   const accessibleName = taskAccessibleName(task, dateFormatter);
   const summary = taskSummary(task);
   const appearance = task.appearance;
@@ -765,6 +787,7 @@ function GanttTask({
     focused,
     invalid: rejected,
     pending,
+    progressing,
     resizing,
     selected,
     target: summary.target,
@@ -774,7 +797,7 @@ function GanttTask({
     <g
       aria-describedby={describedBy}
       aria-disabled={disabled || undefined}
-      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Space Enter M S E N Delete Backspace Control+Z Meta+Z Control+Y Meta+Shift+Z"
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Space Enter M P S E N Delete Backspace Control+Z Meta+Z Control+Y Meta+Shift+Z"
       aria-label={accessibleName}
       aria-pressed={selected}
       className={resolveClassName(classNames?.task, state)}
@@ -785,6 +808,7 @@ function GanttTask({
       data-dragging={dragging || undefined}
       data-focused={focused || undefined}
       data-pending={pending || undefined}
+      data-progressing={progressing || undefined}
       data-pressing={pressing || undefined}
       data-rejected={rejected || undefined}
       data-resizing={resizing || undefined}
@@ -859,6 +883,29 @@ function GanttTask({
         x={percent(task.x)}
         y={percent(task.y / timelineHeight)}
       />
+      {progressEditable ? (
+        <>
+          <rect
+            aria-hidden="true"
+            data-gt-part="progress-hit-target"
+            data-progress={task.progress?.value ?? 0}
+            height={percent(task.height / timelineHeight)}
+            width="12"
+            x={percent(task.x + task.width * (task.progress?.value ?? 0))}
+            y={percent(task.y / timelineHeight)}
+          />
+          <rect
+            aria-hidden="true"
+            className={resolveClassName(classNames?.progressHandle, state)}
+            data-gt-part="progress-handle"
+            data-progress={task.progress?.value ?? 0}
+            height={percent(task.height / timelineHeight)}
+            width="2"
+            x={percent(task.x + task.width * (task.progress?.value ?? 0))}
+            y={percent(task.y / timelineHeight)}
+          />
+        </>
+      ) : null}
       <rect
         aria-hidden="true"
         className={resolveClassName(classNames?.resizeHandle, state)}
@@ -913,6 +960,7 @@ function GanttSurface({
   readonly timelineRef: React.RefObject<HTMLDivElement | null>;
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
+  const canonicalDocument = useGanttSelector((snapshot) => snapshot.document);
   const focused = useGanttSelector((snapshot) => snapshot.session.focused);
   const selection = useGanttSelector((snapshot) => snapshot.session.selection);
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
@@ -984,6 +1032,15 @@ function GanttSurface({
   const taskByViewKey = useMemo(
     () => new Map(scene.taskBars.map((task) => [task.viewKey, task])),
     [scene.taskBars],
+  );
+  const progressEditableTaskIds = useMemo(
+    () =>
+      new Set(
+        disabled
+          ? []
+          : canonicalDocument.tasks.filter((task) => task.kind === 'task').map((task) => task.id),
+      ),
+    [canonicalDocument.tasks, disabled],
   );
   const laneSummaries = useMemo(
     () => new Map(scene.lanes.map((lane) => [lane.viewKey, laneSummary(lane)])),
@@ -1579,6 +1636,14 @@ function GanttSurface({
       ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
       : undefined;
   }, []);
+  const progressCandidateViewKey = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target;
+    return target instanceof Element &&
+      target.closest('[data-gt-part="progress-handle"], [data-gt-part="progress-hit-target"]') !==
+        null
+      ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
+      : undefined;
+  }, []);
   const pointerType = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     return event.pointerType === 'touch' || event.pointerType === 'pen'
       ? event.pointerType
@@ -1591,14 +1656,16 @@ function GanttSurface({
         return undefined;
       }
       const candidate = candidateViewKey(event);
+      const progressCandidate = progressCandidateViewKey(event);
       return {
         ...(candidate === undefined ? {} : { candidateViewKey: candidate }),
         geometry: bounds,
         point: { x: event.clientX, y: event.clientY },
         pointerId: event.pointerId,
+        ...(progressCandidate === undefined ? {} : { progressCandidateViewKey: progressCandidate }),
       };
     },
-    [candidateViewKey, geometry],
+    [candidateViewKey, geometry, progressCandidateViewKey],
   );
   const beginPan = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>, axis: 'both' | 'horizontal'): boolean => {
@@ -1850,7 +1917,10 @@ function GanttSurface({
         }
         return;
       }
-      const action = keyboardActionForEvent(event, interaction.status === 'keyboard');
+      const action = keyboardActionForEvent(
+        event,
+        interaction.status === 'keyboard' ? interaction.mode : undefined,
+      );
       if (
         disabled &&
         action?.type !== 'navigate' &&
@@ -1881,7 +1951,7 @@ function GanttSurface({
       editorEnabled,
       focusedViewKey,
       geometry,
-      interaction.status,
+      interaction,
       menuEnabled,
       openContextMenu,
       openEditor,
@@ -2399,9 +2469,15 @@ function GanttSurface({
       data-gantempo=""
       data-gt-part="root"
       data-interaction-active={
-        ['pressing', 'dragging', 'resizing', 'creating', 'keyboard', 'pending'].includes(
-          interaction.status,
-        ) || undefined
+        [
+          'pressing',
+          'dragging',
+          'progressing',
+          'resizing',
+          'creating',
+          'keyboard',
+          'pending',
+        ].includes(interaction.status) || undefined
       }
       data-interaction-state={interaction.status}
       data-pan-capable={panCapable || undefined}
@@ -2420,10 +2496,11 @@ function GanttSurface({
         primary-button drag on the time header, or a middle-button drag on the timeline. Use PageUp
         or PageDown to move lanes and Alt plus PageUp or PageDown to move time. Use arrow keys to
         navigate tasks, Space to select, Enter to activate or open the enabled editor, Shift+F10 to
-        open the enabled task menu, M to move, S or E to resize, N to create, Delete to remove, and
-        platform undo or redo shortcuts. In move or resize mode, viewport gestures do not edit
-        tasks; use arrow keys, Enter to commit, and Escape to cancel. Dependency links and all-day
-        task editing are not available in this interaction version.
+        open the enabled task menu, M to move, P to adjust progress, S or E to resize, N to create,
+        Delete to remove, and platform undo or redo shortcuts. In move, progress, or resize mode,
+        viewport gestures do not edit tasks; use arrow keys, Home or End for progress boundaries,
+        Enter to commit, and Escape to cancel. Dependency links and all-day task editing are not
+        available in this interaction version.
         {propertiesEnabled
           ? ' Use each visible lane properties button to inspect or edit a persisted lane.'
           : ''}
@@ -2685,6 +2762,7 @@ function GanttSurface({
                       onFocus={onTaskFocus}
                       onMouseEnter={onTaskMouseEnter}
                       onMouseLeave={onTaskMouseLeave}
+                      progressEditable={progressEditableTaskIds.has(task.taskId)}
                       slots={slots}
                       task={task}
                       tabIndex={task.viewKey === rovingViewKey ? 0 : -1}
@@ -2698,6 +2776,7 @@ function GanttSurface({
                     className="gt-gantt__interaction-preview"
                     data-gt-part="interaction-preview"
                     data-preview-kind={interaction.preview.kind}
+                    data-preview-progress={interaction.preview.progress}
                     style={{
                       height: interaction.preview.height,
                       left: interaction.preview.x,

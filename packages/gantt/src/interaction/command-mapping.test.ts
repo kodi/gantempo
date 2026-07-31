@@ -8,6 +8,7 @@ import { createInteractionHitTestIndex } from './hit-test';
 import type {
   InteractionCreateIntent,
   InteractionMoveIntent,
+  InteractionProgressIntent,
   InteractionResizeIntent,
 } from './types';
 
@@ -125,6 +126,20 @@ function moveIntent(
   };
 }
 
+function progressIntent(value: number, taskId = 'instant'): InteractionProgressIntent {
+  const { task } = fixture();
+  return {
+    destination: task.lane.target,
+    end: task.primitive.end,
+    kind: 'progress',
+    source: { ...task.target, taskId },
+    sourceValue: 0,
+    start: task.primitive.start,
+    task,
+    value,
+  };
+}
+
 describe('interaction command mapping', () => {
   it('maps horizontal, vertical, combined, and resize intent to semantic commands', () => {
     const { document, task, index } = fixture();
@@ -215,6 +230,51 @@ describe('interaction command mapping', () => {
     expect(mapInteractionIntent(ambiguous, { document })).toMatchObject({
       status: 'rejected',
       diagnostic: { code: 'command.unsupported-target' },
+    });
+  });
+
+  it('maps strict ordinary progress independently of schedule and rejects unsupported targets', () => {
+    const { document } = fixture();
+    expect(mapInteractionIntent(progressIntent(0.73), { document })).toEqual({
+      command: { changes: { progress: 0.73 }, id: 'instant', type: 'task.update' },
+      status: 'mapped',
+    });
+    expect(mapInteractionIntent(progressIntent(1, 'all-day'), { document })).toEqual({
+      command: { changes: { progress: 1 }, id: 'all-day', type: 'task.update' },
+      status: 'mapped',
+    });
+
+    const unsupportedDocument: GanttDocument = {
+      ...document,
+      tasks: [
+        ...document.tasks,
+        { id: 'summary', kind: 'summary', segments: [], title: 'Summary' },
+      ],
+    };
+    expect(
+      mapInteractionIntent(progressIntent(0.5, 'summary'), { document: unsupportedDocument }),
+    ).toMatchObject({
+      diagnostic: {
+        code: 'command.unsupported-target',
+        message: 'Progress editing is not available for summary tasks.',
+      },
+      status: 'rejected',
+    });
+    expect(
+      mapInteractionIntent(
+        {
+          ...progressIntent(0.5),
+          source: { ...progressIntent(0.5).source, segmentId: 'segment-a' },
+        },
+        { document },
+      ),
+    ).toMatchObject({
+      diagnostic: { code: 'command.unsupported-target' },
+      status: 'rejected',
+    });
+    expect(mapInteractionIntent(progressIntent(Number.NaN), { document })).toMatchObject({
+      diagnostic: { code: 'command.invalid-payload' },
+      status: 'rejected',
     });
   });
 

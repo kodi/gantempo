@@ -146,6 +146,7 @@ describe('Gantt', () => {
     expect(markup).toContain('data-gt-part="lane-accent"');
     expect(markup).toContain('data-gt-part="task-track"');
     expect(markup).toContain('data-gt-part="task-progress"');
+    expect(markup).not.toContain('data-gt-part="progress-handle"');
     expect(markup).toContain('data-gt-variant="delivery"');
     expect(markup).toContain('--gt-task-fill:#14b8a6');
     expect(markup).toContain('25% complete');
@@ -181,6 +182,7 @@ describe('Gantt', () => {
     expect(markup).toContain('data-gt-part="lane-properties-trigger"');
     expect(markup).toContain('aria-label="Lane A properties"');
     expect(markup).not.toContain('role="dialog"');
+    expect(markup).not.toContain('data-gt-part="progress-handle"');
     expect(markup).not.toContain('data-editor-mode="properties"');
   });
 

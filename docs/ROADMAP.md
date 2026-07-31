@@ -125,7 +125,7 @@ Detailed completion evidence is recorded in
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
-| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A5 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
+| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A6 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -171,7 +171,7 @@ post-M4 work.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[-]` Appendix Slice A5 complete; A6 progress editing next
+**Status:** `[-]` Appendix Slice A6 complete; A7 consumer/final gates next
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -260,6 +260,24 @@ playground build and packed-declaration inspection passed. Chrome DevTools verif
 controlled task/lane properties at desktop and narrow widths plus narrow read-only
 inspection, with a clean console and 74 successful or cache-valid requests. Appendix
 Slice A6 owns direct pointer, pen, touch, and keyboard progress editing.
+
+Appendix Slice A6 now gives ordinary tasks one pure progress hit/intent/preview and
+strict `task.update` mapping across mouse, pen, touch, and keyboard. Keyboard uses
+1-point and Shift+10-point steps plus Home/End; pointer values round to percentage
+points. Controlled acknowledgement, rejection, cancellation, focus retention,
+stable unsupported-kind reasons, and one-command/one-history behavior are verified.
+The accepted decision, architecture, and theming docs record the additive public
+progress interaction state, preview fraction, class state/hook, and stable marker
+part while keeping hit geometry private.
+
+Pure progress coverage passed within 4 files / 21 tests, the DOM/keyboard lifecycle
+matrix passed 2 files / 43 tests, and the broader focused matrix passed 10 files / 98
+tests. The complete gate passed 66 files / 343 tests plus formatting, lint/types, and
+four packed artifacts; the production playground build passed. Chrome DevTools
+verified desktop keyboard commit/persistence/Undo/focus plus live pen preview and
+narrow 44x24 px coarse touch targeting with cancellation, no overflow, a clean
+console, and 76 successful or cache-valid requests. Appendix Slice A7 owns the final
+consumer, compatibility, artifact, SSR, and live release matrix.
 
 ### Post-M4 persistence entity-change projection
 

@@ -219,6 +219,13 @@ The public attributes are:
 Part, kind, and state values are documented and versioned. Entity IDs and arbitrary
 application fields are not emitted as styling attributes by default.
 
+The M4 appendix publishes `task-track`, `task-progress`, and `progress-handle` for
+ordinary task progress. `progress-handle` is the visible direct-edit marker and may
+be styled through `classNames.progressHandle`; the larger transparent
+coarse-pointer target is private structure. The task's `data-progressing="true"`
+attribute and the typed `progressing` class-name state distinguish preview from
+committed paint without relying on color.
+
 ## 8. React customization APIs
 
 The React layer provides three levels of customization.

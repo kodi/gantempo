@@ -1,6 +1,6 @@
 import type { GanttCommand } from '../commands/types';
 import type { Diagnostic } from '../model/diagnostics';
-import type { EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
+import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import type { ChartScene } from '../render/primitives';
 import type { GanttInteractionTarget, GanttLaneTarget, GanttTaskTarget } from '../runtime/types';
 
@@ -36,8 +36,13 @@ export interface InteractionTaskNode {
   readonly lane: InteractionLaneNode;
   readonly paintOrder: number;
   readonly primitive: ChartScene['taskBars'][number];
+  readonly progressEditable: boolean;
   readonly rect: InteractionRectangle;
   readonly target: GanttTaskTarget;
+}
+
+export interface InteractionHitTestOptions {
+  readonly progressTaskIds?: readonly EntityId[];
 }
 
 export interface InteractionHitTestIndex {
@@ -71,18 +76,24 @@ export interface InteractionTaskEdgeHit extends InteractionHitBase {
   readonly task: InteractionTaskNode;
 }
 
+export interface InteractionTaskProgressHit extends InteractionHitBase {
+  readonly kind: 'task-progress';
+  readonly task: InteractionTaskNode;
+}
+
 export type InteractionHit =
   | InteractionTaskBodyHit
   | InteractionTaskEdgeHit
+  | InteractionTaskProgressHit
   | InteractionTimelineHit;
 
 export type InteractionNavigationDirection = 'down' | 'end' | 'home' | 'left' | 'right' | 'up';
 export type InteractionKeyboardAdjustment = 'down' | 'left' | 'right' | 'up';
-export type InteractionKeyboardMode = 'move' | 'resize-end' | 'resize-start';
+export type InteractionKeyboardMode = 'move' | 'progress' | 'resize-end' | 'resize-start';
 
 interface InteractionIntentBase {
   readonly destination: GanttLaneTarget;
-  readonly kind: 'create' | 'move' | 'resize';
+  readonly kind: 'create' | 'move' | 'progress' | 'resize';
 }
 
 export interface InteractionMoveIntent extends InteractionIntentBase {
@@ -108,6 +119,16 @@ export interface InteractionResizeIntent extends InteractionIntentBase {
   readonly time: EpochMilliseconds;
 }
 
+export interface InteractionProgressIntent extends InteractionIntentBase {
+  readonly end: EpochMilliseconds;
+  readonly kind: 'progress';
+  readonly source: GanttTaskTarget;
+  readonly sourceValue: number;
+  readonly start: EpochMilliseconds;
+  readonly task: InteractionTaskNode;
+  readonly value: number;
+}
+
 export interface InteractionCreateIntent extends InteractionIntentBase {
   readonly end: EpochMilliseconds;
   readonly kind: 'create';
@@ -117,10 +138,11 @@ export interface InteractionCreateIntent extends InteractionIntentBase {
 export type InteractionIntent =
   | InteractionCreateIntent
   | InteractionMoveIntent
+  | InteractionProgressIntent
   | InteractionResizeIntent;
 
 export interface InteractionKeyboardState {
-  readonly intent: InteractionMoveIntent | InteractionResizeIntent;
+  readonly intent: InteractionMoveIntent | InteractionProgressIntent | InteractionResizeIntent;
   readonly mode: InteractionKeyboardMode;
   readonly preview: InteractionPreviewPrimitive;
   readonly status: 'active';
@@ -132,6 +154,7 @@ export interface InteractionPreviewPrimitive {
   readonly end: EpochMilliseconds;
   readonly height: number;
   readonly kind: InteractionIntent['kind'];
+  readonly progress?: number;
   readonly source?: GanttTaskTarget;
   readonly start: EpochMilliseconds;
   readonly width: number;
@@ -170,6 +193,7 @@ export type InteractionGestureState =
 export type InteractionGestureEvent =
   | {
       readonly candidateViewKey?: string;
+      readonly progressCandidateViewKey?: string;
       readonly point: InteractionPoint;
       readonly pointerId: number;
       readonly pointerType: InteractionPointerType;
@@ -177,6 +201,7 @@ export type InteractionGestureEvent =
     }
   | {
       readonly candidateViewKey?: string;
+      readonly progressCandidateViewKey?: string;
       readonly point: InteractionPoint;
       readonly pointerId: number;
       readonly type: 'move';

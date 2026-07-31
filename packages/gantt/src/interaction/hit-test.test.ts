@@ -21,6 +21,7 @@ function sceneFixture(): ChartScene {
       {
         id: 'task-a',
         kind: 'task',
+        progress: 0.5,
         title: 'A',
         segments: [],
         schedule: { mode: 'instant', start: START + DAY, end: START + 3 * DAY },
@@ -188,6 +189,68 @@ describe('interaction hit testing', () => {
       kind: 'task-body',
       task: { target: { viewKey: 'overlap-first' } },
     });
+  });
+
+  it('targets editable progress while preserving resize-edge precedence', () => {
+    const scene = sceneFixture();
+    const index = createInteractionHitTestIndex(
+      scene,
+      {
+        x: 100,
+        y: 50,
+        width: 1_000,
+        height: scene.bounds.timelineHeight,
+        verticalStart: 0,
+      },
+      { progressTaskIds: ['task-a'] },
+    );
+    const task = index.tasks.find((node) => node.target.taskId === 'task-a')!;
+    expect(
+      hitTestInteraction(
+        index,
+        {
+          x: task.rect.x + task.rect.width * 0.5,
+          y: task.rect.y + task.rect.height / 2,
+        },
+        'mouse',
+      ),
+    ).toMatchObject({ kind: 'task-progress', task: { progressEditable: true } });
+
+    const source = scene.taskBars.find((candidate) => candidate.taskId === 'task-a')!;
+    const full = Object.freeze({
+      ...source,
+      progress: Object.freeze({ value: 1, width: source.width, x: source.x }),
+    });
+    const fullScene = Object.freeze({ ...scene, taskBars: Object.freeze([full]) });
+    const fullIndex = createInteractionHitTestIndex(
+      fullScene,
+      {
+        x: 100,
+        y: 50,
+        width: 1_000,
+        height: scene.bounds.timelineHeight,
+        verticalStart: 0,
+      },
+      { progressTaskIds: ['task-a'] },
+    );
+    const fullTask = fullIndex.tasks[0]!;
+    const point = {
+      x: fullTask.rect.x + fullTask.rect.width,
+      y: fullTask.rect.y + fullTask.rect.height / 2,
+    };
+    expect(hitTestInteraction(fullIndex, point, 'touch')).toMatchObject({
+      edge: 'end',
+      kind: 'task-edge',
+    });
+    expect(
+      hitTestInteraction(
+        fullIndex,
+        point,
+        'touch',
+        fullTask.target.viewKey,
+        fullTask.target.viewKey,
+      ),
+    ).toMatchObject({ kind: 'task-progress' });
   });
 
   it('preserves absolute variable-lane geometry under a non-zero vertical start', () => {
