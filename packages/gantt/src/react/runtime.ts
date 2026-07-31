@@ -191,8 +191,10 @@ export interface GanttKeyboardActionInput {
 }
 
 interface DisplayInputs {
+  readonly appearanceVariants: GanttProps['appearanceVariants'];
   readonly locale: string;
   readonly range: TimeRange;
+  readonly taskVariants: GanttProps['taskVariants'];
   readonly tickAnchor: number;
   readonly tickInterval: number;
   readonly timeZone: string;
@@ -218,8 +220,10 @@ function initialSession(props: GanttProps) {
 
 function displayInputs(props: GanttProps): DisplayInputs {
   return Object.freeze({
+    appearanceVariants: props.appearanceVariants,
     locale: props.locale ?? 'en-US',
     range: Object.freeze({ ...props.range }),
+    taskVariants: props.taskVariants,
     tickAnchor: props.tickAnchor,
     tickInterval: props.tickInterval,
     timeZone: props.timeZone,
@@ -229,12 +233,14 @@ function displayInputs(props: GanttProps): DisplayInputs {
 
 function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
   return (
+    JSON.stringify(previous.appearanceVariants) === JSON.stringify(next.appearanceVariants) &&
     previous.locale === next.locale &&
     previous.range.start === next.range.start &&
     previous.range.end === next.range.end &&
     previous.tickAnchor === next.tickAnchor &&
     previous.tickInterval === next.tickInterval &&
     previous.timeZone === next.timeZone &&
+    JSON.stringify(previous.taskVariants) === JSON.stringify(next.taskVariants) &&
     JSON.stringify(previous.view) === JSON.stringify(next.view)
   );
 }
@@ -585,6 +591,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         : undefined;
     const derived = pipeline.build(
       {
+        ...(display.appearanceVariants === undefined
+          ? {}
+          : { appearanceVariants: display.appearanceVariants }),
         document: storeSnapshot.document,
         range: display.range,
         tickAnchor: display.tickAnchor,
@@ -593,6 +602,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         locale: display.locale,
         ...(display.view === undefined ? {} : { view: display.view }),
         ...(viewport === undefined ? {} : { viewport }),
+        ...(display.taskVariants === undefined ? {} : { taskVariants: display.taskVariants }),
       },
       invalidation,
     );

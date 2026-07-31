@@ -5,6 +5,7 @@ import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import type { Diagnostic } from '../model/diagnostics';
 import type { GanttDocument } from '../model/types';
 import type { GanttCommandInterception } from '../runtime/types';
 import { Gantt } from './Gantt';
@@ -197,6 +198,127 @@ describe('Gantt React facade in a DOM environment', () => {
     );
   });
 
+  it('renders effective lane/task tokens and one accessible progress announcement', async () => {
+    const base = documentFixture();
+    const document: GanttDocument = {
+      ...base,
+      lanes: [
+        {
+          ...base.lanes[0]!,
+          appearance: { variant: 'lane-risk' },
+        },
+      ],
+      tasks: [
+        {
+          ...base.tasks[0]!,
+          appearance: { variant: 'task-ready' },
+          progress: 0.5,
+        },
+      ],
+    };
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        appearanceVariants={[
+          {
+            id: 'lane-risk',
+            label: 'Risk',
+            tokens: {
+              'lane.accent': '#b42318',
+              'lane.surface': 'rgb(255 245 245)',
+              'task.fill': '#b42318',
+            },
+          },
+          {
+            id: 'task-ready',
+            label: 'Ready',
+            tokens: {
+              'task.border': '#14532d',
+              'task.fill': '#22c55e',
+              'task.progressFill': '#14532d',
+              'task.text': '#052e16',
+            },
+          },
+        ]}
+        document={document}
+      />,
+    );
+
+    const lane = mounted.container.querySelector<HTMLElement>('[data-gt-part="lane"]')!;
+    const task = mounted.container.querySelector<SVGGElement>('[data-gt-part="task"]')!;
+    const progress = task.querySelector<SVGRectElement>('[data-gt-part="task-progress"]')!;
+
+    expect(lane.dataset.gtVariant).toBe('lane-risk');
+    expect(lane.dataset.gtAppearanceSource).toBe('lane');
+    expect(lane.style.getPropertyValue('--gt-lane-accent')).toBe('#b42318');
+    expect(lane.querySelector('[data-gt-part="lane-accent"]')).not.toBeNull();
+    expect(task.dataset.gtVariant).toBe('task-ready');
+    expect(task.dataset.gtAppearanceResolution).toBe('resolved');
+    expect(task.style.getPropertyValue('--gt-task-fill')).toBe('#22c55e');
+    expect(task.querySelector('[data-gt-part="task-track"]')).not.toBeNull();
+    expect(progress.dataset.progress).toBe('0.5');
+    expect(progress.getAttribute('aria-hidden')).toBe('true');
+    expect(task.getAttribute('aria-label')).toContain('50% complete');
+    expect(task.querySelectorAll('[role="progressbar"]')).toHaveLength(0);
+  });
+
+  it('does not paint a completed layer at zero while retaining textual progress', async () => {
+    const base = documentFixture();
+    const document: GanttDocument = {
+      ...base,
+      tasks: [{ ...base.tasks[0]!, progress: 0 }],
+    };
+    const mounted = await render(<Gantt {...commonProps()} document={document} />);
+    const task = mounted.container.querySelector<SVGGElement>('[data-gt-part="task"]')!;
+
+    expect(task.querySelector('[data-gt-part="task-progress"]')).toBeNull();
+    expect(task.getAttribute('aria-label')).toContain('0% complete');
+  });
+
+  it('deduplicates unresolved variants per mounted instance and registry revision', async () => {
+    const base = documentFixture();
+    const document: GanttDocument = {
+      ...base,
+      tasks: [
+        {
+          ...base.tasks[0]!,
+          appearance: { variant: 'customer:unknown' },
+        },
+      ],
+    };
+    const batches: Diagnostic[][] = [];
+    const onDiagnostics = (diagnostics: readonly Diagnostic[]) => {
+      batches.push([...diagnostics]);
+    };
+    const mounted = await render(
+      <Gantt
+        {...commonProps()}
+        appearanceVariants={[]}
+        document={document}
+        onDiagnostics={onDiagnostics}
+      />,
+    );
+
+    expect(
+      batches.flat().filter(({ code }) => code === 'appearance.variant.unresolved'),
+    ).toHaveLength(1);
+
+    await act(async () => {
+      mounted.root.render(
+        <Gantt
+          {...commonProps()}
+          appearanceVariants={[{ id: 'another', label: 'Another' }]}
+          document={document}
+          onDiagnostics={onDiagnostics}
+        />,
+      );
+    });
+
+    expect(
+      batches.flat().filter(({ code }) => code === 'appearance.variant.unresolved'),
+    ).toHaveLength(2);
+  });
+
   it('acknowledges controlled candidates before commit observation', async () => {
     const ref = createRef<GanttHandle>();
     let document = documentFixture();
@@ -306,7 +428,30 @@ describe('Gantt React facade in a DOM environment', () => {
   });
 
   it('hydrates deterministic pre-measurement markup without mismatch', async () => {
-    const props: GanttProps = { ...commonProps(), document: documentFixture() };
+    const base = documentFixture();
+    const props: GanttProps = {
+      ...commonProps(),
+      appearanceVariants: [
+        {
+          id: 'ready',
+          label: 'Ready',
+          tokens: {
+            'task.fill': '#22c55e',
+            'task.progressFill': '#14532d',
+          },
+        },
+      ],
+      document: {
+        ...base,
+        tasks: [
+          {
+            ...base.tasks[0]!,
+            appearance: { variant: 'ready' },
+            progress: 0.5,
+          },
+        ],
+      },
+    };
     const markup = renderToString(<Gantt {...props} />);
     const host = container();
     host.innerHTML = markup;
@@ -323,6 +468,10 @@ describe('Gantt React facade in a DOM environment', () => {
     roots.push(root);
     expect(errors).toEqual([]);
     expect(host.querySelector('[data-task-id="task-a"]')?.textContent).toContain('Task A');
+    expect(host.querySelector('[data-task-id="task-a"]')?.getAttribute('aria-label')).toContain(
+      '50% complete',
+    );
+    expect(host.querySelector('[data-gt-part="task-progress"]')).not.toBeNull();
     expect(host.querySelector('[data-gt-part="live-region"]')?.getAttribute('aria-live')).toBe(
       'polite',
     );

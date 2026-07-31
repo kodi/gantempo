@@ -1,10 +1,19 @@
-import type { EntityId, GanttDocument, GanttViewDefinition, TimeRange } from '@gantempo/gantt';
+import type {
+  EntityId,
+  GanttAppearanceVariantOption,
+  GanttDocument,
+  GanttViewDefinition,
+  TimeRange,
+} from '@gantempo/gantt';
+
+import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
 
 export type ScenarioTheme = 'dark' | 'high-contrast' | 'light';
 export type ScenarioDensity = 'comfortable' | 'compact';
 export type ScenarioTaskTone = 'accent' | 'neutral' | 'success' | 'warning';
 
 export interface PlaygroundScenario {
+  readonly appearanceVariants: readonly GanttAppearanceVariantOption[];
   readonly id: string;
   readonly title: string;
   readonly description: string;
@@ -39,15 +48,16 @@ const mainDocument: GanttDocument = {
   ...EMPTY_RELATIONSHIPS,
   schemaVersion: 1,
   lanes: [
-    { id: 'discovery', title: 'Discovery' },
-    { id: 'design', title: 'Design' },
-    { id: 'delivery', title: 'Delivery' },
-    { id: 'release', title: 'Release' },
+    { appearance: { variant: 'accent' }, id: 'discovery', title: 'Discovery' },
+    { appearance: { variant: 'success' }, id: 'design', title: 'Design' },
+    { appearance: { variant: 'accent' }, id: 'delivery', title: 'Delivery' },
+    { appearance: { variant: 'warning' }, id: 'release', title: 'Release' },
   ],
   tasks: [
     {
       id: 'requirements',
       kind: 'task',
+      progress: 1,
       segments: [],
       title: 'Requirements',
       schedule: { mode: 'instant', start: Date.UTC(2026, 6, 30), end: Date.UTC(2026, 7, 6) },
@@ -55,13 +65,16 @@ const mainDocument: GanttDocument = {
     {
       id: 'wireframes',
       kind: 'task',
+      progress: 0.72,
       segments: [],
       title: 'Wireframes',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 4), end: Date.UTC(2026, 7, 11) },
     },
     {
       id: 'review',
+      appearance: { variant: 'neutral' },
       kind: 'task',
+      progress: 0.35,
       segments: [],
       title: 'Review',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 12), end: Date.UTC(2026, 7, 16) },
@@ -69,6 +82,7 @@ const mainDocument: GanttDocument = {
     {
       id: 'build',
       kind: 'task',
+      progress: 0.58,
       segments: [],
       title: 'Implementation',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 9), end: Date.UTC(2026, 7, 20) },
@@ -76,13 +90,16 @@ const mainDocument: GanttDocument = {
     {
       id: 'qa',
       kind: 'task',
+      progress: 0.2,
       segments: [],
       title: 'QA',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 19), end: Date.UTC(2026, 7, 24) },
     },
     {
       id: 'launch',
+      appearance: { variant: 'success' },
       kind: 'task',
+      progress: 0,
       segments: [],
       title: 'Launch',
       schedule: { mode: 'instant', start: Date.UTC(2026, 7, 25), end: Date.UTC(2026, 7, 28) },
@@ -96,15 +113,6 @@ const mainDocument: GanttDocument = {
     { id: 'place-qa', taskId: 'qa', laneId: 'release' },
     { id: 'place-launch', taskId: 'launch', laneId: 'release' },
   ],
-};
-
-const mainTaskVariants: Readonly<Record<EntityId, ScenarioTaskTone>> = {
-  requirements: 'accent',
-  wireframes: 'success',
-  review: 'neutral',
-  build: 'accent',
-  qa: 'warning',
-  launch: 'success',
 };
 
 const customPhaseView: GanttViewDefinition = {
@@ -266,13 +274,14 @@ const segmentView: GanttViewDefinition = {
 
 export const mainScenario: PlaygroundScenario = {
   ...TIME_AXIS,
+  appearanceVariants: PLAYGROUND_APPEARANCE_VARIANTS,
   id: 'main-project',
   title: 'Website launch plan',
   description: 'Persisted lanes and placements in the default document view.',
   theme: 'light',
   density: 'comfortable',
   document: mainDocument,
-  taskVariants: mainTaskVariants,
+  taskVariants: {},
 };
 
 export const matrixScenarios: readonly PlaygroundScenario[] = [
@@ -294,6 +303,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
   },
   {
     ...TIME_AXIS,
+    appearanceVariants: PLAYGROUND_APPEARANCE_VARIANTS,
     id: 'resource-overlap',
     title: 'Resource overlap',
     description: 'Assignment-derived resource lanes with genuine stacked overlap.',
@@ -310,6 +320,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
   },
   {
     ...TIME_AXIS,
+    appearanceVariants: PLAYGROUND_APPEARANCE_VARIANTS,
     id: 'segment-variable-height',
     title: 'Explicit segments',
     description: 'Segment-backed placements and variable minimum lane heights.',
@@ -324,6 +335,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
   },
   {
     ...TIME_AXIS,
+    appearanceVariants: PLAYGROUND_APPEARANCE_VARIANTS,
     id: 'empty-state',
     title: 'Empty state',
     description: 'A high-contrast project before work is scheduled.',
@@ -398,18 +410,14 @@ const navigationDocument: GanttDocument = {
 };
 
 export const navigationScenario: PlaygroundScenario = {
+  appearanceVariants: PLAYGROUND_APPEARANCE_VARIANTS,
   density: 'comfortable',
   description:
     'Deterministic long-range navigation across scheduled work before, inside, and after the initial viewport.',
   document: navigationDocument,
   id: 'long-range-navigation',
   range: NAVIGATION_INITIAL_RANGE,
-  taskVariants: Object.fromEntries(
-    navigationTasks.map((task, index) => [
-      task.id,
-      (['accent', 'success', 'warning', 'neutral'] as const)[index % 4]!,
-    ]),
-  ),
+  taskVariants: {},
   theme: 'light',
   tickAnchor: NAVIGATION_INITIAL_RANGE.start,
   tickInterval: 14 * DAY,

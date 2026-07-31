@@ -15,6 +15,7 @@ import {
 } from '@gantempo/gantt';
 import { useMemo, useReducer, useRef, type ReactElement } from 'react';
 import { ExampleApiLog } from '../ExampleApiLog';
+import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
 import {
   appendExampleApiWrite,
   createExampleApiWrite,
@@ -25,16 +26,15 @@ const DAY = 24 * 60 * 60 * 1000;
 const RANGE_START = Date.UTC(2026, 6, 29);
 const RANGE_END = Date.UTC(2026, 7, 27);
 const LANE_IDS = ['discovery', 'design', 'delivery', 'release'] as const;
-const TASK_TONES = ['accent', 'success', 'warning', 'neutral'] as const;
 
 const API_DOCUMENT = {
   assignments: [],
   dependencies: [],
   lanes: [
-    { id: 'discovery', title: 'Discovery' },
-    { id: 'design', title: 'Design' },
-    { id: 'delivery', title: 'Delivery' },
-    { id: 'release', title: 'Release' },
+    { appearance: { variant: 'accent' }, id: 'discovery', title: 'Discovery' },
+    { appearance: { variant: 'success' }, id: 'design', title: 'Design' },
+    { appearance: { variant: 'accent' }, id: 'delivery', title: 'Delivery' },
+    { appearance: { variant: 'warning' }, id: 'release', title: 'Release' },
   ],
   placements: [
     { id: 'interactive-placement-1', laneId: 'discovery', taskId: 'interactive-task-1' },
@@ -47,6 +47,7 @@ const API_DOCUMENT = {
   tasks: [
     {
       id: 'interactive-task-1',
+      progress: 0.8,
       schedule: {
         end: '2026-08-02T00:00:00+00:00',
         mode: 'instant',
@@ -56,6 +57,8 @@ const API_DOCUMENT = {
     },
     {
       id: 'interactive-task-2',
+      appearance: { variant: 'neutral' },
+      progress: 0.45,
       schedule: {
         end: '2026-08-07T00:00:00+00:00',
         mode: 'instant',
@@ -65,6 +68,7 @@ const API_DOCUMENT = {
     },
     {
       id: 'interactive-task-3',
+      progress: 0.2,
       schedule: {
         end: '2026-08-12T00:00:00+00:00',
         mode: 'instant',
@@ -229,16 +233,6 @@ function createInitialState(): InteractiveState {
 export function InteractivePage(): ReactElement {
   const [state, dispatch] = useReducer(interactiveReducer, undefined, createInitialState);
   const ganttRef = useRef<GanttHandle>(null);
-  const taskVariants = useMemo(
-    () =>
-      Object.fromEntries(
-        state.document.tasks.map((task, index) => [
-          task.id,
-          TASK_TONES[index % TASK_TONES.length]!,
-        ]),
-      ),
-    [state.document.tasks],
-  );
   const hasTasks = state.document.tasks.length > 0;
   const interactionMappers = useMemo<GanttInteractionCommandMappers>(
     () => ({
@@ -429,6 +423,7 @@ export function InteractivePage(): ReactElement {
         </div>
 
         <Gantt
+          appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
           className="chart-frame__chart"
           classNames={{
             contextMenu: 'interactive-surface-menu',
@@ -478,7 +473,6 @@ export function InteractivePage(): ReactElement {
           range={state.range}
           ref={ganttRef}
           slots={{ LaneHeader: InteractiveLaneHeader, TaskContent: InteractiveTaskContent }}
-          taskVariants={taskVariants}
           tickAnchor={RANGE_START}
           tickInterval={7 * DAY}
           timeZone="Europe/Belgrade"

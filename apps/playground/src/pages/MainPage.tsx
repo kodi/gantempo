@@ -25,6 +25,7 @@ export function MainPage(): ReactElement {
             <span>Theme</span>
             <select
               aria-label="Chart theme"
+              name="chart-theme"
               onChange={(event) => setTheme(event.currentTarget.value as ScenarioTheme)}
               value={theme}
             >

@@ -26,6 +26,11 @@ import {
   normalizeNavigationDelta,
   type NavigationDeltaUnit,
 } from '../interaction/viewport-navigation';
+import {
+  createAppearanceRegistry,
+  type EffectiveAppearancePrimitive,
+  type GanttAppearanceToken,
+} from '../render/appearance';
 import type { TaskBarPrimitive } from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import {
@@ -82,6 +87,30 @@ type OverlayBoundary = 'root' | 'viewport';
 
 type GanttLaneStyle = CSSProperties & {
   readonly '--gt-lane-height-ratio': number;
+};
+
+type GanttAppearanceStyle = CSSProperties &
+  Partial<
+    Readonly<
+      Record<
+        | '--gt-lane-accent'
+        | '--gt-lane-surface'
+        | '--gt-task-border'
+        | '--gt-task-fill'
+        | '--gt-task-progress-fill'
+        | '--gt-task-text',
+        number | string
+      >
+    >
+  >;
+
+const APPEARANCE_PROPERTIES: Readonly<Record<GanttAppearanceToken, string>> = {
+  'lane.accent': '--gt-lane-accent',
+  'lane.surface': '--gt-lane-surface',
+  'task.border': '--gt-task-border',
+  'task.fill': '--gt-task-fill',
+  'task.progressFill': '--gt-task-progress-fill',
+  'task.text': '--gt-task-text',
 };
 
 const OVERLAY_SAFE_AREA = 8;
@@ -218,6 +247,20 @@ function laneStyle(y: number, height: number, defaultHeight: number): GanttLaneS
   } as GanttLaneStyle;
 }
 
+function appearanceStyle(
+  appearance: EffectiveAppearancePrimitive | undefined,
+): GanttAppearanceStyle | undefined {
+  if (appearance === undefined || Object.keys(appearance.tokens).length === 0) {
+    return undefined;
+  }
+  return Object.fromEntries(
+    Object.entries(appearance.tokens).map(([token, value]) => [
+      APPEARANCE_PROPERTIES[token as GanttAppearanceToken],
+      value,
+    ]),
+  ) as GanttAppearanceStyle;
+}
+
 function joinClasses(...values: readonly (string | undefined)[]): string | undefined {
   const classes = values.filter((value): value is string => value !== undefined && value !== '');
   return classes.length === 0 ? undefined : classes.join(' ');
@@ -244,13 +287,13 @@ function taskTarget(task: TaskBarPrimitive) {
   });
 }
 
-function taskSummary(task: TaskBarPrimitive, variant: string | undefined): GanttTaskSummary {
+function taskSummary(task: TaskBarPrimitive): GanttTaskSummary {
   return Object.freeze({
     end: task.end,
     start: task.start,
     target: taskTarget(task),
     title: task.title,
-    ...(variant === undefined ? {} : { variant }),
+    ...(task.appearance?.variant === undefined ? {} : { variant: task.appearance.variant }),
   });
 }
 
@@ -351,7 +394,10 @@ function taskEditorCommand(
 }
 
 function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeFormat): string {
-  return `${task.title}, ${formatter.format(task.start)} to ${formatter.format(task.end)}`;
+  const schedule = `${task.title}, ${formatter.format(task.start)} to ${formatter.format(task.end)}`;
+  return task.progress === undefined
+    ? schedule
+    : `${schedule}, ${Math.round(task.progress.value * 100)}% complete`;
 }
 
 function targetStateEqual(
@@ -455,7 +501,6 @@ function GanttTask({
   task,
   tabIndex,
   timelineHeight,
-  variant,
 }: {
   readonly classNames?: GanttProps['classNames'];
   readonly dateFormatter: Intl.DateTimeFormat;
@@ -470,7 +515,6 @@ function GanttTask({
   readonly task: TaskBarPrimitive;
   readonly tabIndex: -1 | 0;
   readonly timelineHeight: number;
-  readonly variant?: string | undefined;
 }): ReactElement {
   const [selected, focused, pressing, dragging, resizing, pending, rejected] = useGanttSelector(
     (snapshot) => {
@@ -496,7 +540,8 @@ function GanttTask({
     targetStateEqual,
   );
   const accessibleName = taskAccessibleName(task, dateFormatter);
-  const summary = taskSummary(task, variant);
+  const summary = taskSummary(task);
+  const appearance = task.appearance;
   const state = Object.freeze({
     disabled,
     dragging,
@@ -527,7 +572,9 @@ function GanttTask({
       data-rejected={rejected || undefined}
       data-resizing={resizing || undefined}
       data-gt-part="task"
-      data-gt-variant={variant}
+      data-gt-appearance-resolution={appearance?.resolution}
+      data-gt-appearance-source={appearance?.source}
+      data-gt-variant={appearance?.variant}
       data-lane-id={task.laneId}
       data-lane-view-key={task.laneViewKey}
       data-placement-id={task.placementId}
@@ -543,16 +590,31 @@ function GanttTask({
       onMouseEnter={(event) => onMouseEnter(event, task)}
       onMouseLeave={(event) => onMouseLeave(event, task)}
       role="button"
+      style={appearanceStyle(appearance)}
       tabIndex={tabIndex}
     >
       <rect
         className="gt-gantt__task-bar"
+        data-gt-part="task-track"
         height={percent(task.height / timelineHeight)}
         rx="6"
         width={percent(task.width)}
         x={percent(task.x)}
         y={percent(task.y / timelineHeight)}
       />
+      {task.progress !== undefined && task.progress.width > 0 ? (
+        <rect
+          aria-hidden="true"
+          className="gt-gantt__task-progress"
+          data-gt-part="task-progress"
+          data-progress={task.progress.value}
+          height={percent(task.height / timelineHeight)}
+          rx="6"
+          width={percent(task.progress.width)}
+          x={percent(task.progress.x)}
+          y={percent(task.y / timelineHeight)}
+        />
+      ) : null}
       <foreignObject
         height={percent(task.height / timelineHeight)}
         width={percent(task.width)}
@@ -610,7 +672,6 @@ function GanttSurface({
   runtime,
   scene,
   slots,
-  taskVariants,
   timelineRef,
 }: {
   readonly bodyRef: React.RefObject<HTMLDivElement | null>;
@@ -629,7 +690,6 @@ function GanttSurface({
   readonly runtime: GanttReactRuntime;
   readonly scene: GanttReactRuntimeSnapshot['scene'];
   readonly slots?: GanttProps['slots'];
-  readonly taskVariants?: GanttProps['taskVariants'];
   readonly timelineRef: React.RefObject<HTMLDivElement | null>;
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
@@ -1439,18 +1499,11 @@ function GanttSurface({
     '--gt-timeline-height': `${scene.bounds.timelineHeight}px`,
     '--gt-timeline-height-ratio': scene.bounds.timelineHeight / scene.bounds.defaultLaneHeight,
   };
-  const activeMenuSummary =
-    activeMenuTask === undefined
-      ? undefined
-      : taskSummary(activeMenuTask, taskVariants?.[activeMenuTask.taskId]);
+  const activeMenuSummary = activeMenuTask === undefined ? undefined : taskSummary(activeMenuTask);
   const activeTooltipSummary =
-    activeTooltipTask === undefined
-      ? undefined
-      : taskSummary(activeTooltipTask, taskVariants?.[activeTooltipTask.taskId]);
+    activeTooltipTask === undefined ? undefined : taskSummary(activeTooltipTask);
   const activeEditorSummary =
-    activeEditorTask === undefined
-      ? undefined
-      : taskSummary(activeEditorTask, taskVariants?.[activeEditorTask.taskId]);
+    activeEditorTask === undefined ? undefined : taskSummary(activeEditorTask);
   const activeMenuEditReason =
     activeMenuTask === undefined
       ? undefined
@@ -1898,15 +1951,24 @@ function GanttSurface({
                       ),
                     )}
                     data-lane-id={lane.laneId}
+                    data-gt-appearance-resolution={lane.appearance?.resolution}
+                    data-gt-appearance-source={lane.appearance?.source}
                     data-gt-part="lane"
+                    data-gt-variant={lane.appearance?.variant}
                     data-resource-id={lane.resourceId}
                     data-view-key={lane.viewKey}
                     key={lane.viewKey}
                     style={{
                       ...laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight),
+                      ...appearanceStyle(lane.appearance),
                       gridTemplateColumns: columnTemplate,
                     }}
                   >
+                    <span
+                      aria-hidden="true"
+                      className="gt-gantt__lane-accent"
+                      data-gt-part="lane-accent"
+                    />
                     {resolvedColumns.map((column) => (
                       <div
                         className={joinClasses(
@@ -1949,9 +2011,15 @@ function GanttSurface({
                         idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
                       )}
                       data-gt-part="timeline-cell"
+                      data-gt-appearance-resolution={lane.appearance?.resolution}
+                      data-gt-appearance-source={lane.appearance?.source}
+                      data-gt-variant={lane.appearance?.variant}
                       data-view-key={lane.viewKey}
                       key={lane.viewKey}
-                      style={laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight)}
+                      style={{
+                        ...laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight),
+                        ...appearanceStyle(lane.appearance),
+                      }}
                     />
                   ))}
                 </div>
@@ -1997,7 +2065,6 @@ function GanttSurface({
                       task={task}
                       tabIndex={task.viewKey === rovingViewKey ? 0 : -1}
                       timelineHeight={scene.bounds.timelineHeight}
-                      variant={taskVariants?.[task.taskId]}
                     />
                   ))}
                 </svg>
@@ -2083,8 +2150,15 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     onDiagnostics,
     overlayContainer,
     slots,
-    taskVariants,
   } = props;
+  const appearanceRegistrySignature = useMemo(
+    () => createAppearanceRegistry(props.appearanceVariants).signature,
+    [props.appearanceVariants],
+  );
+  const deliveredAppearanceDiagnostics = useRef<{
+    readonly signature: string;
+    readonly variants: Set<string>;
+  }>({ signature: appearanceRegistrySignature, variants: new Set() });
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(locale, {
@@ -2105,8 +2179,32 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     runtime.reconcile(props);
   }, [props, runtime]);
   useEffect(() => {
-    onDiagnostics?.(scene.diagnostics);
-  }, [onDiagnostics, scene.diagnostics]);
+    if (onDiagnostics === undefined) {
+      return;
+    }
+    if (deliveredAppearanceDiagnostics.current.signature !== appearanceRegistrySignature) {
+      deliveredAppearanceDiagnostics.current = {
+        signature: appearanceRegistrySignature,
+        variants: new Set(),
+      };
+    }
+    const delivered = deliveredAppearanceDiagnostics.current.variants;
+    const diagnostics = scene.diagnostics.filter((diagnostic) => {
+      if (diagnostic.code !== 'appearance.variant.unresolved') {
+        return true;
+      }
+      const variant = diagnostic.details?.variant;
+      const key = typeof variant === 'string' ? variant : diagnostic.message;
+      if (delivered.has(key)) {
+        return false;
+      }
+      delivered.add(key);
+      return true;
+    });
+    if (diagnostics.length > 0 || scene.diagnostics.length === 0) {
+      onDiagnostics(diagnostics);
+    }
+  }, [appearanceRegistrySignature, onDiagnostics, scene.diagnostics]);
   useEffect(() => {
     const body = bodyRef.current;
     const timeline = timelineRef.current;
@@ -2235,7 +2333,6 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         runtime={runtime}
         scene={scene}
         slots={slots}
-        taskVariants={taskVariants}
         timelineRef={timelineRef}
       />
     </GanttRuntimeProvider>

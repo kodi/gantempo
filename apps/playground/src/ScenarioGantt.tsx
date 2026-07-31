@@ -65,6 +65,7 @@ export function ScenarioGantt({
         className="chart-frame__chart"
         document={document}
         label={`${scenario.title} chart`}
+        appearanceVariants={scenario.appearanceVariants}
         {...(editable
           ? {
               onDocumentChange: (change: GanttDocumentChange) => setDocument(change.document),

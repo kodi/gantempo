@@ -105,6 +105,53 @@ describe('Gantt', () => {
     expect(markup).toContain('class="gt-gantt__task-label"');
   });
 
+  it('renders semantic appearance and progress deterministically during SSR', () => {
+    const markup = renderToStaticMarkup(
+      <Gantt
+        appearanceVariants={[
+          {
+            id: 'delivery',
+            label: 'Delivery',
+            tokens: {
+              'lane.accent': '#0f766e',
+              'task.fill': '#14b8a6',
+              'task.progressFill': '#115e59',
+              'task.text': '#042f2e',
+            },
+          },
+        ]}
+        document={{
+          ...EMPTY_COLLECTIONS,
+          lanes: [{ appearance: { variant: 'delivery' }, id: 'lane-a', title: 'Lane A' }],
+          placements: [{ id: 'placement-a', laneId: 'lane-a', taskId: 'task-a' }],
+          schemaVersion: 1,
+          tasks: [
+            {
+              id: 'task-a',
+              kind: 'task',
+              progress: 0.25,
+              schedule: { end: START + 2 * DAY, mode: 'instant', start: START + DAY },
+              segments: [],
+              title: 'Task A',
+            },
+          ],
+        }}
+        range={{ end: START + 7 * DAY, start: START }}
+        tickAnchor={START}
+        tickInterval={DAY}
+        timeZone="UTC"
+      />,
+    );
+
+    expect(markup).toContain('data-gt-part="lane-accent"');
+    expect(markup).toContain('data-gt-part="task-track"');
+    expect(markup).toContain('data-gt-part="task-progress"');
+    expect(markup).toContain('data-gt-variant="delivery"');
+    expect(markup).toContain('--gt-task-fill:#14b8a6');
+    expect(markup).toContain('25% complete');
+    expect(markup).not.toContain('role="progressbar"');
+  });
+
   it('renders customized columns and content deterministically with overlays closed during SSR', () => {
     const markup = renderToStaticMarkup(
       <Gantt

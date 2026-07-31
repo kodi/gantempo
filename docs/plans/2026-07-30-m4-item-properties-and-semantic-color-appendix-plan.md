@@ -528,7 +528,7 @@ ad hoc CSS.
 
 ### Appendix Slice A4: Render accessible semantic color and progress
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -806,7 +806,7 @@ Resolved in Appendix Slice A1:
 - [x] Appendix Slice A1: Freeze the properties and appearance contract
 - [x] Appendix Slice A2: Add canonical task/lane properties and commands
 - [x] Appendix Slice A3: Resolve appearance and progress primitives
-- [ ] Appendix Slice A4: Render accessible semantic color and progress
+- [x] Appendix Slice A4: Render accessible semantic color and progress
 - [ ] Appendix Slice A5: Add task and lane properties surfaces
 - [ ] Appendix Slice A6: Add direct and keyboard progress editing
 - [ ] Appendix Slice A7: Prove consumers and close the appendix
@@ -900,13 +900,58 @@ Resolved in Appendix Slice A1:
   `6.7870 ms` warm label, `7.0164 ms` warm affected appearance/progress, and
   `0.0328 ms` warm vertical query. These are local observations from this checkout,
   not cross-machine thresholds or release guarantees.
+- 2026-07-31: Appendix Slice A4 is in progress. The React runtime now treats
+  `appearanceVariants` and the compatibility `taskVariants` map as display inputs
+  and passes them into the existing scene pipeline; registry-only changes therefore
+  rebuild paint primitives without a document command, revision, or geometry pass.
+- 2026-07-31: A4's first live 390 px inspection found the playground navigation's
+  intrinsic link width extending the document by 48 px. The chart itself remained
+  within its container. The narrow header now lets its nav flex item shrink and
+  scroll internally, preserving every route link without page-level horizontal
+  overflow. This playground-only responsive deviation does not change a library
+  boundary or public contract.
+- 2026-07-31: Chrome's desktop inspection also reported the existing theme selector
+  without a form identity despite its accessible label. Adding the stable
+  `chart-theme` name clears the browser issue while preserving its label, state, and
+  interaction behavior; this is playground-only.
+- 2026-07-31: Appendix Slice A4 maps the six portable appearance tokens onto
+  instance-scoped CSS custom properties and publishes stable `lane-accent`,
+  `task-track`, and `task-progress` parts plus effective variant/source/resolution
+  attributes. Lane surfaces stay restrained; task focus, selection, rejection,
+  pending, drag/resize, forced-colors, and reduced-motion paths retain non-color
+  structure. The legacy `taskVariants` map now enters the same scene resolver, while
+  task/lane/content/tooltip/editor slots remain source-compatible.
+- 2026-07-31: Ordinary task accessible names include the rounded canonical percentage
+  exactly once. Progress paint is `aria-hidden`, zero renders no completed SVG layer,
+  and SSR/hydration produce the same semantic parts and inline token mapping. Unknown
+  appearance callbacks are deduplicated per mounted instance, distinct variant ID,
+  and normalized registry signature without removing scene diagnostics.
+- 2026-07-31: The playground now supplies one application-owned semantic palette and
+  canonical lane/task appearance/progress data instead of index-cycled tones.
+  Chrome DevTools inspected `/` at 1440x1000 and 390x844 and `/matrix` at 1440x1000.
+  The desktop accessibility tree exposed six task buttons with schedule plus
+  `0%`/partial/`100%` text and no progressbar duplication. Computed styles confirmed
+  six tracks, five positive-width progress layers, four lane accents, canonical
+  lane inheritance, and explicit task overrides. Light, dark, and high-contrast
+  partial-progress label checks observed a minimum 4.53:1 contrast. Focus retained a
+  2 px non-color stroke; the narrow page had no document overflow after the header
+  correction. Console warnings/errors/issues were empty and all 73 inspected
+  development requests returned 200. Chrome DevTools does not expose forced-colors
+  or reduced-motion emulation; focused stylesheet tests verify both media fallbacks.
+- 2026-07-31: A4 focused verification passed 5 files / 51 tests for rendered token
+  mapping, stable parts, zero/partial progress semantics, unresolved diagnostic
+  revision deduplication, SSR/hydration, system-media CSS, runtime reconciliation,
+  and the theme selector. `vp check` passed 156 formatted files and 145 lint/type
+  files. `vp pack` produced four artifacts with the accepted
+  `appearanceVariants` declaration, and `vp build apps/playground` produced the
+  production playground. The required full `mise run ci` passed 65 test files /
+  317 tests plus formatting, lint, types, and package output.
 
 ## Next Slice
 
-Begin Appendix Slice A4 in `packages/gantt/src/react/Gantt.tsx`,
-`packages/gantt/src/styles.css`, renderer DOM tests, and SSR/hydration coverage.
-Publish stable lane-accent, task-track, progress, and effective-variant parts; map
-portable tokens without geometry work; add textual/assistive progress semantics and
-per-instance unresolved-variant diagnostic deduplication; then verify SSR, package,
-production playground, responsive computed styles, accessibility trees, forced
-colors, console, and network before starting properties surfaces.
+Begin Appendix Slice A5 in the React surface, runtime command path, and focused
+properties tests. Add the selection-driven default task/lane properties surface plus
+the accepted `ItemProperties` replacement slot, preserve the legacy `TaskEditor`
+fallback, dispatch one command or transaction per Save, and verify controlled,
+uncontrolled, stale-target, focus-return, layout, two-instance, SSR, package, and
+playground behavior before adding direct progress editing.

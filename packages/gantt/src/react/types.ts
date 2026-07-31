@@ -11,6 +11,7 @@ import type {
   InteractionSnapPolicy,
 } from '../interaction/types';
 import type { GanttViewDefinition } from '../view/types';
+import type { GanttAppearanceVariantOption } from '../render/appearance';
 import type {
   GanttCommandCommittedEvent,
   GanttCommandInterceptor,
@@ -281,6 +282,7 @@ export type GanttOverlayContainer =
   | (() => Element | DocumentFragment | null);
 
 interface GanttBaseProps {
+  readonly appearanceVariants?: readonly GanttAppearanceVariantOption[];
   readonly className?: string;
   readonly classNames?: GanttClassNames;
   readonly columns?: readonly GanttLaneColumn[];

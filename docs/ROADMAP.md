@@ -171,7 +171,7 @@ post-M4 work.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[-]` Appendix Slice A3 complete; A4 DOM/SVG and accessibility next
+**Status:** `[-]` Appendix Slice A4 complete; A5 properties surfaces next
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -215,6 +215,38 @@ passed five consecutive isolated runs; and the corrected full gate passed 64 fil
 for warm affected appearance/progress projection with no release threshold. Appendix
 Slice A4 owns DOM/SVG paint, progress semantics, forced colors, and per-instance
 diagnostic delivery deduplication.
+
+Appendix Slice A4 is now in progress. Instance `appearanceVariants` and the
+source-compatible `taskVariants` fallback enter the React runtime as display inputs
+and feed the existing selective scene pipeline; paint-registry changes do not require
+a document mutation or geometry rebuild.
+
+The first A4 narrow browser pass found and corrected a playground-only header
+overflow: the route navigation now shrinks and scrolls inside the 390 px header
+instead of widening the page. The chart surface itself did not overflow, and the
+library contract and milestone order are unchanged.
+
+The same browser pass cleared the playground theme selector's form-identity issue by
+adding a stable field name. Its accessible label and behavior are unchanged.
+
+Appendix Slice A4 now publishes stable lane accent, task track, and progress parts;
+maps the portable registry to coordinated DOM/SVG tokens; includes progress once in
+each ordinary task's accessible name; and deduplicates unresolved-variant callback
+delivery per instance and registry revision. SSR/hydration, legacy fallback, slots,
+forced-colors/reduced-motion declarations, and non-color interaction indicators are
+covered. The playground demonstrates canonical lane inheritance, explicit task
+overrides, and zero/partial/full progress through an application-owned palette rather
+than index-cycled CSS tones.
+
+A4 focused verification passed 5 files / 51 tests, `vp check` covered 156 formatted
+and 145 lint/type files, package output retained four artifacts and the accepted
+public declaration, and the production playground built successfully. Chrome
+DevTools verified `/` at 1440x1000 and 390x844 plus `/matrix` at 1440x1000: accessible
+progress was not duplicated, the minimum observed label contrast across light, dark,
+and high-contrast partial progress was 4.53:1, the narrow document did not overflow,
+the console was clean, and all 73 inspected development requests returned 200. The
+required full `mise run ci` passed 65 files / 317 tests. A5 properties surfaces are
+next.
 
 ### Post-M4 persistence entity-change projection
 
