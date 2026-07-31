@@ -235,6 +235,14 @@ structured diagnostic. These identity, ordering, interval, and error semantics a
 fixed by the
 [view, layout, and viewport kernel contract](decisions/2026-07-30-view-layout-viewport-kernel-contract.md).
 
+M5 extends only the project view into a depth-first task tree. Optional canonical task
+`order` establishes durable sibling order; expansion, filter, sort, and derived
+summary presentation remain view/session state. Only summaries may own children.
+Permissive parsing visibly repairs invalid parent edges while strict commands reject
+invalid hierarchy intent. The exact ordering, recovery, and projection semantics are
+fixed by the
+[basic project Gantt decision](decisions/2026-07-31-basic-project-gantt-contract.md).
+
 ### 6.2 Persistent document
 
 ```ts
@@ -258,6 +266,7 @@ export interface TaskRecord {
   description?: string;
   kind?: "task" | "summary" | "milestone";
   parentId?: EntityId;
+  order?: number;
   schedule?: TaskSchedule;
   progress?: number;
   appearance?: GanttAppearanceReference;
@@ -965,6 +974,14 @@ It must support:
 - right-to-left layout;
 - optional non-linear working-time compression.
 
+M5 fixes the Community scale boundary as an explicit fixed/adaptive policy with
+minute-through-year semantic levels, controlled or uncontrolled horizontal range,
+stable zoom anchors, and fit-to-project. Before measurement, adaptive SSR uses a
+deterministic nominal width; locale, time zone, direction, and host environment are
+never inferred by pure scale code. The exact public ownership and gesture contract is
+fixed by the
+[basic project Gantt decision](decisions/2026-07-31-basic-project-gantt-contract.md).
+
 ### 11.2 Calendar engine
 
 Calendar math must operate on an IANA time zone and explicit working intervals. It must
@@ -997,6 +1014,13 @@ The free scheduler provides:
 - dependency visualization;
 - diagnostics for invalid links;
 - manual task dates.
+
+M5 preserves parsed duplicate and cyclic links with diagnostics while strict link
+commands reject new duplicates and cycles. It may derive read-only summary spans and
+render elapsed lag, but it never moves task dates, interprets working lag, or persists
+summary rollups. Hierarchy recovery, dependency-update, route, and editing semantics
+are fixed by the
+[basic project Gantt decision](decisions/2026-07-31-basic-project-gantt-contract.md).
 
 ### 12.2 Pro scheduling pipeline
 
@@ -1304,6 +1328,13 @@ navigation are fixed by the
 - Browser-only exporters and workers load lazily.
 - Hydration must not depend on current time unless the application supplies it.
 
+M5 additionally normalizes omitted locale to `en-US`, requires instance-scoped
+`ltr`/`rtl` direction with deterministic `ltr` default, and excludes environment-
+derived `auto` direction. Adaptive ticks use the same nominal pre-measurement width on
+the server and first hydration render. Invalid locale/time-zone inputs diagnose and
+use deterministic fallbacks as specified by the
+[basic project Gantt decision](decisions/2026-07-31-basic-project-gantt-contract.md).
+
 ## 18. Performance targets
 
 Performance claims must be backed by versioned benchmarks.
@@ -1500,6 +1531,11 @@ ownership boundary; see the
 - SSR examples.
 
 Exit condition: the free edition is a complete basic Gantt library.
+
+The slice's schema-version-1 task order, hierarchy recovery, project query/session,
+summary/milestone presentation, dependency, range/scale, localization, RTL,
+accessibility, SSR, and final browser-matrix contracts are fixed by the
+[basic project Gantt decision](decisions/2026-07-31-basic-project-gantt-contract.md).
 
 ### Slice 5: Pro scheduling and resources
 

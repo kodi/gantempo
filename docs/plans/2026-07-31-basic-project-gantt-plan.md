@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: Planned; implementation not started
+Status: In progress; Slice 1 complete, Slice 2 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -48,8 +48,9 @@ console, and network evidence is recorded.
 ## Planning Decisions
 
 These decisions follow the accepted architecture and completed M1–M4 contracts. Slice
-1 must formalize the remaining exact public shapes in a focused M5 decision record
-before implementation begins.
+1 formalizes the remaining exact public shapes in the accepted
+[`basic project Gantt contract`](../decisions/2026-07-31-basic-project-gantt-contract.md)
+before runtime implementation begins.
 
 ### 1. Extend the existing canonical model and command path
 
@@ -59,15 +60,18 @@ tree, summary, milestone, or link model. Persistent edits continue through typed
 commands, deterministic patches, transactions, history, controlled acknowledgement,
 and `GanttDocumentChange` projection.
 
-No schema-version change is expected unless Slice 1 proves that a durable field is
-missing. Any such finding is a deviation of substance and must update this plan, the
-roadmap, the document-codec contract, and migrations before implementation continues.
+Because the package is unpublished pre-alpha software, Slice 1 accepts one deliberate
+schema-version-1 correction: optional finite `TaskRecord.order`, plus matching add and
+update inputs, provides durable sibling order. No migration or version bump is needed
+because no version-1 package has shipped. This deviation is synchronized with the
+architecture, roadmap, and accepted decision before implementation continues.
 
 ### 2. Keep canonical order separate from projected view order
 
-Canonical task array order and parent relationships remain document data. Expansion,
-filters, sorting, and zoom remain session/view state. Filtering and sorting derive a
-project view and never rewrite task arrays, parent IDs, schedules, or dependencies.
+Canonical task array order, optional sibling order, and parent relationships remain
+document data. Expansion, filters, sorting, and zoom remain session/view state.
+Filtering and sorting derive a project view and never rewrite task arrays, sibling
+order, parent IDs, schedules, or dependencies.
 
 Task and occurrence IDs keep their current meanings. View keys remain distinct from
 canonical IDs, so collapse, filtering, sorting, and virtualization can reconcile
@@ -172,7 +176,8 @@ on current time, measurements, browser globals, or the host locale.
   imperative handle. `range`, `tickAnchor`, and `tickInterval` are currently explicit
   props; adaptive zoom and fit policy were deliberately deferred.
 - The M4 appendix exposes semantic appearance and progress. Milestones do not expose
-  progress editing, and summary progress remains read-only pending M5 policy.
+  progress editing, and the accepted M5 policy keeps explicit summary progress read-
+  only without deriving a Community rollup.
 - Existing source/facade, SSR/hydration, resource/custom-view, interaction, overlay,
   appearance, persistence, and playground behavior must remain green throughout M5.
 
@@ -202,8 +207,8 @@ Likely new pure boundaries:
 - `packages/gantt/src/time/` additions for adaptive scale levels, ticks, and zoom;
 - additive view/runtime/render/interaction/React types at their existing boundaries.
 
-Names and exact public types are provisional until Slice 1 accepts the M5 decision
-record. Internal module paths are not public API.
+The accepted M5 decision owns exact public names and behavior. Internal module paths
+remain provisional and are not public API.
 
 ## Cross-Slice Rules
 
@@ -234,7 +239,7 @@ record. Internal module paths are not public API.
 
 ### Slice 1: Freeze the M5 public and engine contracts
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -272,6 +277,13 @@ would force adjacent types and interaction semantics by accident.
 - exact names and ownership rules for later slices;
 - characterized package/API/SSR baselines and no runtime behavior change.
 
+**Completed in this slice**
+
+- accepted and cross-linked the exact M5 public/engine contract;
+- recorded the pre-publication schema-version-1 task-order correction and all 13
+  resolved policy questions;
+- characterized the packed M4 facade and preserved runtime behavior unchanged.
+
 **Verification**
 
 - `git diff --check`
@@ -301,6 +313,8 @@ depend on correct ancestry and stable order.
 **This slice should implement**
 
 - pure hierarchy indexes for parent, ordered children, roots, depth, and descendants;
+- add optional finite task sibling `order` to the unpublished schema-version-1 model,
+  codec, serializer, add/update inputs, root facade, and package declaration;
 - diagnostics for self-parenting and hierarchy cycles, including deterministic paths
   and entity IDs;
 - strict `task.update` reparent validation that rejects missing parents, self-parent,
@@ -348,6 +362,8 @@ geometry and treegrid semantics can be correct.
 
 - additive project-view query/session inputs accepted in Slice 1;
 - deterministic depth-first flattening with stable sibling order and depth metadata;
+- resolve canonical siblings by explicit order, then canonical array position and ID
+  tie-breaks, before applying any view-only comparator;
 - expansion/collapse projection with accepted default behavior;
 - ancestor-aware filtering and stable sorting with explicit tie-breaking;
 - visible match/ancestor metadata needed by renderers without exposing private
@@ -845,7 +861,8 @@ into a product claim.
 
 ## Likely Files to Add
 
-Exact names may change in Slice 1, but the intended ownership is:
+The accepted contract fixes public names; internal filenames may still change while
+preserving the intended ownership:
 
 - `docs/decisions/2026-07-31-basic-project-gantt-contract.md`
 - `packages/gantt/src/hierarchy/*`
@@ -857,7 +874,8 @@ Exact names may change in Slice 1, but the intended ownership is:
 
 ## Likely Files to Change
 
-- `packages/gantt/src/model/{diagnostics,indexes,validate}.ts`
+- `packages/gantt/src/model/{types,codec,serialize,diagnostics,indexes,validate}.ts`
+- `packages/gantt/src/model/schema/*`
 - `packages/gantt/src/commands/{types,normalize,reduce}.ts`
 - `packages/gantt/src/view/{types,resolve-view}.ts`
 - `packages/gantt/src/render/{primitives,scene-pipeline}.ts`
@@ -878,9 +896,9 @@ that needs those files must inspect and preserve the user's changes before editi
 
 ## Risks and Mitigations
 
-- **Hierarchy recovery can lose meaning.** Separate permissive wire recovery from
-  strict commands, use deterministic diagnostics, and never silently accept a
-  reparent cycle.
+- **Hierarchy recovery can lose meaning.** Clear only the invalid edge selected by the
+  accepted deterministic rule, preserve every task and unrelated branch, diagnose the
+  repair, and never silently accept strict invalid intent.
 - **Summary semantics can cross the Community/Pro boundary.** Keep M5 presentation
   derivation read-only and prohibit automatic persisted rescheduling/rollups.
 - **Filtering can orphan context.** Define ancestor retention and focus reconciliation
@@ -901,40 +919,44 @@ that needs those files must inspect and preserve the user's changes before editi
   green, commit it separately, and add a numbered follow-up slice only when a real
   bounded deviation emerges.
 
-## Open Questions for Slice 1
+## Resolved Slice 1 Questions
 
-1. What exact invalid-hierarchy recovery applies to parsed documents containing a
-   self-parent or multi-task cycle while preserving unrelated tasks?
-2. Does an omitted expansion set mean all branches expanded for compatibility, or do
-   project views expose an explicit default-expansion policy?
-3. Are filter/sort hooks pure callback inputs, serializable descriptors, registered
-   keys, or a bounded combination? How are ancestors and descendant matches shown?
-4. Is sibling order canonical array order only for M5, or does task-tree reordering
-   require an additive durable `order` field and therefore a schema/codec decision?
-5. Do summary bars derive a read-only descendant span/progress when canonical values
-   are absent, or do they require explicit canonical schedule/progress in Community?
-   How are unscheduled and partially scheduled descendants represented?
-6. Is a milestone required to use an instant schedule with equal endpoints, or may an
-   all-day milestone normalize to a deterministic point for presentation?
-7. Which dependency combinations are semantic duplicates, and are cycles rejected by
-   strict commands while still diagnosed in parsed documents?
-8. Does basic dependency editing include type and elapsed lag updates, and what is the
-   exact additive `dependency.update` command shape?
-9. What happens to a dependency whose endpoint is hidden by collapse/filtering or is
-   outside the current viewport?
-10. What additive prop/session union preserves the required M4 controlled `range`
-    contract while supporting uncontrolled zoom, `defaultRange`, scale level, and
-    fit-to-project?
-11. Which input gestures are supported for zoom, and how are browser zoom, page scroll,
-    existing Gantt pan, touch-action, and RTL anchors protected?
-12. Are built-in strings configured by a typed `messages` object, formatter callbacks,
-    or both, and does `direction="auto"` observe only an explicit owning element?
-13. Which public route/example and exact desktop/narrow/RTL/locale browser matrix are
-    required for final M5 acceptance?
+The accepted
+[`basic project Gantt contract`](../decisions/2026-07-31-basic-project-gantt-contract.md)
+owns the full shapes and rationale. In summary:
+
+1. parsing clears self/non-summary-parent edges and one lexicographically selected
+   edge per cycle with diagnostics; strict commands reject the same intent;
+2. omitted project expansion state means all branches expanded, while committed
+   session state records collapsed task IDs;
+3. project filter and sort are synchronous pure callbacks; matches retain ancestors,
+   matching paths force-expand without mutating session, and sorting is sibling-local;
+4. unpublished schema version 1 gains optional finite task `order`, with canonical
+   array position and ID as deterministic tie-breakers;
+5. summaries derive read-only spans from usable descendants, fall back to their own
+   schedule when empty, and render only explicit canonical progress read-only;
+6. milestones require equal instant endpoints or all-day dates for strict edits;
+   permissive unequal input is diagnosed and presented at its start;
+7. duplicate identity is source, target, and type; parsed duplicates/cycles survive
+   with diagnostics while strict dependency edits reject new faults;
+8. `dependency.update` can change endpoints, type, lag, and fields; built-in Community
+   editing writes elapsed lag and preserves working lag read-only;
+9. collapsed endpoints proxy to visible ancestor summaries, filtered endpoints proxy
+   only through retained context, and offscreen routes clip with continuation markers;
+10. range becomes an exclusive controlled `range` or uncontrolled `defaultRange`
+    union, while fixed legacy ticks and explicit fixed/adaptive `timeScale` branches
+    remain mutually exclusive;
+11. toolbar, imperative, plain-key, and Alt/Option-wheel zoom are supported; browser
+    pinch, Ctrl/Meta-wheel, and unmodified page-scroll gestures are not intercepted;
+12. localization combines typed message templates with bounded formatters; direction
+    is explicit `ltr`/`rtl` with deterministic LTR default and no `auto`;
+13. `/project` is the public example, with controlled/uncontrolled/read-only,
+    English/Serbian/Arabic, desktop/narrow, LTR/RTL, media-emulation, accessibility,
+    console, and network cases fixed in the decision.
 
 ## Progress
 
-- [ ] Slice 1: Freeze the M5 public and engine contracts
+- [x] Slice 1: Freeze the M5 public and engine contracts
 - [ ] Slice 2: Add hierarchy integrity, indexes, and strict reparenting
 - [ ] Slice 3: Resolve project trees, expansion, filtering, and sorting
 - [ ] Slice 4: Resolve summary and milestone presentation semantics
@@ -975,15 +997,39 @@ that needs those files must inspect and preserve the user's changes before editi
   stale-current-handoff search, and a structure check confirming 13 slices with all
   six required handoff sections. The code/test/build suite was not run because this
   change only adds and links planning documentation.
+- 2026-07-31: Slice 1 audited the clean `main` checkout at `26a94b4`, current root
+  exports, source public types, and a fresh four-artifact `vp pack`. The packed M4
+  declaration is 44.51 kB and confirms that task sibling order, dependency update,
+  project queries/session, adaptive scale/range ownership, localization/direction,
+  and dependency targets are not yet public.
+- 2026-07-31: The user confirmed that the package is unpublished pre-alpha software
+  and authorized schema-version-1 rework where it improves the durable contract.
+  Slice 1 therefore accepts optional finite task sibling `order` in schema version 1
+  rather than making array position the only durable tree-order mechanism. This is a
+  substantive deviation from the plan's no-schema-change expectation, but it needs no
+  migration or version bump because no version-1 artifact has shipped.
+- 2026-07-31: The accepted M5 decision resolves all 13 contract questions, including
+  deterministic hierarchy repair, collapsed-ID session state, pure project query
+  callbacks, read-only summary spans, milestone points, graph/update policy, proxy and
+  clipped dependency paths, keyboard linking, range/scale ownership, zoom gesture
+  exclusions, deterministic localization/RTL, SSR behavior, and the `/project`
+  acceptance matrix. Runtime behavior remains unchanged in this docs-only slice.
+- 2026-07-31: Slice 1 verification passed on the final contract state. `mise run
+  check` covered 160 formatted files and 149 lint/type files. Focused decision/plan/
+  architecture/roadmap link and stale-handoff searches passed, `git diff --check`
+  passed, and `vp pack` produced four artifacts including the 44.51 kB packed M4
+  declaration. Full `mise run ci` passed 68 test files / 357 tests, formatting,
+  lint/types, and the same four package artifacts. No runtime code changed.
 
 ## Next Slice
 
-Start Slice 1 by inspecting the packed root declaration together with
-`packages/gantt/src/model/types.ts`, `packages/gantt/src/commands/types.ts`,
-`packages/gantt/src/view/types.ts`, `packages/gantt/src/runtime/types.ts`,
-`packages/gantt/src/react/types.ts`, the M3/M4 decisions, and the Community/Pro
-decision. Prototype only the minimum type shapes needed to answer the 13 open
-questions, then write and link the M5 decision record. Do not begin hierarchy,
-dependency, zoom, localization, RTL, or SSR runtime implementation until the decision
-slice passes `vp pack`, focused cross-document checks, `git diff --check`, and
-`mise run ci`.
+Start Slice 2 in `packages/gantt/src/model/types.ts`, the private record schemas and
+codec/serializer, `packages/gantt/src/model/{diagnostics,indexes,validate}.ts`, and
+`packages/gantt/src/commands/{types,normalize,reduce,validate}.ts`. Add optional finite
+task `order`, build the pure hierarchy indexes/recovery boundary, and enforce strict
+add/update parent and kind rules with affected old/new ancestor and descendant
+references. Preserve every unrelated parsed task and existing dependency faults. Add
+fixed-seed properties for order, forests, cycles, reparenting, transactions, patches,
+inverses, history, facade types, and entity-change projection; then record focused
+evidence and run `mise run ci` before the Slice 2 commit. Do not begin visible tree
+projection in Slice 3 until Slice 2 is verified.
