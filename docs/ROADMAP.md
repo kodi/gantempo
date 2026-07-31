@@ -410,6 +410,43 @@ bottom-sheet layout, focus, Escape restoration, modal isolation, console, networ
 and accessibility-tree behavior are recorded in the completed plan. The timeline
 navigation correction is complete; Appendix Slice A1 is the next action.
 
+### Post-M4 lane-properties trigger polish
+
+**Status:** `[x]` Complete and verified
+
+The
+[lane-properties trigger polish plan](plans/2026-07-31-lane-properties-trigger-polish-plan.md)
+keeps the package-owned default chrome and reuses its existing Lucide icon system.
+It replaces the zero-padding text ellipsis with balanced button geometry and focused
+interaction states while preserving the accepted properties, accessibility,
+focus-return, and customization contracts. The first live measurement exposed
+overlap with the final code column, so the completed implementation reserves a
+dedicated visual control column instead of subtracting button space from consumer
+content.
+
+Focused verification passed 2 files / 13 tests. The complete CI gate passed 67 files
+/ 347 tests and all four package artifacts; the production playground transformed
+1,918 modules. Built-in Browser fallback checks at 1,440 × 900 and 390 × 844 found
+balanced 36 × 30px trigger/18px icon geometry, 48.74px code-to-button clearance,
+7px/9px control-cell insets, zero page/chart overflow, complete lane-specific
+accessible names, correct focus return and outline, and no application console
+warning/error. Chrome DevTools was profile-locked, so no live request-ledger claim is
+made.
+
+User review then found the bordered horizontal-ellipsis control too prominent for an
+occasional action. Completed follow-up Slice 2.1 uses a 16px vertical overflow icon
+inside a 28 × 28px transparent resting control and a 44px reserved column. Hover and
+keyboard focus restore the full surface; coarse-pointer styling keeps the quiet icon
+discoverable without restoring the card treatment.
+
+Focused tests again passed 2 files / 13 tests; the complete CI gate again passed 67
+files / 347 tests and all four artifacts, and the production playground again
+transformed 1,918 modules. Built-in Browser fallback at 1,440 × 900 and 390 × 844
+confirmed 48.74px code clearance, 7px/9px control insets, zero page/chart overflow,
+complete accessible names, correct focus return/emphasis, and a clean application
+console. Chrome DevTools remained profile-locked, so no live request-ledger claim is
+made.
+
 ### Post-M4 overlay-boundary hardening
 
 **Status:** `[x]` Complete and verified

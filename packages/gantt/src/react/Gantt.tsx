@@ -20,6 +20,7 @@ import {
   type RefAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { EllipsisVertical } from 'lucide-react';
 
 import type { GanttCommand } from '../commands/types';
 import {
@@ -117,6 +118,8 @@ const APPEARANCE_PROPERTIES: Readonly<Record<GanttAppearanceToken, string>> = {
   'task.progressFill': '--gt-task-progress-fill',
   'task.text': '--gt-task-text',
 };
+
+const LANE_PROPERTIES_COLUMN_WIDTH = 44;
 
 const OVERLAY_SAFE_AREA = 8;
 const THEME_PROPERTIES = [
@@ -250,6 +253,14 @@ function laneStyle(y: number, height: number, defaultHeight: number): GanttLaneS
     position: 'absolute',
     top: y,
   } as GanttLaneStyle;
+}
+
+function lanePropertiesTriggerStyle(y: number, laneHeight: number): CSSProperties {
+  const height = Math.min(28, Math.max(24, laneHeight - 12));
+  return {
+    height,
+    top: y + (laneHeight - height) / 2,
+  };
 }
 
 function appearanceStyle(
@@ -1027,8 +1038,15 @@ function GanttSurface({
       ),
     [resolvedColumns, scene.bounds.laneColumnWidth],
   );
-  const laneColumnWidth = columnWidths.reduce((total, width) => total + width, 0);
-  const columnTemplate = columnWidths.map((width) => `${width}px`).join(' ');
+  const laneColumnWidth =
+    columnWidths.reduce((total, width) => total + width, 0) +
+    (propertiesEnabled ? LANE_PROPERTIES_COLUMN_WIDTH : 0);
+  const columnTemplate = [
+    ...columnWidths,
+    ...(propertiesEnabled ? [LANE_PROPERTIES_COLUMN_WIDTH] : []),
+  ]
+    .map((width) => `${width}px`)
+    .join(' ');
   const taskByViewKey = useMemo(
     () => new Map(scene.taskBars.map((task) => [task.viewKey, task])),
     [scene.taskBars],
@@ -2588,6 +2606,13 @@ function GanttSurface({
               {column.header}
             </span>
           ))}
+          {propertiesEnabled ? (
+            <span
+              className="gt-gantt__lane-properties-header"
+              data-gt-part="lane-properties-header"
+              title="Lane properties"
+            />
+          ) : null}
         </div>
         <div
           aria-hidden="true"
@@ -2664,6 +2689,12 @@ function GanttSurface({
                         {renderLaneColumn(column, lane.viewKey)}
                       </div>
                     ))}
+                    {propertiesEnabled ? (
+                      <div
+                        className="gt-gantt__lane-properties-cell"
+                        data-gt-part="lane-properties-cell"
+                      />
+                    ) : null}
                   </div>
                 ))}
                 {propertiesEnabled
@@ -2676,13 +2707,10 @@ function GanttSurface({
                           data-view-key={lane.viewKey}
                           key={`${lane.viewKey}:properties`}
                           onClick={() => openLaneProperties(lane.viewKey)}
-                          style={{
-                            height: Math.min(30, Math.max(24, lane.height - 12)),
-                            top: lane.y + Math.max(6, (lane.height - 30) / 2),
-                          }}
+                          style={lanePropertiesTriggerStyle(lane.y, lane.height)}
                           type="button"
                         >
-                          <span aria-hidden="true">•••</span>
+                          <EllipsisVertical aria-hidden="true" />
                         </button>
                       ),
                     )

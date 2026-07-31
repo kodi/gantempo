@@ -39,3 +39,22 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain('transition: none');
   });
 });
+
+describe('lane properties trigger stylesheet', () => {
+  it('gives the icon control explicit inset spacing and motion fallback', () => {
+    expect(stylesheet).toMatch(
+      /\.gt-gantt__lane-properties-trigger\)[^{]*\{[^}]*box-sizing: border-box;[^}]*width: 28px;[^}]*padding: 0 5px;/s,
+    );
+    expect(stylesheet).toMatch(
+      /\.gt-gantt__lane-properties-trigger svg\)[^{]*\{[^}]*width: 16px;[^}]*height: 16px;/s,
+    );
+    expect(stylesheet).toContain('border: 1px solid transparent');
+    expect(stylesheet).toContain('background: transparent');
+    expect(stylesheet).toContain('opacity: 0.64');
+    expect(stylesheet).toContain('opacity: 0.82');
+    expect(stylesheet).toContain('.gt-gantt__lane-properties-trigger:active');
+    expect(stylesheet).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[^{]*\{[\s\S]*\.gt-gantt__lane-properties-trigger[\s\S]*transition: none;/,
+    );
+  });
+});

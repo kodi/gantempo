@@ -136,7 +136,7 @@ describe('item properties surface', () => {
 
   it('edits a persisted lane and returns focus to its accessible trigger', async () => {
     const ref = createRef<GanttHandle>();
-    render(
+    const { container } = render(
       <Gantt
         {...COMMON}
         appearanceVariants={appearanceVariants()}
@@ -147,6 +147,10 @@ describe('item properties surface', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Lane A properties' });
+    expect(container.querySelector('[data-gt-part="lane-properties-header"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-gt-part="lane-properties-cell"]')).toHaveLength(2);
+    expect(trigger.querySelector('svg.lucide-ellipsis-vertical[aria-hidden="true"]')).toBeTruthy();
+    expect(trigger.textContent).toBe('');
     fireEvent.click(trigger);
     const dialog = await screen.findByRole('dialog', { name: 'Edit Lane A properties' });
     expect(within(dialog).getByText('resource-a')).toBeTruthy();
