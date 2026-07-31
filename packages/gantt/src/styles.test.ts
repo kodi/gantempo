@@ -23,6 +23,15 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain("[data-gt-part='progress-handle']");
     expect(stylesheet).toContain("[data-gt-part='progress-hit-target']");
     expect(stylesheet).toContain("[data-gt-part='progress-preview-value']");
+    const interactionPreviewZIndex = Number(
+      stylesheet.match(/\.gt-gantt__interaction-preview\)[^{]*\{[^}]*z-index: (\d+);/s)?.[1],
+    );
+    const progressValueZIndex = Number(
+      stylesheet.match(
+        /\[data-gt-part='progress-preview-value'\]\)[^{]*\{[^}]*z-index: (\d+);/s,
+      )?.[1],
+    );
+    expect(progressValueZIndex).toBeGreaterThan(interactionPreviewZIndex);
     expect(stylesheet).toContain('@media (pointer: coarse)');
     expect(stylesheet).toContain('width: 44px');
   });

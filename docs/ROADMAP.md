@@ -126,7 +126,7 @@ Detailed completion evidence is recorded in
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
-| M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
+| M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | [Active plan](plans/2026-07-31-basic-project-gantt-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -164,19 +164,40 @@ The completed M0 vertical slice proves the renderer direction, M1 and M2 complet
 architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
-semantic-color, and progress appendix are complete. M5 detailed planning is next.
+semantic-color, and progress appendix are complete. The M5 plan is active, and its
+contract decision is next.
 
 ## Current Focus
 
+### M5: Basic project Gantt
+
+**Status:** `[ ]` Planned; Slice 1 contract decision is next
+
+The
+[active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
+splits architecture Slice 4 into 13 ordered implementation slices: contract freeze;
+hierarchy integrity; project-tree projection; summary/milestone semantics; accessible
+React integration; dependency graph analysis; dependency geometry; dependency editing;
+adaptive zoom; localization and RTL; selective Community integration; public/SSR
+consumers; and final milestone evidence.
+
+Planning preserves the completed M1–M4 model, command, view, runtime, interaction,
+customization, persistence, package, and SSR boundaries. Community M5 remains manual
+and diagnostic: automatic scheduling, working calendars, persisted summary rollups,
+critical path, resource planning, and other Pro behavior remain M6 scope.
+
+The next action is M5 Slice 1: accept and link the focused public/engine contract
+before any hierarchy, dependency, zoom, localization, RTL, or SSR runtime work begins.
+
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[x]` Complete; M5 detailed planning next
+**Status:** `[x]` Complete; M5 Slice 1 is next
 
 The bounded
 [progress-drag feedback follow-up](plans/2026-07-31-progress-drag-feedback-plan.md)
 is complete. It keeps the completed appendix boundary intact while making direct
 progress adjustment snap to five-point increments and visibly report the immutable
-preview percentage during the gesture. M5 detailed planning remains next.
+preview percentage during the gesture. The active M5 plan now owns the next action.
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -302,7 +323,7 @@ inspection, 44x24 px coarse progress targeting, reduced-motion behavior, forced-
 rule coverage, zero overflow, a clean console, and 74 successful requests. Final
 `mise run ci` passes 158 formatted files, 147 lint/type files, 67 test files / 346
 tests, and four package artifacts. The accepted architecture and decision boundaries
-remain unchanged; M5 detailed planning is the next action.
+remain unchanged; M5 Slice 1 is the next action.
 
 ### Post-M4 Interactive Custom consumer integration
 
@@ -565,7 +586,7 @@ across 49 files.
 
 ### M4 appendix: Item properties, semantic color, and progress
 
-**Status:** `[x]` Complete; M5 detailed planning is the next action
+**Status:** `[x]` Complete; M5 Slice 1 is the next action
 
 **Target outcome**
 
@@ -583,7 +604,9 @@ command, event, accessibility, customization, and package boundaries.
 
 **Next action**
 
-Create the detailed M5 basic-project-Gantt plan. The completed
+Begin Slice 1 of the
+[active M5 basic-project-Gantt plan](plans/2026-07-31-basic-project-gantt-plan.md).
+The completed
 [item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
 contains the appendix implementation and final evidence.
 
@@ -661,6 +684,14 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Created the detailed M5 basic-project-Gantt implementation plan and
+  linked it as the active roadmap plan. The plan keeps M5 at `[ ]`, preserves the
+  completed Community model/runtime boundary, splits the milestone into 13 ordered
+  contract, kernel, integration, consumer, and final-evidence slices, and selects the
+  focused M5 contract decision as the next action. Planning validation passed diff,
+  whitespace, link, stale-handoff, and slice-structure checks. No runtime behavior
+  changed, so the code/test/build suite was not run.
 
 - 2026-07-30: Completed and verified the timeline-navigation correction. Slice 8
   added fixed-seed steady controlled horizontal pan to the existing

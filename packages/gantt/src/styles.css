@@ -407,7 +407,7 @@
 
   :where(.gt-gantt [data-gt-part='progress-preview-value']) {
     position: absolute;
-    z-index: 1;
+    z-index: 4;
     box-sizing: border-box;
     min-width: 34px;
     padding: 2px 5px;
