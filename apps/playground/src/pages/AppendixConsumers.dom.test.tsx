@@ -19,6 +19,11 @@ describe('M4 appendix playground consumers', () => {
     expect(task.querySelector('[data-gt-part="progress-handle"]')).not.toBeNull();
     fireEvent.click(task);
 
+    expect(task.getAttribute('aria-pressed')).toBe('true');
+    expect(task.getAttribute('data-selected')).toBe('true');
+    expect(task.textContent?.toLowerCase()).not.toContain('selected');
+    expect(task.classList.contains('interactive-task--selected')).toBe(false);
+
     const dialog = screen.getByRole('dialog', { name: 'Edit Work item 1 properties' });
     expect((within(dialog).getByLabelText('Progress (percent)') as HTMLInputElement).value).toBe(
       '80',

@@ -101,12 +101,12 @@ function loadApiDocument(): GanttDocument {
   return parsed.document;
 }
 
-function InteractiveTaskContent({ pending, selected, task }: GanttTaskContentProps): ReactElement {
+function InteractiveTaskContent({ pending, task }: GanttTaskContentProps): ReactElement {
   return (
     <span className="interactive-task-content">
       <i aria-hidden="true" />
       <span>{task.title}</span>
-      {pending ? <small>saving</small> : selected ? <small>selected</small> : null}
+      {pending ? <small>saving</small> : null}
     </span>
   );
 }
@@ -429,7 +429,6 @@ export function InteractivePage(): ReactElement {
             contextMenu: 'interactive-surface-menu',
             editor: 'interactive-surface-editor',
             laneHeader: 'interactive-column-cell',
-            task: ({ selected }) => (selected ? 'interactive-task--selected' : undefined),
             taskContent: 'interactive-task-slot',
             tooltip: 'interactive-surface-tooltip',
           }}

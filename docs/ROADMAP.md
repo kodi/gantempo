@@ -447,6 +447,25 @@ complete accessible names, correct focus return/emphasis, and a clean applicatio
 console. Chrome DevTools remained profile-locked, so no live request-ledger claim is
 made.
 
+### Post-M4 inline selected-label removal
+
+**Status:** `[x]` Complete and verified
+
+The
+[inline selected-label removal plan](plans/2026-07-31-inline-selected-label-removal-plan.md)
+removes the controlled playground's redundant inline `SELECTED` label and extra
+selected paint. The package's blue outline, `aria-pressed`, `data-selected`, public
+slot/class state, runtime selection, events, and imperative access remain unchanged.
+The focused consumer test passed 1 file / 2 tests; the complete CI gate passed 67
+files / 347 tests and all four artifacts, and the production playground transformed
+1,918 modules.
+
+Built-in Browser fallback at 1,440 × 900 and 390 × 844 confirmed the selected task
+renders only its title while retaining `aria-pressed="true"`,
+`data-selected="true"`, and the blue 2px outline. No selected label/class, page/chart
+overflow, or application console warning/error remained. Chrome DevTools was
+profile-locked, so no live request-ledger claim is made.
+
 ### Post-M4 overlay-boundary hardening
 
 **Status:** `[x]` Complete and verified

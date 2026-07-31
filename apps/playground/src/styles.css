@@ -380,10 +380,6 @@ button {
   text-transform: uppercase;
 }
 
-.interactive-task--selected .gt-gantt__task-bar {
-  filter: saturate(1.2) brightness(0.9);
-}
-
 .interactive-surface-tooltip,
 .interactive-surface-menu,
 .interactive-surface-editor {
