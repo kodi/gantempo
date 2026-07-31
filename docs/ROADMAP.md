@@ -306,7 +306,7 @@ remain unchanged; M5 detailed planning is the next action.
 
 ### Post-M4 Interactive Custom consumer integration
 
-**Status:** `[-]` Slice 1 complete; package seam next
+**Status:** `[-]` Slice 2 complete; custom consumer next
 
 The
 [Interactive Custom integration plan](plans/2026-07-31-interactive-custom-integration-plan.md)
@@ -322,9 +322,11 @@ application edit request. Slice 1 accepts the narrow, task-only
 `GanttTaskEditRequest` / `onTaskEditRequest` callback. The action remains disabled for
 read-only controlled charts; on mutable charts it closes the menu without restoring
 chart focus, publishes one immutable request, and does not enter the command,
-history, persistence, or overlay lifecycle. Package/facade coverage is the next
-slice, followed by the custom consumer and desktop/narrow live browser verification.
-Slice 1 passed `mise run ci` with 67 test files and 348 tests.
+history, persistence, or overlay lifecycle. Slice 2 publishes the package-root seam
+with pointer, keyboard, focus, fallback, read-only, exact-once, and instance-isolation
+coverage. Its focused 4-file / 29-test gate, packed declaration inspection, and full
+`mise run ci` gate with 67 test files / 352 tests pass. The custom consumer is next,
+followed by desktop/narrow live browser verification.
 
 ### Post-M4 persistence entity-change projection
 
@@ -869,6 +871,21 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — Interactive Custom package seam complete
+
+- Published `GanttTaskEditRequest` and `GanttProps.onTaskEditRequest` from the package
+  root.
+- Let the callback enable the built-in task menu without enabling a package editor;
+  selecting `Edit properties` closes the menu, publishes one frozen request, and
+  leaves focus available to application-owned chrome.
+- Preserved the existing editor fallback when the callback is absent and kept
+  read-only controlled charts disabled.
+- Verified task activation independence, keyboard and pointer paths, exact-once
+  delivery, focus, no package dialog, two-instance isolation, root-facade typing, and
+  packed declarations.
+- Passed 4 focused files / 29 tests and `mise run ci` with 67 files / 352 tests.
+  Slice 3 will add the controlled `/interactive-custom` consumer.
 
 ### 2026-07-31 — Interactive Custom edit-request contract accepted
 

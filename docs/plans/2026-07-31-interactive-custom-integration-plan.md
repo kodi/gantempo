@@ -1,6 +1,6 @@
 # Interactive Custom Integration Plan
 
-Status: Active; Slice 1 complete
+Status: Active; Slice 2 complete
 Date: 2026-07-31
 Milestone: Post-M4 consumer integration proof
 
@@ -279,7 +279,7 @@ Dependencies: Satisfied by the implementation request accepting this proposed pl
 
 ### Slice 2: Publish and verify the package request seam
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Add the accepted callback without changing default editor behavior.
 
@@ -431,6 +431,27 @@ Dependencies: Slice 3 and a reachable Chrome DevTools MCP page.
   terminology search, `git diff --check`, and `mise run ci` (67 test files and 348
   tests, plus formatting, lint, types, and package build).
 
+### 2026-07-31 — Slice 2 package request seam
+
+- Added and exported `GanttTaskEditRequest` and
+  `GanttProps.onTaskEditRequest` through the package root.
+- The callback itself enables the built-in task menu. On mutable charts,
+  `Edit properties` closes that menu without restoring task focus and publishes one
+  frozen request. It opens no package editor and dispatches no command.
+- A controlled chart without `onDocumentChange` keeps the edit item disabled with
+  `The chart is read-only.` Existing consumers without the callback retain the
+  current `ItemProperties` / `TaskEditor` fallback.
+- Focused DOM and facade coverage proves ordinary activation independence,
+  Shift+F10 and pointer-opened paths, exact-once delivery, frozen request/target,
+  menu closure, no dialog, read-only behavior, fallback, and two-instance isolation.
+- Verification passed:
+  - `vp test run packages/gantt/src/react/Gantt.customization.dom.test.tsx packages/gantt/src/react/Gantt.keyboard.dom.test.tsx packages/gantt/src/index.react-runtime.test.tsx packages/gantt/src/index.consumer.dom.test.tsx`
+    (4 files, 29 tests);
+  - `vp pack` at the repository root;
+  - packed `packages/gantt/dist/index.d.ts` inspection for both public names;
+  - `mise run ci` (67 files, 352 tests, formatting, lint, types, and package build);
+  - `git diff --check`.
+
 ## Final Verification
 
 - `git diff --check` passed for the tracked documentation change.
@@ -440,10 +461,14 @@ Dependencies: Slice 3 and a reachable Chrome DevTools MCP page.
 - Slice 1: link-target checks and focused terminology search passed;
   `mise run ci` passed 67 test files / 348 tests plus formatting, lint, type, and
   package-build gates.
+- Slice 2: focused React/facade tests passed 4 files / 29 tests, `vp pack` and packed
+  declaration inspection passed, and `mise run ci` passed 67 files / 352 tests plus
+  formatting, lint, types, and package build.
 
 ## Next Slice
 
-Start Slice 2 in `packages/gantt/src/react/types.ts`,
-`packages/gantt/src/react/Gantt.tsx`, the package-root facade, and focused React DOM
-tests. Run focused tests, `vp pack`, declaration inspection, `mise run ci`, and
-`git diff --check` before committing the package seam.
+Commit Slice 2, then start Slice 3 in
+`apps/playground/src/pages/InteractiveCustomPage.tsx`,
+`apps/playground/src/Playground.tsx`, `apps/playground/src/styles.css`, and focused
+playground DOM tests. Preserve the controlled command/history behavior, omit all API
+log state, and verify the custom display/edit panel before committing.

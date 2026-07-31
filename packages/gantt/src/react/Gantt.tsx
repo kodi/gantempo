@@ -944,6 +944,7 @@ function GanttSurface({
   features,
   interactionMappers,
   label,
+  onTaskEditRequest,
   overlayContainer,
   panCapable,
   runtime,
@@ -963,6 +964,7 @@ function GanttSurface({
   readonly features?: GanttProps['features'];
   readonly interactionMappers?: GanttProps['interactionMappers'];
   readonly label: string;
+  readonly onTaskEditRequest?: GanttProps['onTaskEditRequest'];
   readonly overlayContainer?: GanttProps['overlayContainer'];
   readonly panCapable: boolean;
   readonly runtime: GanttReactRuntime;
@@ -1007,7 +1009,8 @@ function GanttSurface({
   const menuEnabled =
     features?.contextMenu === true ||
     slots?.ContextMenu !== undefined ||
-    contextMenuItems !== undefined;
+    contextMenuItems !== undefined ||
+    onTaskEditRequest !== undefined;
   const propertiesEnabled = features?.properties === true || slots?.ItemProperties !== undefined;
   const legacyEditorEnabled = features?.editor === true || slots?.TaskEditor !== undefined;
   const editorEnabled = propertiesEnabled || legacyEditorEnabled;
@@ -2022,11 +2025,16 @@ function GanttSurface({
   const activeMenuEditReason =
     activeMenuTask === undefined
       ? undefined
-      : propertiesEnabled
-        ? taskPropertiesValue(activeMenuTask, runtime.getSnapshot().selector.document) === undefined
-          ? 'The canonical task no longer exists.'
+      : onTaskEditRequest !== undefined
+        ? disabled
+          ? 'The chart is read-only.'
           : undefined
-        : taskEditDisabledReason(activeMenuTask, runtime, disabled, legacyEditorEnabled);
+        : propertiesEnabled
+          ? taskPropertiesValue(activeMenuTask, runtime.getSnapshot().selector.document) ===
+            undefined
+            ? 'The canonical task no longer exists.'
+            : undefined
+          : taskEditDisabledReason(activeMenuTask, runtime, disabled, legacyEditorEnabled);
   const additionalMenuItems =
     activeMenuSummary === undefined
       ? []
@@ -2053,11 +2061,14 @@ function GanttSurface({
             action: 'edit',
             ...(activeMenuEditReason === undefined ? {} : { disabledReason: activeMenuEditReason }),
             id: 'edit',
-            label: propertiesEnabled
-              ? disabled
-                ? 'View properties'
-                : 'Edit properties'
-              : 'Edit task',
+            label:
+              onTaskEditRequest !== undefined
+                ? 'Edit properties'
+                : propertiesEnabled
+                  ? disabled
+                    ? 'View properties'
+                    : 'Edit properties'
+                  : 'Edit task',
           },
           ...additionalMenuItems.map((item) =>
             disabled && item.disabledReason === undefined
@@ -2078,6 +2089,15 @@ function GanttSurface({
     const target = taskTarget(activeMenuTask);
     if (item.action === 'edit') {
       closeMenu(false);
+      if (onTaskEditRequest !== undefined) {
+        onTaskEditRequest(
+          Object.freeze({
+            source: 'context-menu',
+            target,
+          }),
+        );
+        return;
+      }
       openEditor(activeMenuTask.viewKey);
       return;
     }
@@ -2894,6 +2914,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     label = 'Gantt chart',
     locale = 'en-US',
     onDiagnostics,
+    onTaskEditRequest,
     overlayContainer,
     slots,
   } = props;
@@ -3075,6 +3096,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         features={features}
         interactionMappers={interactionMappers}
         label={label}
+        onTaskEditRequest={onTaskEditRequest}
         overlayContainer={overlayContainer}
         panCapable={props.onRangeChange !== undefined}
         runtime={runtime}

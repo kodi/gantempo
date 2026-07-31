@@ -17,6 +17,7 @@ import {
   type GanttSelectorSnapshot,
   type GanttSessionState,
   type GanttSlots,
+  type GanttTaskEditRequest,
 } from './index';
 
 const document: GanttDocument = {
@@ -95,6 +96,15 @@ describe('public React runtime facade', () => {
       TaskContent: ({ task }) => <span>{task.title}</span>,
     } satisfies GanttSlots;
     const overlayContainer = (() => null) satisfies GanttOverlayContainer;
+    const editRequest = {
+      source: 'context-menu',
+      target: {
+        kind: 'task',
+        laneViewKey: 'lane-a',
+        taskId: 'task-a',
+        viewKey: 'task-a',
+      },
+    } satisfies GanttTaskEditRequest;
     const keyboardInteraction: GanttInteractionState = {
       action,
       announcement: 'Move mode.',
@@ -136,6 +146,7 @@ describe('public React runtime facade', () => {
     expect(items[0]?.id).toBe('rename');
     expect(slots.TaskContent).toBeTypeOf('function');
     expect(overlayContainer()).toBeNull();
+    expect(editRequest.source).toBe('context-menu');
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
   });

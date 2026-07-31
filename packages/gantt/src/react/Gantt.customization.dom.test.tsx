@@ -12,6 +12,7 @@ import type {
   GanttContextMenuProps,
   GanttLaneHeaderProps,
   GanttTaskContentProps,
+  GanttTaskEditRequest,
   GanttTooltipProps,
 } from './types';
 
@@ -296,6 +297,143 @@ describe('Gantt customization surfaces', () => {
     );
     expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Gantt chart' }));
     expect(screen.getByText('Delete committed.')).not.toBeNull();
+    await expectNoAxeViolations(view.container);
+  });
+
+  it('publishes one frozen task edit request from the keyboard menu without opening an editor', async () => {
+    const activated: string[] = [];
+    const requests: GanttTaskEditRequest[] = [];
+    const user = userEvent.setup();
+    const view = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        onTaskActivate={(target) => activated.push(target.taskId)}
+        onTaskEditRequest={(request) => requests.push(request)}
+      />,
+    );
+    installGeometry(view.container);
+    const task = screen.getByRole('button', { name: /Task A/ });
+    task.focus();
+
+    await user.keyboard('{Enter}');
+    expect(activated).toEqual(['task-a']);
+    expect(requests).toEqual([]);
+
+    await user.keyboard('{Shift>}{F10}{/Shift}');
+    const menu = await screen.findByRole('menu', { name: 'Task A actions' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Edit properties' }));
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      source: 'context-menu',
+      target: {
+        kind: 'task',
+        laneId: 'lane-a',
+        placementId: 'placement-a',
+        taskId: 'task-a',
+      },
+    });
+    expect(Object.isFrozen(requests[0])).toBe(true);
+    expect(Object.isFrozen(requests[0]?.target)).toBe(true);
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).not.toBe(task);
+    await expectNoAxeViolations(view.container);
+  });
+
+  it('keeps the edit request disabled for read-only controlled charts', async () => {
+    const requests: GanttTaskEditRequest[] = [];
+    const user = userEvent.setup();
+    const view = render(
+      <Gantt
+        {...commonProps()}
+        document={documentFixture()}
+        onTaskEditRequest={(request) => requests.push(request)}
+      />,
+    );
+    installGeometry(view.container);
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Task A/ }));
+    const menu = await screen.findByRole('menu', { name: 'Task A actions' });
+    const edit = within(menu).getByRole<HTMLButtonElement>('menuitem', {
+      name: 'Edit properties: The chart is read-only.',
+    });
+    expect(edit.disabled).toBe(true);
+    await user.click(edit);
+    expect(requests).toEqual([]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await expectNoAxeViolations(view.container);
+  });
+
+  it('preserves context-menu editor fallback when no edit-request callback is present', async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <Gantt
+        {...commonProps()}
+        defaultDocument={documentFixture()}
+        features={{ contextMenu: true, editor: true }}
+      />,
+    );
+    installGeometry(view.container);
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Task A/ }));
+    const menu = await screen.findByRole('menu', { name: 'Task A actions' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Edit task' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Edit Task A' })).toBeTruthy();
+  });
+
+  it('isolates pointer-opened task edit requests by chart instance', async () => {
+    const firstRequests: GanttTaskEditRequest[] = [];
+    const secondRequests: GanttTaskEditRequest[] = [];
+    const user = userEvent.setup();
+    const view = render(
+      <div>
+        <Gantt
+          {...commonProps()}
+          defaultDocument={documentFixture('First task')}
+          label="First chart"
+          onTaskEditRequest={(request) => firstRequests.push(request)}
+        />
+        <Gantt
+          {...commonProps()}
+          defaultDocument={documentFixture('Second task')}
+          label="Second chart"
+          onTaskEditRequest={(request) => secondRequests.push(request)}
+        />
+      </div>,
+    );
+    installGeometry(
+      within(screen.getByRole('region', { name: 'First chart' }))
+        .getByRole('button')
+        .closest('[data-gt-part="root"]')!,
+    );
+    installGeometry(
+      within(screen.getByRole('region', { name: 'Second chart' }))
+        .getByRole('button')
+        .closest('[data-gt-part="root"]')!,
+    );
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /First task/ }));
+    await user.click(
+      within(await screen.findByRole('menu', { name: 'First task actions' })).getByRole(
+        'menuitem',
+        { name: 'Edit properties' },
+      ),
+    );
+    expect(firstRequests).toHaveLength(1);
+    expect(secondRequests).toEqual([]);
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Second task/ }));
+    await user.click(
+      within(await screen.findByRole('menu', { name: 'Second task actions' })).getByRole(
+        'menuitem',
+        { name: 'Edit properties' },
+      ),
+    );
+    expect(firstRequests).toHaveLength(1);
+    expect(secondRequests).toHaveLength(1);
     await expectNoAxeViolations(view.container);
   });
 

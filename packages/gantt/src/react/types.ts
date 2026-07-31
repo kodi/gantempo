@@ -35,6 +35,11 @@ export interface GanttSemanticEvent {
   readonly source: 'controlled-prop' | 'imperative' | 'runtime';
 }
 
+export interface GanttTaskEditRequest {
+  readonly source: 'context-menu';
+  readonly target: GanttTaskTarget;
+}
+
 export interface GanttViewportChange {
   readonly range: TimeRange;
   readonly session: GanttSessionState['viewport'];
@@ -353,6 +358,7 @@ interface GanttBaseProps {
   ) => void;
   readonly onSessionChange?: (session: GanttSessionState, event: GanttSemanticEvent) => void;
   readonly onTaskActivate?: (target: GanttTaskTarget, event: GanttSemanticEvent) => void;
+  readonly onTaskEditRequest?: (request: GanttTaskEditRequest) => void;
   readonly onViewportChange?: (viewport: GanttViewportChange, event: GanttSemanticEvent) => void;
   readonly overlayContainer?: GanttOverlayContainer;
   readonly range: TimeRange;

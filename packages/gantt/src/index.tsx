@@ -33,6 +33,7 @@ export type {
   GanttSemanticEvent,
   GanttSlots,
   GanttTaskContentProps,
+  GanttTaskEditRequest,
   GanttTaskEditorProps,
   GanttTaskEditorValue,
   GanttTaskSummary,
