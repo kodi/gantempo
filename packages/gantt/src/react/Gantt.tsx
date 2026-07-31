@@ -32,7 +32,11 @@ import {
   type EffectiveAppearancePrimitive,
   type GanttAppearanceToken,
 } from '../render/appearance';
-import type { LaneRowPrimitive, TaskBarPrimitive } from '../render/primitives';
+import type {
+  DependencyPathPrimitive,
+  LaneRowPrimitive,
+  TaskBarPrimitive,
+} from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import {
   createGanttReactRuntime,
@@ -70,6 +74,10 @@ interface GanttRootStyle extends CSSProperties {
   readonly '--gt-lane-column-width': string;
   readonly '--gt-timeline-height': string;
   readonly '--gt-timeline-height-ratio': number;
+}
+
+function dependencyTypeLabel(type: DependencyPathPrimitive['type']): string {
+  return type.replaceAll('-', ' ');
 }
 
 interface TaskOverlayPosition {
@@ -1139,6 +1147,7 @@ function GanttSurface({
   const menuId = `${accessibilityId}-context-menu`;
   const editorId = `${accessibilityId}-editor`;
   const editorErrorId = `${accessibilityId}-editor-error`;
+  const dependencyMarkerId = `${accessibilityId.replaceAll(':', '')}-dependency-arrow`;
   const tooltipEnabled = features?.tooltip === true || slots?.Tooltip !== undefined;
   const menuEnabled =
     features?.contextMenu === true ||
@@ -2674,6 +2683,31 @@ function GanttSurface({
           ? ' Use each visible lane properties button to inspect or edit a persisted lane.'
           : ''}
       </p>
+      {scene.dependencySummaries.length > 0 ? (
+        <section
+          aria-label="Dependencies"
+          className="gt-gantt__sr-only"
+          data-gt-part="dependency-summaries"
+        >
+          <h2>Dependencies</h2>
+          <ul>
+            {scene.dependencySummaries.map((summary, index) => (
+              <li
+                data-dependency-id={summary.dependency.id}
+                data-hidden-endpoint={summary.hiddenEndpoint || undefined}
+                data-status={summary.status}
+                data-visualized={summary.visualized || undefined}
+                key={`${summary.dependency.id}:${index}`}
+              >
+                {summary.fromTitle} to {summary.toTitle},{' '}
+                {dependencyTypeLabel(summary.dependency.type)}
+                {summary.hiddenEndpoint ? ', one or more endpoints hidden' : ''}
+                {summary.status === 'invalid' ? ', invalid relationship' : ''}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <div
         aria-colcount={resolvedColumns.length + 1}
         aria-describedby={helpId}
@@ -2943,6 +2977,20 @@ function GanttSurface({
                   ))}
                 </div>
                 <svg role="presentation">
+                  <defs>
+                    <marker
+                      id={dependencyMarkerId}
+                      markerHeight="8"
+                      markerUnits="userSpaceOnUse"
+                      markerWidth="8"
+                      orient="auto-start-reverse"
+                      refX="7"
+                      refY="4"
+                      viewBox="0 0 8 8"
+                    >
+                      <path className="gt-gantt__dependency-marker" d="M 0 0 L 8 4 L 0 8 z" />
+                    </marker>
+                  </defs>
                   <g aria-hidden="true" data-gt-part="grid">
                     {scene.gridLines.map((line) => (
                       <line
@@ -2962,6 +3010,74 @@ function GanttSurface({
                         y1={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
                         y2={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
                       />
+                    ))}
+                  </g>
+
+                  <g aria-hidden="true" data-gt-part="dependencies">
+                    {scene.dependencyPaths.map((dependency) => (
+                      <g
+                        className="gt-gantt__dependency"
+                        data-clipped-end={dependency.clippedEnd || undefined}
+                        data-clipped-start={dependency.clippedStart || undefined}
+                        data-dependency-id={dependency.dependencyId}
+                        data-from-task-id={dependency.fromTaskId}
+                        data-from-view-key={dependency.fromViewKey}
+                        data-gt-part="dependency"
+                        data-hidden-endpoint={dependency.hiddenEndpoint || undefined}
+                        data-status={dependency.status}
+                        data-to-task-id={dependency.toTaskId}
+                        data-to-view-key={dependency.toViewKey}
+                        data-type={dependency.type}
+                        key={dependency.dependencyId}
+                      >
+                        {dependency.points.slice(1).map((to, index) => {
+                          const from = dependency.points[index]!;
+                          const markerEnd =
+                            index === dependency.points.length - 2 && !dependency.clippedEnd
+                              ? `url(#${dependencyMarkerId})`
+                              : undefined;
+                          return (
+                            <g key={`${dependency.dependencyId}:${index}`}>
+                              <line
+                                className="gt-gantt__dependency-path"
+                                markerEnd={markerEnd}
+                                x1={percent(from.x)}
+                                x2={percent(to.x)}
+                                y1={percent(from.y / scene.bounds.timelineHeight)}
+                                y2={percent(to.y / scene.bounds.timelineHeight)}
+                              />
+                              <line
+                                className="gt-gantt__dependency-hit"
+                                data-gt-part="dependency-hit-target"
+                                x1={percent(from.x)}
+                                x2={percent(to.x)}
+                                y1={percent(from.y / scene.bounds.timelineHeight)}
+                                y2={percent(to.y / scene.bounds.timelineHeight)}
+                              />
+                            </g>
+                          );
+                        })}
+                        {dependency.clippedStart ? (
+                          <circle
+                            className="gt-gantt__dependency-continuation"
+                            cx={percent(dependency.points[0]!.x)}
+                            cy={percent(dependency.points[0]!.y / scene.bounds.timelineHeight)}
+                            data-edge="start"
+                            data-gt-part="dependency-continuation"
+                            r="3"
+                          />
+                        ) : null}
+                        {dependency.clippedEnd ? (
+                          <circle
+                            className="gt-gantt__dependency-continuation"
+                            cx={percent(dependency.points.at(-1)!.x)}
+                            cy={percent(dependency.points.at(-1)!.y / scene.bounds.timelineHeight)}
+                            data-edge="end"
+                            data-gt-part="dependency-continuation"
+                            r="3"
+                          />
+                        ) : null}
+                      </g>
                     ))}
                   </g>
 

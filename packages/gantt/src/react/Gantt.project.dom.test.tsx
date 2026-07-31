@@ -102,6 +102,37 @@ describe('Gantt project tree integration', () => {
     ).toBeNull();
   });
 
+  it('renders semantic dependency routes and a pointer-independent relationship summary', async () => {
+    const document: GanttDocument = {
+      ...projectDocument(),
+      dependencies: [
+        {
+          fromTaskId: 'task',
+          id: 'implementation-launch',
+          toTaskId: 'milestone',
+          type: 'finish-to-start',
+        },
+      ],
+    };
+    const mounted = render(<Gantt {...commonProps} defaultDocument={document} />);
+    const relationship = mounted.container.querySelector(
+      '[data-gt-part="dependency"][data-dependency-id="implementation-launch"]',
+    );
+    expect(relationship).toMatchObject({
+      dataset: expect.objectContaining({
+        fromTaskId: 'task',
+        status: 'valid',
+        toTaskId: 'milestone',
+        type: 'finish-to-start',
+      }),
+    });
+    expect(relationship?.querySelectorAll('[data-gt-part="dependency-hit-target"]').length).toBe(5);
+    expect(mounted.getByLabelText('Dependencies').textContent).toContain(
+      'Implementation to Launch, finish to start',
+    );
+    expect((await axe.run(mounted.container)).violations).toEqual([]);
+  });
+
   it('collapses from the accessible branch control and keeps the tree valid', async () => {
     const mounted = render(<Gantt {...commonProps} defaultDocument={projectDocument()} />);
     const toggle = mounted.getByRole('button', { name: 'Collapse Release' });

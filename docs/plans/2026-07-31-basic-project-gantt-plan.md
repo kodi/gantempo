@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-6 complete, Slice 7 next
+Status: In progress; Slices 1-7 complete, Slice 8 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -564,7 +564,7 @@ endpoint, type, or cycle rules.
 
 ### Slice 7: Route and render dependency paths
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -593,12 +593,39 @@ can map gestures to commands.
 
 - visible basic dependency paths with semantic diagnostics and no edit mode yet.
 
+**Completed in this slice**
+
+- added a React-free orthogonal routing kernel with semantic start/finish anchors for
+  all four dependency types, deterministic collision channels, preparatory LTR/RTL
+  direction, full content-space geometry, rectangular viewport clipping, and stable
+  continuation endpoints;
+- projected validated project dependencies into required scene path and relationship-
+  summary primitives carrying canonical IDs, source/target occurrence keys, graph
+  status, proxy state, route points, and clipping state while leaving repeated-
+  occurrence views visual-path-free until they have an explicit pairing contract;
+- resolved collapsed descendants and retained filter-context descendants through the
+  nearest visible summary, omitted relationships whose endpoints are unavailable or
+  collapse to the same proxy, and kept every canonical relationship in the nonvisual
+  summary even when no path is painted;
+- rendered paths below task geometry with stable SVG parts, oriented end markers,
+  continuation dots, noninteractive editing-sized hit segments, invalid/proxy and
+  future selected/focused/pending state hooks, reduced-motion behavior, forced-color
+  fallbacks, and pointer-independent accessible relationship text;
+- reused dependency primitive collections when theme-only scene work leaves semantic
+  geometry unchanged, while dependency-only affected invalidation reuses topology,
+  lanes, and task primitives and recalculates graph status/routes.
+
 **Verification**
 
-- focused graph/layout/scene/SVG/style/property tests
-- clipping, virtualization, nested-summary, milestone, RTL-preparatory, appearance,
-  SSR, and forced-colors regressions
-- `mise run ci`
+- focused routing/scene/pipeline/SVG/style/SSR/React DOM/axe tests, including all four
+  types, deterministic channels, nested-summary collapse and filter proxies,
+  same-proxy omission, milestone anchors, vertical virtualization/continuations,
+  RTL-preparatory geometry, cycle status, appearance reuse, and selective invalidation;
+- existing scene-pipeline/property, interaction-scene fixture, project tree, SSR, and
+  stylesheet regressions;
+- `mise run ci`: 80 files / 430 tests, 178 formatted files, 167 lint/type files, four
+  package artifacts, and a 48.75 kB packed declaration; Mise's user-cache write warning
+  remained non-fatal and every repository gate passed.
 
 **Dependencies**
 
@@ -1005,7 +1032,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 4: Resolve summary and milestone presentation semantics
 - [x] Slice 5: Integrate hierarchical task kinds with React and accessibility
 - [x] Slice 6: Add the Community dependency graph and cycle diagnostics
-- [ ] Slice 7: Route and render dependency paths
+- [x] Slice 7: Route and render dependency paths
 - [ ] Slice 8: Add dependency selection and editing workflows
 - [ ] Slice 9: Add adaptive scales, zoom, and fit-to-project
 - [ ] Slice 10: Complete localization and RTL parity
@@ -1163,15 +1190,33 @@ owns the full shapes and rationale. In summary:
   `mise run ci` passed 78 files / 412 tests, 175 formatted files, 164 lint/type files,
   and four package artifacts; the packed declaration is 47.84 kB and adds only the
   public dependency-update command while graph engines remain private.
+- 2026-07-31: Slice 7 routes only the single-occurrence project projection. Document,
+  resource, and custom views still publish complete nonvisual dependency summaries but
+  omit paths because repeated-occurrence endpoint pairing has no accepted M5 contract.
+  Project endpoints use canonical task IDs plus resolved occurrence keys; collapsed or
+  filtered descendants may substitute only their nearest visible summary context, and
+  links whose two endpoints substitute the same summary intentionally have no path.
+- 2026-07-31: Routes are constructed over the complete layout catalog before viewport
+  projection. A rectangular clip keeps crossing segments and emits start/end
+  continuation state, while a route with no timeline/vertical intersection is omitted.
+  Five deterministic channel offsets reduce exact overlap without obstacle avoidance;
+  later interaction and RTL slices consume the same semantic anchors rather than
+  recomputing relationship policy in React.
+- 2026-07-31: Focused routing/scene/pipeline/DOM/SSR/style/axe coverage passed,
+  including all link types, milestone points, nested collapse/filter proxies,
+  same-proxy omission, virtualized offscreen endpoints, cycle diagnostics,
+  preparatory RTL direction, theme identity reuse, and dependency-only invalidation.
+  Final `mise run ci` passed 80 files / 430 tests, 178 formatted files, 167 lint/type
+  files, and four artifacts; the declaration is 48.75 kB. Mise reported only the
+  known non-fatal user-cache sandbox warning.
 
 ## Next Slice
 
-Start Slice 7 with pure dependency endpoint projection and deterministic orthogonal
-routing over the existing project scene. Resolve summary/milestone anchors, collapsed
-ancestor proxies, filtered omission, same-proxy omission, offscreen clipping, route
-identity, marker orientation, and selective invalidation before adding SVG paths.
-Then render semantic path/marker/hit parts plus a complete non-visual relationship
-summary with selected/focused/invalid states and forced-colors behavior. Verify nested
-trees, milestones, viewport clipping, preparatory RTL parity, SSR, styles, and package
-boundaries; run `mise run ci` before the Slice 7 commit. Do not begin dependency edit
-gestures or properties workflows from Slice 8 yet.
+Start Slice 8 by extending occurrence-independent interaction targets and runtime
+selection/focus reconciliation to dependencies, then layer pointer, touch, and
+keyboard link creation over the stable Slice 7 anchors and hit parts. Route every
+accepted create/update/delete intent through the Slice 6 commands, one proposal,
+history, and persistence lifecycle without moving task dates. Add relationship
+inspection/type/lag properties, pending/rejected previews, announcements, gesture
+arbitration, and deterministic focus recovery before the final `mise run ci` and
+Slice 8 commit.

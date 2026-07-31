@@ -176,6 +176,53 @@ describe('Gantt', () => {
     expect(markup).not.toContain('role="progressbar"');
   });
 
+  it('renders project dependency geometry and relationship summaries during SSR', () => {
+    const markup = renderToStaticMarkup(
+      <Gantt
+        document={{
+          ...EMPTY_COLLECTIONS,
+          dependencies: [
+            {
+              fromTaskId: 'task-a',
+              id: 'task-a-task-b',
+              toTaskId: 'task-b',
+              type: 'finish-to-start',
+            },
+          ],
+          lanes: [],
+          placements: [],
+          schemaVersion: 1,
+          tasks: [
+            {
+              id: 'task-a',
+              kind: 'task',
+              schedule: { end: START + DAY, mode: 'instant', start: START },
+              segments: [],
+              title: 'Task A',
+            },
+            {
+              id: 'task-b',
+              kind: 'milestone',
+              schedule: { end: START + 2 * DAY, mode: 'instant', start: START + 2 * DAY },
+              segments: [],
+              title: 'Task B',
+            },
+          ],
+        }}
+        range={{ end: START + 3 * DAY, start: START }}
+        tickAnchor={START}
+        tickInterval={DAY}
+        timeZone="UTC"
+        view={{ kind: 'project' }}
+      />,
+    );
+
+    expect(markup).toContain('data-gt-part="dependency"');
+    expect(markup).toContain('data-dependency-id="task-a-task-b"');
+    expect(markup).toContain('aria-label="Dependencies"');
+    expect(markup).toContain('Task A to Task B, finish to start');
+  });
+
   it('keeps properties closed during read-only SSR while publishing lane activation', () => {
     const markup = renderToStaticMarkup(
       <Gantt

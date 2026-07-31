@@ -36,6 +36,8 @@ function fixture(): {
     dependencies: [],
   };
   const scene: ChartScene = {
+    dependencyPaths: [],
+    dependencySummaries: [],
     range: { start: 0, end: 1_000 },
     bounds: {
       headerHeight: 40,

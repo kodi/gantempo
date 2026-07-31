@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first four slices are complete.
+first seven slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-6 complete, Slice 7 next
+**Status:** `[-]` In progress; Slices 1-7 complete, Slice 8 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -730,6 +730,23 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 7. One React-free routing kernel now maps every
+  dependency type to semantic start/finish anchors, deterministic orthogonal channels,
+  preparatory LTR/RTL direction, and clipped viewport continuations while preserving
+  full content-space geometry. Project scene primitives carry canonical dependency and
+  occurrence identity, graph status, proxy state, route points, and clipping state.
+  Collapsed descendants and retained filter-context descendants proxy to their nearest
+  visible summary; unavailable and same-summary endpoints omit only the visual path,
+  while the pointer-independent relationship summary retains every canonical link.
+  SVG paths render below tasks with oriented markers, continuation dots, stable
+  editing-sized hit parts, invalid/proxy and future interaction-state hooks,
+  forced-colors fallbacks, and reduced-motion behavior. Dependency-only invalidation
+  reuses topology, lanes, and tasks, and appearance-only changes retain dependency
+  primitive identity. Focused routing/scene/pipeline/DOM/SSR/style/axe coverage passed;
+  full `mise run ci` passed 80 files / 430 tests, 178 formatted files, 167 lint/type
+  files, and four package artifacts. The packed declaration is 48.75 kB. Slice 8
+  dependency selection and editing is next.
 
 - 2026-07-31: Completed M5 Slice 6. One private React-free graph analyzer builds
   normalized incoming/outgoing indexes, iterative SCCs and reachability, semantic

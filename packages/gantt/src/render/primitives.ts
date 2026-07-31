@@ -1,5 +1,7 @@
 import type { Diagnostic } from '../model/diagnostics';
 import type {
+  DependencyRecord,
+  DependencyType,
   EntityId,
   EpochMilliseconds,
   GanttDocument,
@@ -112,6 +114,34 @@ export interface TaskBarPrimitive {
   readonly clippedEnd: boolean;
 }
 
+export interface DependencyRoutePointPrimitive {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface DependencyPathPrimitive {
+  readonly dependencyId: EntityId;
+  readonly fromTaskId: EntityId;
+  readonly fromViewKey: string;
+  readonly hiddenEndpoint: boolean;
+  readonly points: readonly DependencyRoutePointPrimitive[];
+  readonly status: 'invalid' | 'valid';
+  readonly toTaskId: EntityId;
+  readonly toViewKey: string;
+  readonly type: DependencyType;
+  readonly clippedStart: boolean;
+  readonly clippedEnd: boolean;
+}
+
+export interface DependencySummaryPrimitive {
+  readonly dependency: DependencyRecord;
+  readonly fromTitle: string;
+  readonly hiddenEndpoint: boolean;
+  readonly status: 'invalid' | 'valid';
+  readonly toTitle: string;
+  readonly visualized: boolean;
+}
+
 export interface EmptyStatePrimitive {
   readonly title: string;
   readonly description: string;
@@ -124,6 +154,8 @@ export interface ChartScene {
   readonly gridLines: readonly GridLinePrimitive[];
   readonly lanes: readonly LaneRowPrimitive[];
   readonly taskBars: readonly TaskBarPrimitive[];
+  readonly dependencyPaths: readonly DependencyPathPrimitive[];
+  readonly dependencySummaries: readonly DependencySummaryPrimitive[];
   readonly emptyState?: EmptyStatePrimitive;
   readonly diagnostics: readonly Diagnostic[];
 }

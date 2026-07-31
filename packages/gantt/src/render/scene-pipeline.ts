@@ -1,4 +1,5 @@
 import type { EntityReference } from '../commands/types';
+import { routeDependency, type DependencyRouteEndpoint } from '../layout/route-dependencies';
 import type { ResolvedIntervalPlacement } from '../layout/resolve-placement-intervals';
 import {
   resolvePlacementIntervals,
@@ -36,6 +37,8 @@ import {
   type BuildChartSceneOptions,
   type ChartLayoutMetrics,
   type ChartScene,
+  type DependencyPathPrimitive,
+  type DependencySummaryPrimitive,
   type LaneRowPrimitive,
   type TaskBarPrimitive,
   type TimeTickPrimitive,
@@ -141,6 +144,8 @@ interface LaneStackCacheEntry {
 interface PipelineCache {
   readonly appearanceRegistry: AppearanceRegistry;
   readonly dependencies?: ChartSceneDependencyMap;
+  readonly dependencyPaths: readonly DependencyPathPrimitive[];
+  readonly dependencySummaries: readonly DependencySummaryPrimitive[];
   readonly indexes: DocumentIndexes;
   readonly intervals?: ResolvePlacementIntervalsResult;
   readonly kernel?: ViewportKernel;
@@ -685,6 +690,131 @@ function buildOccurrenceCatalog(layout: StackLayout): readonly ChartSceneOccurre
   );
 }
 
+function dependencyStatus(
+  dependencyId: string,
+  diagnostics: readonly Diagnostic[],
+): DependencyPathPrimitive['status'] {
+  return diagnostics.some(
+    (diagnostic) =>
+      diagnostic.severity === 'error' && diagnostic.entityIds?.includes(dependencyId) === true,
+  )
+    ? 'invalid'
+    : 'valid';
+}
+
+function sameJson<T>(next: readonly T[], previous: readonly T[] | undefined): readonly T[] {
+  return previous !== undefined && JSON.stringify(next) === JSON.stringify(previous)
+    ? previous
+    : next;
+}
+
+function buildDependencyPrimitives(
+  options: BuildChartSceneOptions,
+  indexes: DocumentIndexes,
+  layout: StackLayout,
+  occurrences: readonly ChartSceneOccurrence[],
+  diagnostics: readonly Diagnostic[],
+  previous?: Pick<PipelineCache, 'dependencyPaths' | 'dependencySummaries'>,
+): {
+  readonly paths: readonly DependencyPathPrimitive[];
+  readonly summaries: readonly DependencySummaryPrimitive[];
+} {
+  const projectView = (options.view?.kind ?? 'document') === 'project';
+  const occurrenceByTaskId = new Map(
+    occurrences.map((occurrence) => [occurrence.taskId, occurrence]),
+  );
+  const laneByKey = new Map<string, LaidOutLane>(layout.lanes.map((lane) => [lane.key, lane]));
+  const scale = createLinearTimeScale(options.range, { start: 0, end: 1 });
+
+  const endpoint = (taskId: string): DependencyRouteEndpoint | undefined => {
+    const direct = occurrenceByTaskId.get(taskId);
+    if (direct !== undefined) {
+      return Object.freeze({
+        endX: scale.timeToX(direct.end),
+        hidden: false,
+        startX: scale.timeToX(direct.start),
+        taskId,
+        viewKey: direct.viewKey,
+        y: direct.y + direct.height / 2,
+      });
+    }
+    let parentId = indexes.tasksById.get(taskId)?.parentId;
+    const visited = new Set<string>();
+    while (parentId !== undefined && !visited.has(parentId)) {
+      visited.add(parentId);
+      const ancestor = occurrenceByTaskId.get(parentId);
+      if (ancestor !== undefined) {
+        const project = laneByKey.get(ancestor.laneViewKey)?.project;
+        if (project?.expanded === false || project?.filterMatch === 'ancestor') {
+          return Object.freeze({
+            endX: scale.timeToX(ancestor.end),
+            hidden: true,
+            startX: scale.timeToX(ancestor.start),
+            taskId,
+            viewKey: ancestor.viewKey,
+            y: ancestor.y + ancestor.height / 2,
+          });
+        }
+        return undefined;
+      }
+      parentId = indexes.tasksById.get(parentId)?.parentId;
+    }
+    return undefined;
+  };
+
+  const pathById = new Map<string, DependencyPathPrimitive>();
+  if (projectView && layout.totalHeight > 0) {
+    const top = options.viewport?.verticalStart ?? 0;
+    const bottom = top + (options.viewport?.verticalExtent ?? layout.totalHeight);
+    const dependencies = [...indexes.dependenciesById.values()].sort((left, right) =>
+      left.id.localeCompare(right.id),
+    );
+    dependencies.forEach((dependency, rank) => {
+      const from = endpoint(dependency.fromTaskId);
+      const to = endpoint(dependency.toTaskId);
+      if (from === undefined || to === undefined || from.viewKey === to.viewKey) return;
+      const route = routeDependency(
+        { dependencyId: dependency.id, from, rank, to, type: dependency.type },
+        { bottom, top },
+      );
+      if (route === undefined) return;
+      pathById.set(
+        dependency.id,
+        Object.freeze({
+          ...route,
+          points: Object.freeze(route.points.map((item) => Object.freeze({ ...item }))),
+          status: dependencyStatus(dependency.id, diagnostics),
+        }),
+      );
+    });
+  }
+
+  const paths = sameJson(Object.freeze([...pathById.values()]), previous?.dependencyPaths);
+  const summaries = sameJson(
+    Object.freeze(
+      [...options.document.dependencies]
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .map((dependency) => {
+          const path = pathById.get(dependency.id);
+          return Object.freeze({
+            dependency: Object.freeze({ ...dependency }),
+            fromTitle:
+              options.document.tasks.find((task) => task.id === dependency.fromTaskId)?.title ??
+              `Missing task ${dependency.fromTaskId}`,
+            hiddenEndpoint: path?.hiddenEndpoint ?? true,
+            status: dependencyStatus(dependency.id, diagnostics),
+            toTitle:
+              options.document.tasks.find((task) => task.id === dependency.toTaskId)?.title ??
+              `Missing task ${dependency.toTaskId}`,
+            visualized: path !== undefined,
+          }) satisfies DependencySummaryPrimitive;
+        }),
+    ),
+    previous?.dependencySummaries,
+  );
+  return Object.freeze({ paths, summaries });
+}
+
 function progressPrimitive(
   task: GanttDocument['tasks'][number],
   placement: ResolvedIntervalPlacement,
@@ -794,6 +924,8 @@ function rejectedScene(
     gridLines: Object.freeze(ticks.map((tick) => Object.freeze({ time: tick.time, x: tick.x }))),
     lanes: Object.freeze([]),
     taskBars: Object.freeze([]),
+    dependencyPaths: Object.freeze([]),
+    dependencySummaries: Object.freeze([]),
     ...emptyState(false),
     diagnostics: Object.freeze([...diagnostics]),
   });
@@ -927,6 +1059,8 @@ export function createChartScenePipeline(): ChartScenePipeline {
         cache = {
           appearanceRegistry,
           ...(dependencies === undefined ? {} : { dependencies }),
+          dependencyPaths: Object.freeze([]),
+          dependencySummaries: Object.freeze([]),
           indexes,
           lanePrimitiveByKey: new Map(),
           laneStacks: new Map(),
@@ -1107,6 +1241,14 @@ export function createChartScenePipeline(): ChartScenePipeline {
         ...intervals.diagnostics,
         ...appearanceDiagnostics,
       ]);
+      const dependencyPrimitives = buildDependencyPrimitives(
+        options,
+        indexes,
+        layoutStage.layout,
+        occurrences,
+        diagnostics,
+        cache,
+      );
       const scene: ChartScene = Object.freeze({
         range: Object.freeze({ ...options.range }),
         bounds: Object.freeze({
@@ -1122,12 +1264,16 @@ export function createChartScenePipeline(): ChartScenePipeline {
         ),
         lanes,
         taskBars: Object.freeze(taskBars),
+        dependencyPaths: dependencyPrimitives.paths,
+        dependencySummaries: dependencyPrimitives.summaries,
         ...emptyState(layoutStage.layout.lanes.length > 0),
         diagnostics,
       });
       cache = {
         appearanceRegistry,
         ...(dependencies === undefined ? {} : { dependencies }),
+        dependencyPaths: dependencyPrimitives.paths,
+        dependencySummaries: dependencyPrimitives.summaries,
         indexes,
         intervals,
         kernel,

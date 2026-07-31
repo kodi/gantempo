@@ -180,6 +180,8 @@ describe(`hit-test brute-force parity seed=${PROPERTY_SEED}`, () => {
             };
           });
           const scene: ChartScene = {
+            dependencyPaths: [],
+            dependencySummaries: [],
             range: { start: 0, end: 1_000 },
             bounds: {
               headerHeight: 40,

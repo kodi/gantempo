@@ -56,6 +56,8 @@ function fixture() {
     task('last-task', 'last', 'last', 0.58, 228),
   ];
   const scene: ChartScene = {
+    dependencyPaths: [],
+    dependencySummaries: [],
     range: { start: 0, end: 1_000 },
     bounds: {
       headerHeight: 40,

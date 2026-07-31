@@ -11,6 +11,8 @@ import type { InteractionGestureOptions } from './types';
 
 function fixture(): InteractionGestureOptions {
   const scene: ChartScene = {
+    dependencyPaths: [],
+    dependencySummaries: [],
     bounds: {
       defaultLaneHeight: 60,
       headerHeight: 40,

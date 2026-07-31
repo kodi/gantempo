@@ -23,6 +23,9 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain("[data-gt-part='progress-handle']");
     expect(stylesheet).toContain("[data-gt-part='progress-hit-target']");
     expect(stylesheet).toContain("[data-gt-part='progress-preview-value']");
+    expect(stylesheet).toContain('.gt-gantt__dependency-path');
+    expect(stylesheet).toContain('.gt-gantt__dependency-hit');
+    expect(stylesheet).toContain('.gt-gantt__dependency-continuation');
     const interactionPreviewZIndex = Number(
       stylesheet.match(/\.gt-gantt__interaction-preview\)[^{]*\{[^}]*z-index: (\d+);/s)?.[1],
     );
@@ -48,6 +51,7 @@ describe('semantic appearance stylesheet', () => {
     expect(stylesheet).toContain('fill: Highlight');
     expect(stylesheet).toContain('forced-color-adjust: none');
     expect(stylesheet).toContain('transition: none');
+    expect(stylesheet).toContain(".gt-gantt__dependency[data-status='invalid']");
   });
 });
 

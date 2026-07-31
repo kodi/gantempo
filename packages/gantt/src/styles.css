@@ -307,6 +307,62 @@
     vector-effect: non-scaling-stroke;
   }
 
+  :where(.gt-gantt__dependency-path) {
+    fill: none;
+    stroke: var(--gt-task-border);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+    transition:
+      opacity 120ms ease,
+      stroke 120ms ease;
+  }
+
+  :where(.gt-gantt__dependency-marker) {
+    fill: var(--gt-task-border);
+  }
+
+  :where(.gt-gantt__dependency-hit) {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 12px;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
+  }
+
+  :where(.gt-gantt__dependency-continuation) {
+    fill: var(--gt-lane-surface);
+    stroke: var(--gt-task-border);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  :where(.gt-gantt__dependency[data-hidden-endpoint='true'] .gt-gantt__dependency-path) {
+    stroke-dasharray: 4 3;
+  }
+
+  :where(.gt-gantt__dependency[data-status='invalid'] .gt-gantt__dependency-path) {
+    stroke: #b42318;
+    stroke-width: 2px;
+  }
+
+  :where(
+    .gt-gantt__dependency:is([data-selected='true'], [data-focused='true'])
+      .gt-gantt__dependency-path
+  ) {
+    stroke: var(--gt-color-focus);
+    stroke-width: 2px;
+  }
+
+  :where(.gt-gantt__dependency[data-selected='true'] .gt-gantt__dependency-path) {
+    stroke-dasharray: 4 2;
+  }
+
+  :where(.gt-gantt__dependency[data-pending='true'] .gt-gantt__dependency-path) {
+    opacity: 0.56;
+  }
+
   :where(.gt-gantt__task-bar) {
     fill: var(--gt-task-fill);
     stroke: var(--gt-task-border);
@@ -1160,6 +1216,7 @@
     :where(
       .gt-gantt__task-bar,
       .gt-gantt__task-progress,
+      .gt-gantt__dependency-path,
       .gt-gantt [data-gt-part='progress-handle'],
       .gt-gantt__interaction-preview,
       .gt-gantt__context-menu-item,
@@ -1259,6 +1316,23 @@
 
     :where(.gt-gantt__task-progress) {
       fill: Highlight;
+    }
+
+    :where(.gt-gantt__dependency-path) {
+      stroke: CanvasText;
+    }
+
+    :where(.gt-gantt__dependency-marker) {
+      fill: CanvasText;
+    }
+
+    :where(.gt-gantt__dependency-continuation) {
+      fill: Canvas;
+      stroke: CanvasText;
+    }
+
+    :where(.gt-gantt__dependency[data-status='invalid'] .gt-gantt__dependency-path) {
+      stroke: Mark;
     }
 
     :where(.gt-gantt [data-gt-part='progress-handle']) {
