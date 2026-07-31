@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 
+import { InteractiveCustomPage } from './pages/InteractiveCustomPage';
 import { InteractivePage } from './pages/InteractivePage';
 import { MainPage } from './pages/MainPage';
 import { MatrixPage } from './pages/MatrixPage';
@@ -15,6 +16,7 @@ const links: readonly PlaygroundLink[] = [
   { href: '/', label: 'Main' },
   { href: '/matrix', label: 'Matrix' },
   { href: '/interactive', label: 'Interactive' },
+  { href: '/interactive-custom', label: 'Interactive Custom' },
   { href: '/uncontrolled', label: 'Runtime-owned' },
   { href: '/navigation', label: 'Navigation' },
 ];
@@ -57,6 +59,8 @@ export function Playground(): ReactElement {
   const page =
     pathname === '/matrix' ? (
       <MatrixPage />
+    ) : pathname === '/interactive-custom' ? (
+      <InteractiveCustomPage />
     ) : pathname === '/interactive' ? (
       <InteractivePage />
     ) : pathname === '/uncontrolled' ? (

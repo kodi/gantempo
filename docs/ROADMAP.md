@@ -306,7 +306,7 @@ remain unchanged; M5 detailed planning is the next action.
 
 ### Post-M4 Interactive Custom consumer integration
 
-**Status:** `[-]` Slice 2 complete; custom consumer next
+**Status:** `[-]` Slice 3 complete; live browser gate next
 
 The
 [Interactive Custom integration plan](plans/2026-07-31-interactive-custom-integration-plan.md)
@@ -325,8 +325,16 @@ chart focus, publishes one immutable request, and does not enter the command,
 history, persistence, or overlay lifecycle. Slice 2 publishes the package-root seam
 with pointer, keyboard, focus, fallback, read-only, exact-once, and instance-isolation
 coverage. Its focused 4-file / 29-test gate, packed declaration inspection, and full
-`mise run ci` gate with 67 test files / 352 tests pass. The custom consumer is next,
-followed by desktop/narrow live browser verification.
+`mise run ci` gate with 67 test files / 352 tests pass.
+
+Slice 3 adds the routed `Interactive Custom` consumer and its application-owned,
+responsive display/edit panel. Canonical task and placement values stay tied to the
+acknowledged controlled document; Save emits one task command or one task/placement
+transaction, while Cancel and unchanged saves create no history. Focused route,
+display/edit, validation, acknowledgement, history, stale deletion, no-dialog,
+no-API-log, and axe coverage passes 2 files / 7 tests. `mise run build-playground`
+and `mise run ci` with 68 files / 357 tests pass. Desktop and narrow live browser
+verification is next.
 
 ### Post-M4 persistence entity-change projection
 
@@ -871,6 +879,24 @@ Decision records should live under `docs/decisions/` when their consequences cro
 more than one implementation plan.
 
 ## Roadmap Change Log
+
+### 2026-07-31 — Interactive Custom consumer implemented
+
+- Added `/interactive-custom` and the `Interactive Custom` navigation item without
+  changing `/interactive`.
+- Kept controlled loading, add/remove controls, history, range, direct interaction,
+  appearance, progress, tooltip, menu, command callbacks, and acknowledgement while
+  omitting all persistence-log imports and UI.
+- Added a site-owned named display/edit panel below the chart with task title,
+  description, instant schedule, progress, semantic appearance, and persisted lane
+  placement.
+- Save omits unchanged fields and emits one `task.update`, one `placement.move`, or
+  one transaction; Cancel and unchanged Save return to display mode without history.
+- Verified acknowledgement, Undo/Redo, validation, deletion closure, focus, keyboard
+  menu access, no package dialog, no API log/raw JSON, route preservation, responsive
+  styling, and axe rules.
+- Passed 2 focused files / 7 tests, the production playground build, and
+  `mise run ci` with 68 files / 357 tests. Slice 4 owns the live desktop/narrow gate.
 
 ### 2026-07-31 — Interactive Custom package seam complete
 

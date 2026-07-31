@@ -1,6 +1,6 @@
 # Interactive Custom Integration Plan
 
-Status: Active; Slice 2 complete
+Status: Active; Slice 3 complete
 Date: 2026-07-31
 Milestone: Post-M4 consumer integration proof
 
@@ -308,7 +308,7 @@ Dependencies: Slice 1.
 
 ### Slice 3: Add the Interactive Custom consumer
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Add the new route and prove site-owned read/edit UI over the Gantt timeline.
 
@@ -452,6 +452,34 @@ Dependencies: Slice 3 and a reachable Chrome DevTools MCP page.
   - `mise run ci` (67 files, 352 tests, formatting, lint, types, and package build);
   - `git diff --check`.
 
+### 2026-07-31 — Slice 3 Interactive Custom consumer
+
+- Added `/interactive-custom` and the `Interactive Custom` navigation item while
+  preserving the existing `/interactive` route and page.
+- Cloned the controlled document, toolbar, history, range, creation mapper, direct
+  interaction, appearance, tooltip, context-menu contribution, and acknowledgement
+  behavior without importing `ExampleApiLog` or example-persistence state.
+- Added a site-owned named panel after the chart. `onTaskActivate` opens display mode;
+  `onTaskEditRequest` opens the same panel in edit mode and focuses its title field.
+- The panel re-resolves task and placement records from the acknowledged controlled
+  document. It shows current values after Save, Undo, and Redo and closes when its
+  canonical task is deleted.
+- Edit mode covers title, description, UTC instant start/end, integer progress,
+  semantic appearance, and one persisted placement lane. Inline validation remains
+  site-owned.
+- Save omits unchanged fields and dispatches one `task.update`, one
+  `placement.move`, or one transaction through `GanttHandle.dispatch`. Cancel and an
+  unchanged Save return to display mode without a history entry.
+- Responsive styles stack the display grid, form grid, panel header, and actions at
+  narrow widths without introducing a second overlay or persistence surface.
+- Verification passed:
+  - `vp test run apps/playground/src/pages/InteractiveCustomPage.dom.test.tsx apps/playground/src/pages/AppendixConsumers.dom.test.tsx`
+    (2 files, 7 tests);
+  - `mise run build-playground`;
+  - `mise run ci` (68 files, 357 tests, formatting, lint, types, and package build);
+  - axe checks in display and edit/history flows;
+  - `git diff --check`.
+
 ## Final Verification
 
 - `git diff --check` passed for the tracked documentation change.
@@ -464,11 +492,14 @@ Dependencies: Slice 3 and a reachable Chrome DevTools MCP page.
 - Slice 2: focused React/facade tests passed 4 files / 29 tests, `vp pack` and packed
   declaration inspection passed, and `mise run ci` passed 67 files / 352 tests plus
   formatting, lint, types, and package build.
+- Slice 3: focused playground and regression tests passed 2 files / 7 tests with axe
+  coverage, `mise run build-playground` passed, and `mise run ci` passed 68 files /
+  357 tests plus formatting, lint, types, and package build.
 
 ## Next Slice
 
-Commit Slice 2, then start Slice 3 in
-`apps/playground/src/pages/InteractiveCustomPage.tsx`,
-`apps/playground/src/Playground.tsx`, `apps/playground/src/styles.css`, and focused
-playground DOM tests. Preserve the controlled command/history behavior, omit all API
-log state, and verify the custom display/edit panel before committing.
+Commit Slice 3, then start Slice 4 by serving the production playground and inspecting
+`/interactive-custom` at 1440 x 900 and 560 x 900 with Chrome DevTools MCP. Exercise
+display and edit focus, pointer and keyboard menus, Save, placement change, Undo/Redo,
+Cancel, deletion closure, overflow, accessible names, console, and requests. Record
+exact evidence here and in the roadmap before the final commit.
