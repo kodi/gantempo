@@ -632,6 +632,25 @@ describe('React runtime adapter', () => {
     runtime.dispose();
   });
 
+  it('rebuilds the scene when project query callback identity changes', () => {
+    const initial: GanttProps = {
+      ...commonProps(),
+      document: documentFixture(),
+      view: { filter: () => true, kind: 'project' },
+    };
+    const runtime = createGanttReactRuntime(initial);
+    const scene = runtime.getSnapshot().scene;
+    expect(scene.lanes).toHaveLength(1);
+
+    runtime.reconcile({
+      ...initial,
+      view: { filter: () => false, kind: 'project' },
+    });
+    expect(runtime.getSnapshot().scene).not.toBe(scene);
+    expect(runtime.getSnapshot().scene.lanes).toHaveLength(0);
+    runtime.dispose();
+  });
+
   it('does not restore pending preview after a synchronous controlled acknowledgement', async () => {
     let runtime!: ReturnType<typeof createGanttReactRuntime>;
     let props!: Extract<GanttProps, { readonly document: GanttDocument }>;

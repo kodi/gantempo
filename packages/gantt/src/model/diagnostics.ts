@@ -99,7 +99,10 @@ export type DiagnosticCode =
   | 'view.missing-assignment'
   | 'view.missing-lane'
   | 'view.missing-segment'
-  | 'view.missing-task';
+  | 'view.missing-task'
+  | 'view.project-filter'
+  | 'view.project-query'
+  | 'view.project-sort';
 
 export interface Diagnostic {
   readonly code: DiagnosticCode;

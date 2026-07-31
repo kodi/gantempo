@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-contract-freeze slice is in progress.
+first three slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-2 complete, Slice 3 next
+**Status:** `[-]` In progress; Slices 1-3 complete, Slice 4 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -191,7 +191,7 @@ The accepted
 fixes hierarchy recovery and ordering, project queries/session, summary/milestone
 presentation, dependency graph/editing/routes, range/scale/zoom ownership,
 localization, RTL, SSR, accessibility workflows, and the final `/project` matrix. The
-unpublished schema-version-1 model will gain optional finite task sibling `order`;
+unpublished schema-version-1 model has gained optional finite task sibling `order`;
 this pre-publication correction is the only canonical-data change accepted by Slice
 1. The contract slice passed cross-document checks, packed-declaration inspection,
 `git diff --check`, and full `mise run ci` with 68 test files / 357 tests, 160
@@ -204,7 +204,13 @@ includes arbitrary forest order, normalized cycles, deep chains, transaction rep
 patch/inverse/history, facade, and persistence projection. Full `mise run ci` passes
 71 test files / 368 tests, 164 formatted files, 153 lint/type files, and four package
 artifacts; the 44.69 kB declaration exposes no private hierarchy engine. Slice 3
-project-tree projection is next.
+now resolves deterministic depth-first project trees with collapse, ancestor-aware
+filtering, sibling-local sorting, stable task-derived identity, frozen callback
+inputs, and structured query/callback diagnostics. A 10,000-task fixture projects to
+2,000 collapsed root lanes; full `mise run ci` passes 71 files / 376 tests, 165
+formatted files, 154 lint/type files, and four artifacts. The 45.05 kB declaration
+adds only the accepted public filter/comparator types. Slice 4 summary and milestone
+presentation semantics are next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -701,6 +707,20 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 3. The project view now resolves ordered task trees
+  depth-first with private depth, child, expansion, and match metadata while
+  preserving existing task-derived occurrence keys. Collapse input normalizes unknown,
+  duplicate, and leaf IDs; filtering retains and force-opens complete match paths but
+  not unmatched descendants; sorting is sibling-local with explicit canonical ties.
+  Public filter/comparator hooks receive copied frozen semantic records and participate
+  in topology invalidation; malformed input and callback failures reject with distinct
+  diagnostics. Focused view/hierarchy/render/layout/viewport/property/facade/React-
+  runtime coverage passed 17 files / 82 tests, including a deterministic 10,000-task
+  to 2,000-lane structural case. Full `mise run ci` passed 71 files / 376 tests, 165
+  formatted files, 154 lint/type files, and four package artifacts; the 45.05 kB
+  declaration keeps resolved tree/query engines private. Slice 4 summary/milestone
+  presentation is next.
 
 - 2026-07-31: Completed M5 Slice 2. Schema version 1 now normalizes and serializes
   optional finite task sibling order, and `task.update` can set or clear it. A private

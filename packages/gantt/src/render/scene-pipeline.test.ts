@@ -284,6 +284,36 @@ describe('staged chart scene pipeline', () => {
     expect(vertical.scene.lanes.every((lane) => lane.y >= 64)).toBe(true);
   });
 
+  it('treats project filter and sort callback identity as topology input', () => {
+    const document = fixture();
+    const pipeline = createChartScenePipeline();
+    const includeAll = () => true;
+    const first = pipeline.build({
+      ...options(document),
+      view: { filter: includeAll, kind: 'project' },
+    });
+    expect(first.work.topologyBuilds).toBe(1);
+
+    const cached = pipeline.build({
+      ...options(document),
+      view: { filter: includeAll, kind: 'project' },
+    });
+    expect(cached.work.topologyBuilds).toBe(0);
+
+    const changed = pipeline.build({
+      ...options(document),
+      view: { filter: (task) => task.id === 'task-a', kind: 'project' },
+    });
+    expect(changed.work.topologyBuilds).toBe(1);
+    expect(changed.scene.lanes).toHaveLength(1);
+
+    const sorted = pipeline.build({
+      ...options(document),
+      view: { kind: 'project', sort: (left, right) => left.id.localeCompare(right.id) },
+    });
+    expect(sorted.work.topologyBuilds).toBe(1);
+  });
+
   it('keeps a frozen full occurrence catalog across horizontal and vertical viewport queries', () => {
     const pipeline = createChartScenePipeline();
     const document = fixture();

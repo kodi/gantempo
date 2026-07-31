@@ -18,6 +18,7 @@ import { validateDocumentReferences, type ValidateDocumentResult } from '../mode
 import { generateFixedIntervalTicks } from '../time/fixed-interval-ticks';
 import { createLinearTimeScale } from '../time/linear-time-scale';
 import { resolveView } from '../view/resolve-view';
+import { sameViewDefinition } from '../view/definition-equality';
 import type {
   GanttViewDefinition,
   ResolvedViewLane,
@@ -217,10 +218,6 @@ function sameMetrics(previous: ChartLayoutMetrics, next: ChartLayoutMetrics): bo
 
 function sameRange(previous: TimeRange, next: TimeRange): boolean {
   return previous.start === next.start && previous.end === next.end;
-}
-
-function viewSignature(view: GanttViewDefinition | undefined): string {
-  return JSON.stringify(view ?? { kind: 'document' });
 }
 
 function tickSignature(options: BuildChartSceneOptions): string {
@@ -796,7 +793,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         cache.legacyTaskVariantsSignature !== nextLegacyTaskVariantsSignature;
       const metricsChanged = cache === undefined || !sameMetrics(cache.metrics, metrics);
       const viewChanged =
-        cache === undefined || viewSignature(cache.options.view) !== viewSignature(options.view);
+        cache === undefined || !sameViewDefinition(cache.options.view, options.view);
       const rangeChanged = cache === undefined || !sameRange(cache.options.range, options.range);
       const affected = invalidation?.kind === 'affected' ? invalidation.affected : [];
 

@@ -1,7 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Gantt, type GanttDocument, type GanttViewDefinition } from './index';
+import {
+  Gantt,
+  type GanttDocument,
+  type GanttProjectTaskComparator,
+  type GanttProjectTaskFilter,
+  type GanttViewDefinition,
+} from './index';
 
 const DAY = 24 * 60 * 60 * 1_000;
 const START = Date.UTC(2026, 6, 29);
@@ -51,7 +57,9 @@ describe('public view-kernel facade', () => {
   });
 
   it('selects a flat project view through the root package', () => {
-    const markup = render({ kind: 'project' });
+    const filter: GanttProjectTaskFilter = (task) => task.id === 'task';
+    const sort: GanttProjectTaskComparator = (left, right) => left.title.localeCompare(right.title);
+    const markup = render({ filter, kind: 'project', sort });
 
     expect(markup).toContain('title="Task"');
     expect(markup).toContain('data-task-id="task"');

@@ -150,6 +150,8 @@ export type {
   CustomViewPlacement,
   DocumentViewDefinition,
   GanttViewDefinition,
+  GanttProjectTaskComparator,
+  GanttProjectTaskFilter,
   ProjectViewDefinition,
   ResourceViewDefinition,
 } from './view/types';

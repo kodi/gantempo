@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-2 complete, Slice 3 next
+Status: In progress; Slices 1-3 complete, Slice 4 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -358,7 +358,7 @@ depend on correct ancestry and stable order.
 
 ### Slice 3: Resolve project trees, expansion, filtering, and sorting
 
-Status: `[ ]` Not started
+Status: `[x]` Done and verified
 
 **Goal**
 
@@ -970,7 +970,7 @@ owns the full shapes and rationale. In summary:
 
 - [x] Slice 1: Freeze the M5 public and engine contracts
 - [x] Slice 2: Add hierarchy integrity, indexes, and strict reparenting
-- [ ] Slice 3: Resolve project trees, expansion, filtering, and sorting
+- [x] Slice 3: Resolve project trees, expansion, filtering, and sorting
 - [ ] Slice 4: Resolve summary and milestone presentation semantics
 - [ ] Slice 5: Integrate hierarchical task kinds with React and accessibility
 - [ ] Slice 6: Add the Community dependency graph and cycle diagnostics
@@ -1048,16 +1048,35 @@ owns the full shapes and rationale. In summary:
   153 lint/type files, and four artifacts. The packed declaration is 44.69 kB and
   exposes only task `order` plus its add/update inputs and the three accepted
   diagnostic codes; hierarchy indexes and algorithms remain private.
+- 2026-07-31: Slice 3 replaces the flat project projection with deterministic
+  depth-first rows derived from the Slice 2 hierarchy. Project lanes now carry frozen
+  private depth, child, expansion, and direct/ancestor match metadata while retaining
+  the existing task-derived lane and placement keys. Unknown, duplicate, and leaf
+  collapse IDs normalize away; matched paths force-open without changing the query.
+- 2026-07-31: Public project definitions now accept synchronous filter and sibling-
+  local comparator callbacks through the package root. Hooks receive deeply copied,
+  frozen task records; callback identity invalidates cached topology; throws,
+  non-boolean filters, non-finite comparators, and malformed query state reject with
+  distinct structured diagnostics. Comparator ties explicitly fall back to canonical
+  explicit-order/source-order/ID sibling order, and matching summaries do not retain
+  otherwise unmatched descendants.
+- 2026-07-31: Slice 3 focused view/hierarchy/render/layout/viewport/property/facade/
+  React-runtime verification passed 17 files / 82 tests. A deterministic 10,000-task
+  fixture collapsed 2,000 four-child summaries to exactly 2,000 stable root lanes
+  without a timing claim. Full `mise run ci` passed 71 files / 376 tests, 165
+  formatted files, 154 lint/type files, and four artifacts. The packed declaration is
+  45.05 kB and exposes only the accepted project filter/comparator types; resolved
+  tree metadata, query plumbing, and hierarchy engines remain private.
 
 ## Next Slice
 
-Start Slice 3 in `packages/gantt/src/view/{types,resolve-view}.ts` and the private
-hierarchy boundary. Add the accepted pure project filter/comparator callbacks and
-collapsed-ID query input, then resolve a stable depth-first visible tree with explicit
-depth, child, expansion, and filter-match metadata. Preserve the existing project
-task-derived lane/placement keys; filtering must retain and force-open match ancestors
-without changing session, and sorting must remain sibling-local with canonical order
-as its tie-break. Add permutation, immutability, filter/sort/collapse composition,
-diagnostic, custom/resource/document non-regression, and fixed-seed 10,000-task/2,000-
-lane structural evidence. Record the evidence and run `mise run ci` before the Slice
-3 commit; do not begin summary/milestone geometry from Slice 4 yet.
+Start Slice 4 in a private presentation boundary fed by canonical tasks and the Slice
+3 resolved project tree. Derive summary spans recursively from usable descendants,
+fall back to a summary's own schedule only when it has no usable descendants, expose
+explicit canonical summary progress read-only, and normalize milestones to point
+geometry while diagnosing permissive unequal input. Keep derived spans and progress
+out of `GanttDocument`, commands, patches, serialization, and persistence projection;
+preserve ordinary task/segment precedence and add deep-tree, invalid-descendant,
+all-day/DST, milestone, immutability, scene-parity, and property evidence. Record the
+evidence and run `mise run ci` before the Slice 4 commit; do not begin React treegrid
+integration from Slice 5 yet.

@@ -1,12 +1,18 @@
 import type { Diagnostic } from '../model/diagnostics';
-import type { EntityId } from '../model/types';
+import type { EntityId, TaskRecord } from '../model/types';
 
 export interface DocumentViewDefinition {
   readonly kind: 'document';
 }
 
+export type GanttProjectTaskFilter = (task: TaskRecord) => boolean;
+
+export type GanttProjectTaskComparator = (left: TaskRecord, right: TaskRecord) => number;
+
 export interface ProjectViewDefinition {
+  readonly filter?: GanttProjectTaskFilter;
   readonly kind: 'project';
+  readonly sort?: GanttProjectTaskComparator;
 }
 
 export interface ResourceViewDefinition {
@@ -92,7 +98,15 @@ export interface ResolvedViewLane {
   readonly title: string;
   readonly sourceOrder: number;
   readonly minimumHeight?: number;
+  readonly project?: ResolvedProjectTaskMetadata;
   readonly source: ViewLaneSource;
+}
+
+export interface ResolvedProjectTaskMetadata {
+  readonly depth: number;
+  readonly expanded?: boolean;
+  readonly filterMatch?: 'ancestor' | 'direct';
+  readonly hasChildren: boolean;
 }
 
 export interface ResolvedViewPlacement {
@@ -121,3 +135,11 @@ export type ResolveViewResult =
       readonly view: ResolvedView;
       readonly diagnostics: readonly Diagnostic[];
     };
+
+export interface ResolveProjectViewQuery {
+  readonly collapsedTaskIds?: readonly EntityId[];
+}
+
+export interface ResolveViewOptions {
+  readonly project?: ResolveProjectViewQuery;
+}

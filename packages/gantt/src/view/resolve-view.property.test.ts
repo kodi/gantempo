@@ -91,4 +91,80 @@ describe('view resolution properties', () => {
       },
     );
   });
+
+  it('keeps ordered project identity stable across task-array permutations and filters', () => {
+    const nodes = fc.array(fc.record({ parentSeed: fc.nat(), permutation: fc.integer() }), {
+      maxLength: 80,
+      minLength: 1,
+    });
+
+    fc.assert(
+      fc.property(nodes, fc.integer({ max: 9, min: 2 }), (generated, divisor) => {
+        const parentIds = new Set<string>();
+        const logical = generated.map((node, index) => {
+          const parentIndex = index === 0 ? index : node.parentSeed % (index + 1);
+          const parentId = parentIndex === index ? undefined : `task-${parentIndex}`;
+          if (parentId !== undefined) {
+            parentIds.add(parentId);
+          }
+          return {
+            id: `task-${index}`,
+            kind: 'task' as const,
+            order: index,
+            ...(parentId === undefined ? {} : { parentId }),
+            segments: [],
+            title: `Task ${index}`,
+          };
+        });
+        const tasks = logical.map((task) => ({
+          ...task,
+          kind: parentIds.has(task.id) ? ('summary' as const) : ('task' as const),
+        }));
+        const permuted = tasks
+          .map((task, index) => ({ ...task, permutation: generated[index]!.permutation }))
+          .sort(
+            (left, right) =>
+              left.permutation - right.permutation || left.id.localeCompare(right.id),
+          )
+          .map(({ permutation: _permutation, ...task }) => task);
+        const document = (taskRecords: GanttDocument['tasks']): GanttDocument => ({
+          assignments: [],
+          dependencies: [],
+          lanes: [],
+          placements: [],
+          resources: [],
+          schemaVersion: 1,
+          tasks: taskRecords,
+        });
+        const filter = (task: GanttDocument['tasks'][number]) =>
+          task.kind === 'task' && Number(task.id.slice(5)) % divisor === 0;
+        const query = { collapsedTaskIds: [...parentIds] };
+
+        const first = resolveView(document(tasks), { filter, kind: 'project' }, { project: query });
+        const second = resolveView(
+          document(permuted),
+          { filter, kind: 'project' },
+          { project: query },
+        );
+        expect(first.status).toBe('resolved');
+        expect(second.status).toBe('resolved');
+        if (first.status !== 'resolved' || second.status !== 'resolved') {
+          return;
+        }
+        expect(first.view.lanes.map((lane) => lane.source)).toEqual(
+          second.view.lanes.map((lane) => lane.source),
+        );
+        expect(first.view.lanes.map((lane) => lane.project)).toEqual(
+          second.view.lanes.map((lane) => lane.project),
+        );
+        expect(first.view.lanes.map((lane) => lane.key)).toEqual(
+          second.view.lanes.map((lane) => lane.key),
+        );
+        expect(first.view.placements.map((placement) => placement.key)).toEqual(
+          second.view.placements.map((placement) => placement.key),
+        );
+      }),
+      { endOnFailure: true, numRuns: PROPERTY_RUNS, seed: PROPERTY_SEED },
+    );
+  });
 });

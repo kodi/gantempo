@@ -1,4 +1,5 @@
 import type { Diagnostic, DiagnosticCode } from '../model/diagnostics';
+import { buildTaskHierarchyIndexes, getTaskAncestors } from '../hierarchy/task-hierarchy';
 import { buildDocumentIndexes } from '../model/indexes';
 import type { AssignmentRecord, EntityId, GanttDocument, TaskRecord } from '../model/types';
 import type {
@@ -7,6 +8,8 @@ import type {
   ResolvedView,
   ResolvedViewLane,
   ResolvedViewPlacement,
+  ResolveProjectViewQuery,
+  ResolveViewOptions,
   ResolveViewResult,
   ViewLaneKey,
   ViewPlacementKey,
@@ -46,7 +49,11 @@ function placementKey(parts: readonly string[]): ViewPlacementKey {
 }
 
 function freezeLane(lane: ResolvedViewLane): ResolvedViewLane {
-  return Object.freeze({ ...lane, source: Object.freeze({ ...lane.source }) });
+  return Object.freeze({
+    ...lane,
+    ...(lane.project === undefined ? {} : { project: Object.freeze({ ...lane.project }) }),
+    source: Object.freeze({ ...lane.source }),
+  });
 }
 
 function freezePlacement(placement: ResolvedViewPlacement): ResolvedViewPlacement {
@@ -76,6 +83,20 @@ function rejected(diagnostics: readonly Diagnostic[]): ResolveViewResult {
     status: 'rejected',
     diagnostics: Object.freeze([...diagnostics]),
   });
+}
+
+function cloneFrozenSemanticValue<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map(cloneFrozenSemanticValue)) as T;
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, cloneFrozenSemanticValue(item)]),
+      ),
+    ) as T;
+  }
+  return value;
 }
 
 function duplicateIds(
@@ -247,23 +268,210 @@ function resolveDocumentView(document: GanttDocument): ResolveViewResult {
   return resolved('document', lanes, placements, diagnostics);
 }
 
-function resolveProjectView(document: GanttDocument): ResolveViewResult {
+function projectQueryCollapsedIds(
+  document: GanttDocument,
+  query: ResolveProjectViewQuery | undefined,
+): readonly EntityId[] | ResolveViewResult {
+  if (query === undefined) {
+    return Object.freeze([]);
+  }
+  if (typeof query !== 'object' || query === null || Array.isArray(query)) {
+    return rejected([
+      diagnostic('view.project-query', 'Project query must be an object.', 'view.query'),
+    ]);
+  }
+  if (query.collapsedTaskIds === undefined) {
+    return Object.freeze([]);
+  }
+  if (!Array.isArray(query.collapsedTaskIds)) {
+    return rejected([
+      diagnostic(
+        'view.project-query',
+        'Project collapsed task IDs must be an array.',
+        'view.query.collapsedTaskIds',
+      ),
+    ]);
+  }
+  const taskIds = new Set(document.tasks.map((task) => task.id));
+  const parentIds = new Set(
+    document.tasks.flatMap((task) => (task.parentId === undefined ? [] : [task.parentId])),
+  );
+  const collapsed = new Set<EntityId>();
+  for (const [index, id] of query.collapsedTaskIds.entries()) {
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return rejected([
+        diagnostic(
+          'view.project-query',
+          'Project collapsed task IDs must be canonical non-empty strings.',
+          `view.query.collapsedTaskIds[${index}]`,
+        ),
+      ]);
+    }
+    if (taskIds.has(id) && parentIds.has(id)) {
+      collapsed.add(id);
+    }
+  }
+  return Object.freeze([...collapsed]);
+}
+
+function resolveProjectView(
+  document: GanttDocument,
+  definition: Extract<GanttViewDefinition, { readonly kind: 'project' }>,
+  query?: ResolveProjectViewQuery,
+): ResolveViewResult {
   const topologyDiagnostics = duplicateIds(document.tasks, 'document.tasks');
   if (topologyDiagnostics.length > 0) {
     return rejected(topologyDiagnostics);
   }
+  if (definition.filter !== undefined && typeof definition.filter !== 'function') {
+    return rejected([
+      diagnostic('view.project-filter', 'Project filter must be a function.', 'view.filter'),
+    ]);
+  }
+  if (definition.sort !== undefined && typeof definition.sort !== 'function') {
+    return rejected([
+      diagnostic('view.project-sort', 'Project sort must be a function.', 'view.sort'),
+    ]);
+  }
+  const collapsedResult = projectQueryCollapsedIds(document, query);
+  if ('status' in collapsedResult) {
+    return collapsedResult;
+  }
 
-  const lanes = document.tasks.map((task, sourceOrder) => ({
-    key: laneKey(['project', 'task', task.id]),
-    title: task.title,
-    sourceOrder,
-    source: { kind: 'project-task' as const, taskId: task.id },
-  }));
-  const placements = document.tasks.map((task, sourceOrder) => ({
+  const hierarchy = buildTaskHierarchyIndexes(document.tasks);
+  const hookTasksById =
+    definition.filter === undefined && definition.sort === undefined
+      ? undefined
+      : new Map(document.tasks.map((task) => [task.id, cloneFrozenSemanticValue(task)]));
+  const directMatches = new Set<EntityId>();
+  const ancestorMatches = new Set<EntityId>();
+  if (definition.filter !== undefined) {
+    for (const task of document.tasks) {
+      let matches: unknown;
+      try {
+        matches = definition.filter(hookTasksById!.get(task.id)!);
+      } catch {
+        return rejected([
+          diagnostic(
+            'view.project-filter',
+            `Project filter threw for task "${task.id}".`,
+            'view.filter',
+            [task.id],
+          ),
+        ]);
+      }
+      if (typeof matches !== 'boolean') {
+        return rejected([
+          diagnostic(
+            'view.project-filter',
+            `Project filter must return a boolean for task "${task.id}".`,
+            'view.filter',
+            [task.id],
+          ),
+        ]);
+      }
+      if (matches) {
+        directMatches.add(task.id);
+        for (const ancestor of getTaskAncestors(hierarchy, task.id)) {
+          ancestorMatches.add(ancestor.id);
+        }
+      }
+    }
+  }
+
+  let sortFailure: Diagnostic | undefined;
+  const sortGroup = (tasks: readonly TaskRecord[]): readonly TaskRecord[] => {
+    if (definition.sort === undefined || tasks.length < 2) {
+      return tasks;
+    }
+    const canonicalIndexById = new Map(tasks.map((task, index) => [task.id, index]));
+    return [...tasks].sort((left, right) => {
+      if (sortFailure !== undefined) {
+        return 0;
+      }
+      let compared: unknown;
+      try {
+        compared = definition.sort!(hookTasksById!.get(left.id)!, hookTasksById!.get(right.id)!);
+      } catch {
+        sortFailure = diagnostic(
+          'view.project-sort',
+          `Project sort threw while comparing "${left.id}" and "${right.id}".`,
+          'view.sort',
+          [left.id, right.id],
+        );
+        return 0;
+      }
+      if (typeof compared !== 'number' || !Number.isFinite(compared)) {
+        sortFailure = diagnostic(
+          'view.project-sort',
+          `Project sort must return a finite number for "${left.id}" and "${right.id}".`,
+          'view.sort',
+          [left.id, right.id],
+        );
+        return 0;
+      }
+      return compared || canonicalIndexById.get(left.id)! - canonicalIndexById.get(right.id)!;
+    });
+  };
+  const roots = sortGroup(hierarchy.roots);
+  const sortedChildren = new Map<EntityId, readonly TaskRecord[]>();
+  for (const [parentId, children] of hierarchy.childrenByParentId) {
+    sortedChildren.set(parentId, sortGroup(children));
+  }
+  if (sortFailure !== undefined) {
+    return rejected([sortFailure]);
+  }
+
+  const filterActive = definition.filter !== undefined;
+  const collapsed = new Set(collapsedResult);
+  const visibleTasks: TaskRecord[] = [];
+  const stack = [...roots].reverse();
+  while (stack.length > 0) {
+    const task = stack.pop()!;
+    if (filterActive && !directMatches.has(task.id) && !ancestorMatches.has(task.id)) {
+      continue;
+    }
+    visibleTasks.push(task);
+    const children = sortedChildren.get(task.id) ?? [];
+    const forceExpanded = ancestorMatches.has(task.id);
+    if (children.length === 0 || (collapsed.has(task.id) && !forceExpanded)) {
+      continue;
+    }
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      stack.push(children[index]!);
+    }
+  }
+
+  const laneKeys = new Map(
+    visibleTasks.map((task) => [task.id, laneKey(['project', 'task', task.id])]),
+  );
+  const lanes = visibleTasks.map((task) => {
+    const children = hierarchy.childrenByParentId.get(task.id) ?? [];
+    const hasChildren = children.length > 0;
+    const forceExpanded = ancestorMatches.has(task.id);
+    return {
+      key: laneKeys.get(task.id)!,
+      project: {
+        depth: hierarchy.depthByTaskId.get(task.id) ?? 0,
+        ...(hasChildren ? { expanded: forceExpanded || !collapsed.has(task.id) } : {}),
+        ...(directMatches.has(task.id)
+          ? { filterMatch: 'direct' as const }
+          : ancestorMatches.has(task.id)
+            ? { filterMatch: 'ancestor' as const }
+            : {}),
+        hasChildren,
+      },
+      source: { kind: 'project-task' as const, taskId: task.id },
+      sourceOrder: hierarchy.sourceIndexByTaskId.get(task.id)!,
+      title: task.title,
+    };
+  });
+  const lanesByTaskId = new Map(lanes.map((lane) => [lane.source.taskId, lane] as const));
+  const placements = visibleTasks.map((task) => ({
     key: placementKey(['project', 'task', task.id]),
-    laneKey: lanes[sourceOrder]!.key,
+    laneKey: lanesByTaskId.get(task.id)!.key,
     taskId: task.id,
-    sourceOrder,
+    sourceOrder: hierarchy.sourceIndexByTaskId.get(task.id)!,
     source: { kind: 'project-task' as const, taskId: task.id },
   }));
   return resolved('project', lanes, placements, []);
@@ -503,12 +711,13 @@ function resolveCustomView(
 export function resolveView(
   document: GanttDocument,
   definition: GanttViewDefinition = DEFAULT_VIEW,
+  options: ResolveViewOptions = {},
 ): ResolveViewResult {
   switch (definition.kind) {
     case 'document':
       return resolveDocumentView(document);
     case 'project':
-      return resolveProjectView(document);
+      return resolveProjectView(document, definition, options.project);
     case 'resource':
       return resolveResourceView(document);
     case 'custom':

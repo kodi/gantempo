@@ -72,6 +72,7 @@ import type {
   GanttSemanticEvent,
   GanttVisibleOccurrence,
 } from './types';
+import { sameViewDefinition } from '../view/definition-equality';
 
 export interface GanttReactRuntimeSnapshot {
   readonly occurrenceCatalog: readonly ChartSceneOccurrence[];
@@ -250,7 +251,7 @@ function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
     previous.tickInterval === next.tickInterval &&
     previous.timeZone === next.timeZone &&
     JSON.stringify(previous.taskVariants) === JSON.stringify(next.taskVariants) &&
-    JSON.stringify(previous.view) === JSON.stringify(next.view)
+    sameViewDefinition(previous.view, next.view)
   );
 }
 
