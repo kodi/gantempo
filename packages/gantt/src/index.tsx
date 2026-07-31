@@ -17,6 +17,8 @@ export type {
   GanttInteractionPreview,
   GanttInteractionSnapPolicy,
   GanttInteractionState,
+  GanttItemPropertiesProps,
+  GanttItemPropertiesValue,
   GanttLaneColumn,
   GanttLaneColumnCellProps,
   GanttLaneHeaderProps,

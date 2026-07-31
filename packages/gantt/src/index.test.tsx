@@ -152,6 +152,38 @@ describe('Gantt', () => {
     expect(markup).not.toContain('role="progressbar"');
   });
 
+  it('keeps properties closed during read-only SSR while publishing lane activation', () => {
+    const markup = renderToStaticMarkup(
+      <Gantt
+        document={{
+          ...EMPTY_COLLECTIONS,
+          lanes: [{ id: 'lane-a', title: 'Lane A' }],
+          placements: [{ id: 'placement-a', laneId: 'lane-a', taskId: 'task-a' }],
+          schemaVersion: 1,
+          tasks: [
+            {
+              id: 'task-a',
+              kind: 'task',
+              schedule: { end: START + 2 * DAY, mode: 'instant', start: START + DAY },
+              segments: [],
+              title: 'Task A',
+            },
+          ],
+        }}
+        features={{ properties: true }}
+        range={{ end: START + 7 * DAY, start: START }}
+        tickAnchor={START}
+        tickInterval={DAY}
+        timeZone="UTC"
+      />,
+    );
+
+    expect(markup).toContain('data-gt-part="lane-properties-trigger"');
+    expect(markup).toContain('aria-label="Lane A properties"');
+    expect(markup).not.toContain('role="dialog"');
+    expect(markup).not.toContain('data-editor-mode="properties"');
+  });
+
   it('renders customized columns and content deterministically with overlays closed during SSR', () => {
     const markup = renderToStaticMarkup(
       <Gantt

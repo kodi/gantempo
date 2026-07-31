@@ -570,7 +570,7 @@ parts.
 
 ### Appendix Slice A5: Add task and lane properties surfaces
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -807,7 +807,7 @@ Resolved in Appendix Slice A1:
 - [x] Appendix Slice A2: Add canonical task/lane properties and commands
 - [x] Appendix Slice A3: Resolve appearance and progress primitives
 - [x] Appendix Slice A4: Render accessible semantic color and progress
-- [ ] Appendix Slice A5: Add task and lane properties surfaces
+- [x] Appendix Slice A5: Add task and lane properties surfaces
 - [ ] Appendix Slice A6: Add direct and keyboard progress editing
 - [ ] Appendix Slice A7: Prove consumers and close the appendix
 - [ ] Final automated/package/SSR gate
@@ -946,12 +946,43 @@ Resolved in Appendix Slice A1:
   `appearanceVariants` declaration, and `vp build apps/playground` produced the
   production playground. The required full `mise run ci` passed 65 test files /
   317 tests plus formatting, lint, types, and package output.
+- 2026-07-31: Appendix Slice A5 is in progress. The accepted
+  `GanttItemPropertiesValue`, `GanttItemPropertiesProps`,
+  `GanttSlots.ItemProperties`, and `GanttFeatures.properties` facade has been added
+  without changing the legacy `TaskEditor` value or feature flag.
+- 2026-07-31: A5 now provides one selection-driven default properties surface for
+  persisted tasks and lanes. Task Save maps title, description, instant schedule,
+  integer-percent progress, semantic appearance, and an unambiguous placement move
+  to one command or transaction; lane Save maps title and appearance to one
+  `lane.update`. Stable IDs, task kind, elapsed duration, and linked resource
+  identity remain inspectable. Delete uses the same history-capable command path.
+- 2026-07-31: The accepted `ItemProperties` replacement receives frozen bounded
+  values, overlay bindings, lifecycle callbacks, pending state, and a stable error
+  relationship without document or runtime access. The default surface preserves
+  unavailable appearance IDs, keeps unsupported topology disabled with a reason,
+  and reuses M4 acknowledgement, rejection, stale-target closure, Escape,
+  focus-return, modal isolation, and two-instance ownership. The legacy
+  `TaskEditor` remains the fallback when properties are not enabled.
+- 2026-07-31: A5 focused properties coverage passed 10 tests for task transactions,
+  lane updates, controlled acknowledgement and replacement, read-only inspection,
+  unavailable variants, custom replacement, validation, deletion/undo, rejection,
+  stale targets, focus return, and instance isolation. `vp check` passed 157
+  formatted files and 146 lint/type files. `vp pack` produced four artifacts whose
+  declarations expose only the accepted properties facade, and
+  `vp build apps/playground` completed successfully. The required full
+  `mise run ci` passed 66 test files / 328 tests.
+- 2026-07-31: Chrome DevTools verified the controlled `/interactive` task and lane
+  properties surfaces at 1440x1000 and 390x844, including responsive containment,
+  accessible modal structure, controlled Save acknowledgement, lane appearance
+  persistence, focus return, and Undo. The read-only `/` proof at 390x844 opened by
+  task activation with every data field disabled and only Close available. Console
+  warnings/errors/issues were empty and all 74 inspected development requests
+  returned 200 or cache-valid 304 responses.
 
 ## Next Slice
 
-Begin Appendix Slice A5 in the React surface, runtime command path, and focused
-properties tests. Add the selection-driven default task/lane properties surface plus
-the accepted `ItemProperties` replacement slot, preserve the legacy `TaskEditor`
-fallback, dispatch one command or transaction per Save, and verify controlled,
-uncontrolled, stale-target, focus-return, layout, two-instance, SSR, package, and
-playground behavior before adding direct progress editing.
+Begin Appendix Slice A6 with renderer-independent progress intent, hit testing, and
+preview. Add pointer, pen, touch, and keyboard adjustment through the same strict
+`task.update` lifecycle, preserve move/resize precedence and unsupported-kind
+reasons, and prove cancellation, acknowledgement, history, announcements, and focus
+retention before the final consumer and release-evidence slice.

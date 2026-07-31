@@ -1,6 +1,12 @@
 import type { GanttCommand } from '../commands/types';
 import type { Diagnostic } from '../model/diagnostics';
-import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
+import type {
+  EntityId,
+  EpochMilliseconds,
+  GanttAppearanceReference,
+  GanttDocument,
+  TimeRange,
+} from '../model/types';
 import type { ComponentType, HTMLAttributes, ReactNode, RefCallback } from 'react';
 import type {
   InteractionCommandMappingResult,
@@ -260,8 +266,40 @@ export interface GanttTaskEditorProps {
   readonly task: GanttTaskSummary;
 }
 
+export type GanttItemPropertiesValue =
+  | {
+      readonly appearance?: GanttAppearanceReference;
+      readonly description?: string;
+      readonly end?: EpochMilliseconds;
+      readonly kind: 'task';
+      readonly laneId?: EntityId;
+      readonly placementId?: EntityId;
+      readonly progress?: number;
+      readonly start?: EpochMilliseconds;
+      readonly taskId: EntityId;
+      readonly title: string;
+    }
+  | {
+      readonly appearance?: GanttAppearanceReference;
+      readonly kind: 'lane';
+      readonly laneId: EntityId;
+      readonly title: string;
+    };
+
+export interface GanttItemPropertiesProps {
+  readonly bindings: GanttOverlayBindings;
+  readonly error?: string;
+  readonly errorId: string;
+  readonly initialValue: GanttItemPropertiesValue;
+  readonly onCancel: () => void;
+  readonly onDelete: () => void;
+  readonly onSubmit: (value: GanttItemPropertiesValue) => void;
+  readonly pending: boolean;
+}
+
 export interface GanttSlots {
   readonly ContextMenu?: ComponentType<GanttContextMenuProps>;
+  readonly ItemProperties?: ComponentType<GanttItemPropertiesProps>;
   readonly LaneHeader?: ComponentType<GanttLaneHeaderProps>;
   readonly TaskContent?: ComponentType<GanttTaskContentProps>;
   readonly TaskEditor?: ComponentType<GanttTaskEditorProps>;
@@ -271,6 +309,7 @@ export interface GanttSlots {
 export interface GanttFeatures {
   readonly contextMenu?: boolean;
   readonly editor?: boolean;
+  readonly properties?: boolean;
   readonly tooltip?: boolean;
 }
 

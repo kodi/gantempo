@@ -31,7 +31,7 @@ import {
   type EffectiveAppearancePrimitive,
   type GanttAppearanceToken,
 } from '../render/appearance';
-import type { TaskBarPrimitive } from '../render/primitives';
+import type { LaneRowPrimitive, TaskBarPrimitive } from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import {
   createGanttReactRuntime,
@@ -41,6 +41,7 @@ import {
 } from './runtime';
 import {
   DefaultContextMenu,
+  DefaultItemProperties,
   DefaultLaneHeader,
   DefaultTaskContent,
   DefaultTaskEditor,
@@ -52,6 +53,7 @@ import type {
   GanttContextMenuItem,
   GanttHandle,
   GanttInteractionState,
+  GanttItemPropertiesValue,
   GanttLaneColumn,
   GanttLaneSummary,
   GanttOverlayContainer,
@@ -79,7 +81,10 @@ interface TaskOverlayPosition {
 
 interface EditorOverlay {
   readonly error?: string;
+  readonly kind: 'lane' | 'task';
+  readonly mode: 'legacy' | 'properties';
   readonly pending: boolean;
+  readonly selectionKey?: string;
   readonly viewKey: string;
 }
 
@@ -287,6 +292,16 @@ function taskTarget(task: TaskBarPrimitive) {
   });
 }
 
+function inspectionSelectionKey(
+  selection: GanttReactRuntimeSnapshot['selector']['session']['selection'],
+): string {
+  return JSON.stringify(
+    selection.map((target) =>
+      target.kind === 'task' ? ['task', target.viewKey] : ['lane', target.viewKey],
+    ),
+  );
+}
+
 function taskSummary(task: TaskBarPrimitive): GanttTaskSummary {
   return Object.freeze({
     end: task.end,
@@ -393,6 +408,206 @@ function taskEditorCommand(
   return commands.length === 1 ? commands[0] : { commands, type: 'transaction' };
 }
 
+function taskPropertiesValue(
+  task: TaskBarPrimitive,
+  document: GanttReactRuntimeSnapshot['selector']['document'],
+): GanttItemPropertiesValue | undefined {
+  const record = document.tasks.find((candidate) => candidate.id === task.taskId);
+  if (record === undefined) {
+    return undefined;
+  }
+  const schedule =
+    record.schedule?.mode === 'instant' && task.segmentId === undefined
+      ? { end: record.schedule.end, start: record.schedule.start }
+      : {};
+  return Object.freeze({
+    ...(record.appearance === undefined ? {} : { appearance: record.appearance }),
+    ...(record.description === undefined ? {} : { description: record.description }),
+    ...schedule,
+    kind: 'task',
+    ...(task.laneId === undefined ? {} : { laneId: task.laneId }),
+    ...(task.placementId === undefined ? {} : { placementId: task.placementId }),
+    ...(record.kind !== 'task' || record.progress === undefined
+      ? {}
+      : { progress: record.progress }),
+    taskId: record.id,
+    title: record.title,
+  });
+}
+
+function lanePropertiesValue(
+  lane: LaneRowPrimitive,
+  document: GanttReactRuntimeSnapshot['selector']['document'],
+): GanttItemPropertiesValue | undefined {
+  if (lane.laneId === undefined) {
+    return undefined;
+  }
+  const record = document.lanes.find((candidate) => candidate.id === lane.laneId);
+  return record === undefined
+    ? undefined
+    : Object.freeze({
+        ...(record.appearance === undefined ? {} : { appearance: record.appearance }),
+        kind: 'lane',
+        laneId: record.id,
+        title: record.title,
+      });
+}
+
+function appearanceVariant(value: GanttItemPropertiesValue): string | undefined {
+  return value.appearance?.variant;
+}
+
+function validateItemPropertiesValue(
+  initial: GanttItemPropertiesValue,
+  value: GanttItemPropertiesValue,
+  document: GanttReactRuntimeSnapshot['selector']['document'],
+): string | undefined {
+  if (
+    initial.kind !== value.kind ||
+    (initial.kind === 'task' && value.kind === 'task' && initial.taskId !== value.taskId) ||
+    (initial.kind === 'lane' && value.kind === 'lane' && initial.laneId !== value.laneId)
+  ) {
+    return 'The submitted properties target does not match the inspected item.';
+  }
+  if (value.title.trim() === '') {
+    return 'Title is required.';
+  }
+  if (value.appearance !== undefined && value.appearance.variant.trim() === '') {
+    return 'Appearance must use a non-empty semantic variant.';
+  }
+  if (value.kind === 'lane') {
+    return undefined;
+  }
+  if (
+    (value.start === undefined) !== (value.end === undefined) ||
+    (value.start !== undefined &&
+      value.end !== undefined &&
+      (!Number.isFinite(value.start) || !Number.isFinite(value.end) || value.end <= value.start))
+  ) {
+    return 'End must be later than start.';
+  }
+  if (
+    value.progress !== undefined &&
+    (!Number.isFinite(value.progress) || value.progress < 0 || value.progress > 1)
+  ) {
+    return 'Progress must be between 0% and 100%.';
+  }
+  if (
+    value.laneId !== undefined &&
+    !document.lanes.some((candidate) => candidate.id === value.laneId)
+  ) {
+    return 'The selected lane no longer exists.';
+  }
+  return undefined;
+}
+
+function itemPropertiesCommand(
+  initial: GanttItemPropertiesValue,
+  value: GanttItemPropertiesValue,
+  document: GanttReactRuntimeSnapshot['selector']['document'],
+): GanttCommand | undefined {
+  if (initial.kind === 'lane' && value.kind === 'lane') {
+    const record = document.lanes.find((candidate) => candidate.id === initial.laneId);
+    if (record === undefined) {
+      return undefined;
+    }
+    const changes: {
+      appearance?: { readonly variant: string } | null;
+      title?: string;
+    } = {};
+    const title = value.title.trim();
+    if (title !== record.title) {
+      changes.title = title;
+    }
+    if (appearanceVariant(value) !== record.appearance?.variant) {
+      changes.appearance = value.appearance ?? null;
+    }
+    return Object.keys(changes).length === 0
+      ? undefined
+      : { changes, id: record.id, type: 'lane.update' };
+  }
+  if (initial.kind !== 'task' || value.kind !== 'task') {
+    return undefined;
+  }
+  const record = document.tasks.find((candidate) => candidate.id === initial.taskId);
+  if (record === undefined) {
+    return undefined;
+  }
+  const commands: GanttCommand[] = [];
+  const changes: {
+    appearance?: { readonly variant: string } | null;
+    description?: string | null;
+    progress?: number | null;
+    schedule?: { readonly end: number; readonly mode: 'instant'; readonly start: number };
+    title?: string;
+  } = {};
+  const title = value.title.trim();
+  if (title !== record.title) {
+    changes.title = title;
+  }
+  if (value.description !== record.description) {
+    changes.description = value.description ?? null;
+  }
+  if (appearanceVariant(value) !== record.appearance?.variant) {
+    changes.appearance = value.appearance ?? null;
+  }
+  if (record.kind === 'task' && value.progress !== record.progress) {
+    changes.progress = value.progress ?? null;
+  }
+  if (
+    record.schedule?.mode === 'instant' &&
+    value.start !== undefined &&
+    value.end !== undefined &&
+    (value.start !== record.schedule.start || value.end !== record.schedule.end)
+  ) {
+    changes.schedule = { end: value.end, mode: 'instant', start: value.start };
+  }
+  if (Object.keys(changes).length > 0) {
+    commands.push({ changes, id: record.id, type: 'task.update' });
+  }
+  if (
+    initial.placementId !== undefined &&
+    initial.laneId !== undefined &&
+    value.laneId !== undefined &&
+    value.laneId !== initial.laneId
+  ) {
+    const placement = document.placements.find(
+      (candidate) =>
+        candidate.id === initial.placementId &&
+        candidate.taskId === initial.taskId &&
+        candidate.laneId === initial.laneId,
+    );
+    if (placement !== undefined) {
+      commands.push({
+        id: placement.id,
+        laneId: value.laneId,
+        type: 'placement.move',
+      });
+    }
+  }
+  if (commands.length === 0) {
+    return undefined;
+  }
+  return commands.length === 1 ? commands[0] : { commands, type: 'transaction' };
+}
+
+function elapsedDuration(value: GanttItemPropertiesValue): string | undefined {
+  if (value.kind !== 'task' || value.start === undefined || value.end === undefined) {
+    return undefined;
+  }
+  const minutes = Math.round((value.end - value.start) / 60_000);
+  const days = Math.floor(minutes / (24 * 60));
+  const hours = Math.floor((minutes % (24 * 60)) / 60);
+  const remainder = minutes % 60;
+  return (
+    [
+      ...(days === 0 ? [] : [`${days}d`]),
+      ...(hours === 0 ? [] : [`${hours}h`]),
+      ...(remainder === 0 ? [] : [`${remainder}m`]),
+    ].join(' ') || '0m'
+  );
+}
+
 function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeFormat): string {
   const schedule = `${task.title}, ${formatter.format(task.start)} to ${formatter.format(task.end)}`;
   return task.progress === undefined
@@ -493,6 +708,7 @@ function GanttTask({
   describedBy,
   disabled,
   domId,
+  onActivate,
   onContextMenu,
   onFocus,
   onMouseEnter,
@@ -507,6 +723,7 @@ function GanttTask({
   readonly describedBy: string;
   readonly disabled: boolean;
   readonly domId: string;
+  readonly onActivate: (task: TaskBarPrimitive) => void;
   readonly onContextMenu: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
   readonly onFocus: (event: ReactFocusEvent<SVGGElement>, task: TaskBarPrimitive) => void;
   readonly onMouseEnter: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
@@ -585,6 +802,7 @@ function GanttTask({
       data-view-key={task.viewKey}
       focusable="true"
       id={domId}
+      onClick={() => onActivate(task)}
       onContextMenu={(event) => onContextMenu(event, task)}
       onFocus={(event) => onFocus(event, task)}
       onMouseEnter={(event) => onMouseEnter(event, task)}
@@ -656,6 +874,7 @@ function GanttTask({
 }
 
 function GanttSurface({
+  appearanceVariants,
   bodyRef,
   chartRef,
   className,
@@ -674,6 +893,7 @@ function GanttSurface({
   slots,
   timelineRef,
 }: {
+  readonly appearanceVariants?: GanttProps['appearanceVariants'];
   readonly bodyRef: React.RefObject<HTMLDivElement | null>;
   readonly chartRef: React.RefObject<HTMLDivElement | null>;
   readonly className?: string | undefined;
@@ -694,12 +914,22 @@ function GanttSurface({
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
   const focused = useGanttSelector((snapshot) => snapshot.session.focused);
+  const selection = useGanttSelector((snapshot) => snapshot.session.selection);
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
   const accessibilityId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const hadLogicalTaskFocus = useRef(false);
   const menuSurfaceRef = useRef<HTMLDivElement | null>(null);
   const editorSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const taskActivationPointer = useRef<
+    | {
+        moved: boolean;
+        readonly viewKey: string;
+        readonly x: number;
+        readonly y: number;
+      }
+    | undefined
+  >(undefined);
   const tooltipSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [localOverlayHost, setLocalOverlayHost] = useState<HTMLDivElement | null>(null);
   const [externalOverlayHost, setExternalOverlayHost] = useState<HTMLDivElement | null>(null);
@@ -719,7 +949,13 @@ function GanttSurface({
     features?.contextMenu === true ||
     slots?.ContextMenu !== undefined ||
     contextMenuItems !== undefined;
-  const editorEnabled = features?.editor === true || slots?.TaskEditor !== undefined;
+  const propertiesEnabled = features?.properties === true || slots?.ItemProperties !== undefined;
+  const legacyEditorEnabled = features?.editor === true || slots?.TaskEditor !== undefined;
+  const editorEnabled = propertiesEnabled || legacyEditorEnabled;
+  const registeredAppearanceVariants = useMemo(
+    () => Object.freeze([...createAppearanceRegistry(appearanceVariants).byId.values()]),
+    [appearanceVariants],
+  );
   const resolvedColumns = useMemo<readonly GanttLaneColumn[]>(() => {
     if (columns !== undefined && columns.length > 0) {
       return columns;
@@ -768,7 +1004,19 @@ function GanttSurface({
   const rovingViewKey = logicalTaskFocused ? focusedViewKey : scene.taskBars[0]?.viewKey;
   const activeTooltipTask = tooltip === undefined ? undefined : taskByViewKey.get(tooltip.viewKey);
   const activeMenuTask = menu === undefined ? undefined : taskByViewKey.get(menu.viewKey);
-  const activeEditorTask = editor === undefined ? undefined : taskByViewKey.get(editor.viewKey);
+  const activeEditorTask = editor?.kind === 'task' ? taskByViewKey.get(editor.viewKey) : undefined;
+  const activeEditorLane =
+    editor?.kind === 'lane'
+      ? scene.lanes.find((lane) => lane.viewKey === editor.viewKey)
+      : undefined;
+  const activeEditorValue =
+    editor?.mode !== 'properties'
+      ? undefined
+      : activeEditorTask !== undefined
+        ? taskPropertiesValue(activeEditorTask, runtime.getSnapshot().selector.document)
+        : activeEditorLane !== undefined
+          ? lanePropertiesValue(activeEditorLane, runtime.getSnapshot().selector.document)
+          : undefined;
   const editorOpen = editor !== undefined;
 
   useLayoutEffect(() => {
@@ -848,6 +1096,15 @@ function GanttSurface({
       (task ?? root)?.focus();
     });
   }, []);
+  const focusLaneElement = useCallback((viewKey: string) => {
+    queueMicrotask(() => {
+      const root = rootRef.current;
+      const lane = Array.from(
+        root?.querySelectorAll<HTMLButtonElement>('[data-gt-part="lane-properties-trigger"]') ?? [],
+      ).find((element) => element.dataset.viewKey === viewKey);
+      (lane ?? root)?.focus();
+    });
+  }, []);
   const closeMenu = useCallback(
     (restoreFocus = true) => {
       const viewKey = menu?.viewKey;
@@ -861,12 +1118,17 @@ function GanttSurface({
   const closeEditor = useCallback(
     (restoreFocus = true) => {
       const viewKey = editor?.viewKey;
+      const kind = editor?.kind;
       setEditor(undefined);
       if (restoreFocus && viewKey !== undefined) {
-        focusTaskElement(viewKey);
+        if (kind === 'lane') {
+          focusLaneElement(viewKey);
+        } else {
+          focusTaskElement(viewKey);
+        }
       }
     },
-    [editor?.viewKey, focusTaskElement],
+    [editor?.kind, editor?.viewKey, focusLaneElement, focusTaskElement],
   );
 
   useEffect(() => {
@@ -876,10 +1138,55 @@ function GanttSurface({
     if (menu !== undefined && activeMenuTask === undefined) {
       setMenu(undefined);
     }
-    if (editor !== undefined && activeEditorTask === undefined) {
+    if (
+      editor !== undefined &&
+      ((editor.kind === 'task' && activeEditorTask === undefined) ||
+        (editor.kind === 'lane' && activeEditorLane === undefined) ||
+        (editor.mode === 'properties' && activeEditorValue === undefined))
+    ) {
       closeEditor();
     }
-  }, [activeEditorTask, activeMenuTask, activeTooltipTask, closeEditor, editor, menu, tooltip]);
+  }, [
+    activeEditorLane,
+    activeEditorTask,
+    activeEditorValue,
+    activeMenuTask,
+    activeTooltipTask,
+    closeEditor,
+    editor,
+    menu,
+    tooltip,
+  ]);
+  useEffect(() => {
+    if (editor?.mode !== 'properties' || editor.pending) {
+      return;
+    }
+    const nextSelectionKey = inspectionSelectionKey(selection);
+    if (nextSelectionKey === editor.selectionKey) {
+      return;
+    }
+    const selected = selection.at(-1);
+    if (
+      selected !== undefined &&
+      ((selected.kind === 'task' && taskByViewKey.has(selected.viewKey)) ||
+        (selected.kind === 'lane' &&
+          scene.lanes.some(
+            (lane) => lane.viewKey === selected.viewKey && lane.laneId !== undefined,
+          )))
+    ) {
+      setEditor({
+        kind: selected.kind,
+        mode: 'properties',
+        pending: false,
+        selectionKey: nextSelectionKey,
+        viewKey: selected.viewKey,
+      });
+      return;
+    }
+    setEditor((current) =>
+      current === undefined ? undefined : { ...current, selectionKey: nextSelectionKey },
+    );
+  }, [editor, scene.lanes, selection, taskByViewKey]);
   useEffect(() => {
     if (menu === undefined) {
       return;
@@ -972,8 +1279,9 @@ function GanttSurface({
   useLayoutEffect(() => {
     if (editor !== undefined) {
       const firstField =
-        editorSurfaceRef.current?.querySelector<HTMLElement>('input:not([disabled])') ??
-        editorSurfaceRef.current?.querySelector<HTMLElement>('button:not([disabled])');
+        editorSurfaceRef.current?.querySelector<HTMLElement>(
+          'input:not([disabled]), textarea:not([disabled]), select:not([disabled])',
+        ) ?? editorSurfaceRef.current?.querySelector<HTMLElement>('button:not([disabled])');
       (firstField ?? editorSurfaceRef.current)?.focus();
     }
   }, [editor?.viewKey]);
@@ -1066,12 +1374,21 @@ function GanttSurface({
       );
     }
     if (
-      editor !== undefined &&
+      editor?.mode === 'legacy' &&
       slots?.TaskEditor !== undefined &&
       editorSurfaceRef.current === null
     ) {
       console.warn(
         'Gantt TaskEditor slot must spread the provided bindings onto its owning element.',
+      );
+    }
+    if (
+      editor?.mode === 'properties' &&
+      slots?.ItemProperties !== undefined &&
+      editorSurfaceRef.current === null
+    ) {
+      console.warn(
+        'Gantt ItemProperties slot must spread the provided bindings onto its owning element.',
       );
     }
   }, [editor, menu, slots, tooltip]);
@@ -1146,18 +1463,65 @@ function GanttSurface({
   const openEditor = useCallback(
     (viewKey: string): boolean => {
       const task = taskByViewKey.get(viewKey);
+      if (task === undefined) {
+        return false;
+      }
+      const mode = propertiesEnabled ? 'properties' : 'legacy';
       if (
-        task === undefined ||
-        taskEditDisabledReason(task, runtime, disabled, editorEnabled) !== undefined
+        (mode === 'properties' &&
+          taskPropertiesValue(task, runtime.getSnapshot().selector.document) === undefined) ||
+        (mode === 'legacy' &&
+          taskEditDisabledReason(task, runtime, disabled, legacyEditorEnabled) !== undefined)
       ) {
         return false;
       }
+      if (mode === 'properties') {
+        runtime.inspectTask(viewKey);
+      }
       setTooltip(undefined);
       setMenu(undefined);
-      setEditor({ pending: false, viewKey });
+      setEditor({
+        kind: 'task',
+        mode,
+        pending: false,
+        ...(mode === 'properties'
+          ? {
+              selectionKey: inspectionSelectionKey(
+                runtime.getSnapshot().selector.session.selection,
+              ),
+            }
+          : {}),
+        viewKey,
+      });
       return true;
     },
-    [disabled, editorEnabled, runtime, taskByViewKey],
+    [disabled, legacyEditorEnabled, propertiesEnabled, runtime, taskByViewKey],
+  );
+  const openLaneProperties = useCallback(
+    (viewKey: string): boolean => {
+      if (!propertiesEnabled) {
+        return false;
+      }
+      const lane = scene.lanes.find((candidate) => candidate.viewKey === viewKey);
+      if (
+        lane === undefined ||
+        lanePropertiesValue(lane, runtime.getSnapshot().selector.document) === undefined
+      ) {
+        return false;
+      }
+      runtime.inspectLane(viewKey);
+      setTooltip(undefined);
+      setMenu(undefined);
+      setEditor({
+        kind: 'lane',
+        mode: 'properties',
+        pending: false,
+        selectionKey: inspectionSelectionKey(runtime.getSnapshot().selector.session.selection),
+        viewKey,
+      });
+      return true;
+    },
+    [propertiesEnabled, runtime, scene.lanes],
   );
   const openContextMenu = useCallback(
     (element: Element, task: TaskBarPrimitive, clientX?: number, clientY?: number): boolean => {
@@ -1186,6 +1550,19 @@ function GanttSurface({
       showTooltip(event.currentTarget, task);
     },
     [showTooltip],
+  );
+  const onTaskActivate = useCallback(
+    (task: TaskBarPrimitive) => {
+      const pointer = taskActivationPointer.current;
+      taskActivationPointer.current = undefined;
+      if (pointer?.viewKey === task.viewKey && pointer.moved) {
+        return;
+      }
+      if (propertiesEnabled) {
+        openEditor(task.viewKey);
+      }
+    },
+    [openEditor, propertiesEnabled],
   );
   const onTaskMouseEnter = useCallback(
     (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => {
@@ -1319,6 +1696,16 @@ function GanttSurface({
       if (input === undefined) {
         return;
       }
+      if (input.candidateViewKey !== undefined) {
+        taskActivationPointer.current = {
+          moved: false,
+          viewKey: input.candidateViewKey,
+          x: event.clientX,
+          y: event.clientY,
+        };
+      } else {
+        taskActivationPointer.current = undefined;
+      }
       if (input.candidateViewKey === undefined) {
         runtime.clearTaskFocusAndSelection();
         const activeElement = event.currentTarget.ownerDocument.activeElement;
@@ -1360,6 +1747,14 @@ function GanttSurface({
         return;
       }
       const input = pointerInput(event);
+      const activation = taskActivationPointer.current;
+      if (
+        activation !== undefined &&
+        !activation.moved &&
+        Math.hypot(event.clientX - activation.x, event.clientY - activation.y) >= 4
+      ) {
+        taskActivationPointer.current = { ...activation, moved: true };
+      }
       if (input !== undefined && runtime.pointerMove(input)) {
         event.preventDefault();
       }
@@ -1388,6 +1783,7 @@ function GanttSurface({
   );
   const onPointerCancel = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      taskActivationPointer.current = undefined;
       if (finishPan(event, true)) {
         return;
       }
@@ -1439,7 +1835,7 @@ function GanttSurface({
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (
-        !disabled &&
+        (!disabled || propertiesEnabled) &&
         menuEnabled &&
         focusedViewKey !== undefined &&
         (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
@@ -1455,7 +1851,12 @@ function GanttSurface({
         return;
       }
       const action = keyboardActionForEvent(event, interaction.status === 'keyboard');
-      if (disabled && action?.type !== 'navigate' && action?.type !== 'page') {
+      if (
+        disabled &&
+        action?.type !== 'navigate' &&
+        action?.type !== 'page' &&
+        !(propertiesEnabled && action?.type === 'activate')
+      ) {
         return;
       }
       const bounds = geometry();
@@ -1484,6 +1885,7 @@ function GanttSurface({
       menuEnabled,
       openContextMenu,
       openEditor,
+      propertiesEnabled,
       runtime,
       taskByViewKey,
     ],
@@ -1504,10 +1906,39 @@ function GanttSurface({
     activeTooltipTask === undefined ? undefined : taskSummary(activeTooltipTask);
   const activeEditorSummary =
     activeEditorTask === undefined ? undefined : taskSummary(activeEditorTask);
+  const currentDocument = runtime.getSnapshot().selector.document;
+  const activeEditorTaskRecord =
+    activeEditorTask === undefined
+      ? undefined
+      : currentDocument.tasks.find((task) => task.id === activeEditorTask.taskId);
+  const activeEditorLaneRecord =
+    activeEditorLane?.laneId === undefined
+      ? undefined
+      : currentDocument.lanes.find((lane) => lane.id === activeEditorLane.laneId);
+  const propertyLaneOptions = currentDocument.lanes.map((lane) =>
+    Object.freeze({ id: lane.id, title: lane.title }),
+  );
+  const laneMoveDisabledReason =
+    activeEditorValue?.kind !== 'task' || activeEditorValue.placementId === undefined
+      ? undefined
+      : activeEditorValue.laneId === undefined
+        ? 'Current lane is derived.'
+        : currentDocument.placements.some(
+              (placement) =>
+                placement.id === activeEditorValue.placementId &&
+                placement.taskId === activeEditorValue.taskId &&
+                placement.laneId === activeEditorValue.laneId,
+            )
+          ? undefined
+          : 'The persisted placement is stale.';
   const activeMenuEditReason =
     activeMenuTask === undefined
       ? undefined
-      : taskEditDisabledReason(activeMenuTask, runtime, disabled, editorEnabled);
+      : propertiesEnabled
+        ? taskPropertiesValue(activeMenuTask, runtime.getSnapshot().selector.document) === undefined
+          ? 'The canonical task no longer exists.'
+          : undefined
+        : taskEditDisabledReason(activeMenuTask, runtime, disabled, legacyEditorEnabled);
   const additionalMenuItems =
     activeMenuSummary === undefined
       ? []
@@ -1534,7 +1965,11 @@ function GanttSurface({
             action: 'edit',
             ...(activeMenuEditReason === undefined ? {} : { disabledReason: activeMenuEditReason }),
             id: 'edit',
-            label: 'Edit task',
+            label: propertiesEnabled
+              ? disabled
+                ? 'View properties'
+                : 'Edit properties'
+              : 'Edit task',
           },
           ...additionalMenuItems.map((item) =>
             disabled && item.disabledReason === undefined
@@ -1592,18 +2027,20 @@ function GanttSurface({
     }
     const validation = validateTaskEditorValue(value);
     if (validation !== undefined) {
-      setEditor({ error: validation, pending: false, viewKey: activeEditorTask.viewKey });
+      setEditor((current) =>
+        current === undefined ? undefined : { ...current, error: validation, pending: false },
+      );
       return;
     }
     const record = runtime
       .getSnapshot()
       .selector.document.tasks.find((task) => task.id === activeEditorTask.taskId);
     if (record === undefined) {
-      setEditor({
-        error: 'The task no longer exists.',
-        pending: false,
-        viewKey: activeEditorTask.viewKey,
-      });
+      setEditor((current) =>
+        current === undefined
+          ? undefined
+          : { ...current, error: 'The task no longer exists.', pending: false },
+      );
       return;
     }
     const command = taskEditorCommand(activeEditorTask, record.title, value);
@@ -1612,7 +2049,13 @@ function GanttSurface({
       return;
     }
     const viewKey = activeEditorTask.viewKey;
-    setEditor({ pending: true, viewKey });
+    setEditor((current) => {
+      if (current === undefined) {
+        return undefined;
+      }
+      const { error: _error, ...next } = current;
+      return { ...next, pending: true };
+    });
     void runtime
       .dispatchAction(command, {
         action: 'edit',
@@ -1621,13 +2064,103 @@ function GanttSurface({
       })
       .then((result) => {
         if (result.status === 'rejected') {
-          setEditor({
-            error: result.diagnostics[0]?.message ?? 'The task update was rejected.',
-            pending: false,
-            viewKey,
-          });
+          setEditor((current) =>
+            current?.viewKey !== viewKey
+              ? current
+              : {
+                  ...current,
+                  error: result.diagnostics[0]?.message ?? 'The task update was rejected.',
+                  pending: false,
+                },
+          );
         }
       });
+  };
+  const onItemPropertiesSubmit = (value: GanttItemPropertiesValue) => {
+    if (
+      editor?.mode !== 'properties' ||
+      editor.pending ||
+      activeEditorValue === undefined ||
+      disabled
+    ) {
+      return;
+    }
+    const document = runtime.getSnapshot().selector.document;
+    const validation = validateItemPropertiesValue(activeEditorValue, value, document);
+    if (validation !== undefined) {
+      setEditor((current) =>
+        current === undefined ? undefined : { ...current, error: validation, pending: false },
+      );
+      return;
+    }
+    const command = itemPropertiesCommand(activeEditorValue, value, document);
+    if (command === undefined) {
+      closeEditor();
+      return;
+    }
+    const target =
+      editor.kind === 'task' && activeEditorTask !== undefined
+        ? taskTarget(activeEditorTask)
+        : editor.kind === 'lane' && activeEditorLane !== undefined
+          ? laneSummary(activeEditorLane).target
+          : undefined;
+    if (target === undefined) {
+      closeEditor(false);
+      return;
+    }
+    const viewKey = editor.viewKey;
+    setEditor((current) => {
+      if (current === undefined) {
+        return undefined;
+      }
+      const { error: _error, ...next } = current;
+      return { ...next, pending: true };
+    });
+    void runtime
+      .dispatchAction(command, {
+        action: 'edit',
+        source: { kind: 'editor' },
+        target,
+      })
+      .then((result) => {
+        if (result.status === 'rejected') {
+          setEditor((current) =>
+            current?.viewKey !== viewKey
+              ? current
+              : {
+                  ...current,
+                  error: result.diagnostics[0]?.message ?? 'The item update was rejected.',
+                  pending: false,
+                },
+          );
+        }
+      });
+  };
+  const onItemPropertiesDelete = () => {
+    if (
+      editor?.mode !== 'properties' ||
+      editor.kind !== 'task' ||
+      editor.pending ||
+      activeEditorTask === undefined ||
+      disabled
+    ) {
+      return;
+    }
+    setEditor((current) => {
+      if (current === undefined) {
+        return undefined;
+      }
+      const { error: _error, ...next } = current;
+      return { ...next, pending: true };
+    });
+    void runtime.dispatchAction(
+      { cascade: true, id: activeEditorTask.taskId, type: 'task.delete' },
+      {
+        action: 'delete',
+        source: { kind: 'editor' },
+        target: taskTarget(activeEditorTask),
+      },
+    );
   };
   const trapFocus = (event: ReactKeyboardEvent<HTMLDivElement>, surface: HTMLDivElement | null) => {
     if (event.key !== 'Tab' || surface === null) {
@@ -1635,7 +2168,7 @@ function GanttSurface({
     }
     const focusable = Array.from(
       surface.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
       ),
     );
     if (focusable.length === 0) {
@@ -1666,6 +2199,42 @@ function GanttSurface({
   const Tooltip = slots?.Tooltip ?? DefaultTooltip;
   const ContextMenu = slots?.ContextMenu ?? DefaultContextMenu;
   const TaskEditor = slots?.TaskEditor ?? DefaultTaskEditor;
+  const editorClassState =
+    activeEditorTask !== undefined
+      ? overlayClassState(activeEditorTask)
+      : activeEditorLane !== undefined
+        ? idleClassState(disabled, laneSummary(activeEditorLane).target)
+        : rootClassState;
+  const editorBindings = {
+    'aria-describedby': editor?.error === undefined ? undefined : editorErrorId,
+    'aria-label':
+      editor?.mode === 'properties' && activeEditorValue !== undefined
+        ? `${disabled ? 'View' : 'Edit'} ${activeEditorValue.title} properties`
+        : activeEditorSummary === undefined
+          ? undefined
+          : `Edit ${activeEditorSummary.title}`,
+    'aria-modal': true,
+    'aria-readonly': disabled || undefined,
+    className: joinClasses(
+      'gt-gantt__editor',
+      resolveClassName(classNames?.editor, editorClassState),
+    ),
+    id: editorId,
+    onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      if (event.key === 'Escape' && editor?.pending !== true) {
+        event.preventDefault();
+        closeEditor();
+        return;
+      }
+      trapFocus(event, editorSurfaceRef.current);
+    },
+    ref: (element: HTMLDivElement | null) => {
+      editorSurfaceRef.current = element;
+    },
+    role: 'dialog',
+    tabIndex: -1,
+  } as const;
   const overlays =
     overlayHost === null
       ? null
@@ -1737,9 +2306,12 @@ function GanttSurface({
                 task={activeMenuSummary}
               />
             ) : null}
-            {editor !== undefined && activeEditorSummary !== undefined ? (
+            {editor !== undefined &&
+            ((editor.mode === 'legacy' && activeEditorSummary !== undefined) ||
+              (editor.mode === 'properties' && activeEditorValue !== undefined)) ? (
               <div
                 className="gt-gantt__editor-backdrop"
+                data-editor-mode={editor.mode}
                 data-gt-part="editor-backdrop"
                 onPointerDown={(event) => {
                   if (event.currentTarget === event.target && !editor.pending) {
@@ -1747,43 +2319,69 @@ function GanttSurface({
                   }
                 }}
               >
-                <TaskEditor
-                  bindings={{
-                    'aria-describedby': editor.error === undefined ? undefined : editorErrorId,
-                    'aria-label': `Edit ${activeEditorSummary.title}`,
-                    'aria-modal': true,
-                    className: joinClasses(
-                      'gt-gantt__editor',
-                      resolveClassName(classNames?.editor, overlayClassState(activeEditorTask!)),
-                    ),
-                    id: editorId,
-                    onKeyDown: (event) => {
-                      event.stopPropagation();
-                      if (event.key === 'Escape' && !editor.pending) {
-                        event.preventDefault();
-                        closeEditor();
-                        return;
-                      }
-                      trapFocus(event, editorSurfaceRef.current);
-                    },
-                    ref: (element) => {
-                      editorSurfaceRef.current = element;
-                    },
-                    role: 'dialog',
-                    tabIndex: -1,
-                  }}
-                  {...(editor.error === undefined ? {} : { error: editor.error })}
-                  errorId={editorErrorId}
-                  initialValue={{
-                    end: activeEditorSummary.end,
-                    start: activeEditorSummary.start,
-                    title: activeEditorSummary.title,
-                  }}
-                  onCancel={() => closeEditor()}
-                  onSubmit={onEditorSubmit}
-                  pending={editor.pending}
-                  task={activeEditorSummary}
-                />
+                {editor.mode === 'properties' && activeEditorValue !== undefined ? (
+                  slots?.ItemProperties === undefined ? (
+                    <DefaultItemProperties
+                      appearanceVariants={registeredAppearanceVariants}
+                      bindings={editorBindings}
+                      {...(elapsedDuration(activeEditorValue) === undefined
+                        ? {}
+                        : { duration: elapsedDuration(activeEditorValue)! })}
+                      {...(editor.error === undefined ? {} : { error: editor.error })}
+                      errorId={editorErrorId}
+                      initialValue={activeEditorValue}
+                      key={`${activeEditorValue.kind}:${
+                        activeEditorValue.kind === 'task'
+                          ? activeEditorValue.taskId
+                          : activeEditorValue.laneId
+                      }`}
+                      {...(laneMoveDisabledReason === undefined ? {} : { laneMoveDisabledReason })}
+                      lanes={propertyLaneOptions}
+                      onCancel={() => closeEditor()}
+                      onDelete={onItemPropertiesDelete}
+                      onSubmit={onItemPropertiesSubmit}
+                      pending={editor.pending}
+                      readOnly={disabled}
+                      {...(activeEditorLaneRecord?.resourceId === undefined
+                        ? {}
+                        : { resourceId: activeEditorLaneRecord.resourceId })}
+                      {...(activeEditorTaskRecord === undefined
+                        ? {}
+                        : { taskKind: activeEditorTaskRecord.kind })}
+                    />
+                  ) : (
+                    <slots.ItemProperties
+                      bindings={editorBindings}
+                      {...(editor.error === undefined ? {} : { error: editor.error })}
+                      errorId={editorErrorId}
+                      initialValue={activeEditorValue}
+                      key={`${activeEditorValue.kind}:${
+                        activeEditorValue.kind === 'task'
+                          ? activeEditorValue.taskId
+                          : activeEditorValue.laneId
+                      }`}
+                      onCancel={() => closeEditor()}
+                      onDelete={onItemPropertiesDelete}
+                      onSubmit={onItemPropertiesSubmit}
+                      pending={editor.pending}
+                    />
+                  )
+                ) : activeEditorSummary !== undefined ? (
+                  <TaskEditor
+                    bindings={editorBindings}
+                    {...(editor.error === undefined ? {} : { error: editor.error })}
+                    errorId={editorErrorId}
+                    initialValue={{
+                      end: activeEditorSummary.end,
+                      start: activeEditorSummary.start,
+                      title: activeEditorSummary.title,
+                    }}
+                    onCancel={() => closeEditor()}
+                    onSubmit={onEditorSubmit}
+                    pending={editor.pending}
+                    task={activeEditorSummary}
+                  />
+                ) : null}
               </div>
             ) : null}
           </>,
@@ -1826,6 +2424,9 @@ function GanttSurface({
         platform undo or redo shortcuts. In move or resize mode, viewport gestures do not edit
         tasks; use arrow keys, Enter to commit, and Escape to cancel. Dependency links and all-day
         task editing are not available in this interaction version.
+        {propertiesEnabled
+          ? ' Use each visible lane properties button to inspect or edit a persisted lane.'
+          : ''}
       </p>
       <div
         aria-colcount={resolvedColumns.length + 1}
@@ -1940,9 +2541,10 @@ function GanttSurface({
         ) : (
           <div className="gt-gantt__body-scroll" data-gt-part="viewport" ref={bodyRef}>
             <div className="gt-gantt__body" style={{ height: scene.bounds.timelineHeight }}>
-              <div aria-hidden="true" className="gt-gantt__lanes" data-gt-part="lane-list">
+              <div className="gt-gantt__lanes" data-gt-part="lane-list">
                 {scene.lanes.map((lane) => (
                   <div
+                    aria-hidden="true"
                     className={joinClasses(
                       'gt-gantt__lane',
                       resolveClassName(
@@ -1987,6 +2589,27 @@ function GanttSurface({
                     ))}
                   </div>
                 ))}
+                {propertiesEnabled
+                  ? scene.lanes.map((lane) =>
+                      lane.laneId === undefined ? null : (
+                        <button
+                          aria-label={`${lane.title} properties`}
+                          className="gt-gantt__lane-properties-trigger"
+                          data-gt-part="lane-properties-trigger"
+                          data-view-key={lane.viewKey}
+                          key={`${lane.viewKey}:properties`}
+                          onClick={() => openLaneProperties(lane.viewKey)}
+                          style={{
+                            height: Math.min(30, Math.max(24, lane.height - 12)),
+                            top: lane.y + Math.max(6, (lane.height - 30) / 2),
+                          }}
+                          type="button"
+                        >
+                          <span aria-hidden="true">•••</span>
+                        </button>
+                      ),
+                    )
+                  : null}
               </div>
 
               <div
@@ -2057,6 +2680,7 @@ function GanttSurface({
                       disabled={disabled}
                       domId={taskDomIds.get(task.viewKey)!}
                       key={task.viewKey}
+                      onActivate={onTaskActivate}
                       onContextMenu={onTaskContextMenu}
                       onFocus={onTaskFocus}
                       onMouseEnter={onTaskMouseEnter}
@@ -2317,6 +2941,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
   return (
     <GanttRuntimeProvider runtime={runtime}>
       <GanttSurface
+        appearanceVariants={props.appearanceVariants}
         bodyRef={bodyRef}
         chartRef={chartRef}
         className={className}

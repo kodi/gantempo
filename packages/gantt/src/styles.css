@@ -139,6 +139,37 @@
     border-right: 1px solid var(--gt-color-grid);
   }
 
+  :where(.gt-gantt__lane-header:last-of-type) {
+    padding-right: 48px;
+  }
+
+  :where(.gt-gantt__lane-properties-trigger) {
+    position: absolute;
+    z-index: 2;
+    right: 8px;
+    display: grid;
+    width: 32px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 8px;
+    color: var(--gt-color-text-muted);
+    background: color-mix(in srgb, var(--gt-color-surface) 88%, transparent);
+    font: inherit;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+
+  :where(.gt-gantt__lane-properties-trigger:hover) {
+    color: var(--gt-color-text);
+    background: var(--gt-color-surface);
+  }
+
+  :where(.gt-gantt__lane-properties-trigger:focus-visible) {
+    outline: 2px solid var(--gt-color-focus);
+    outline-offset: 2px;
+  }
+
   :where(.gt-gantt__lane-header > span:last-child) {
     min-width: 0;
     overflow: hidden;
@@ -547,6 +578,17 @@
     pointer-events: auto;
   }
 
+  :where(.gt-gantt__editor-backdrop[data-editor-mode='properties']) {
+    padding: 0;
+    place-items: stretch end;
+  }
+
+  :where(.gt-gantt__editor-backdrop[data-editor-mode='properties'] .gt-gantt__editor) {
+    width: min(540px, 100%);
+    max-height: none;
+    border-radius: 18px 0 0 18px;
+  }
+
   :where(.gt-gantt__editor) {
     width: min(540px, 100%);
     max-height: 100%;
@@ -679,7 +721,12 @@
     gap: 14px;
   }
 
-  :where(.gt-gantt__editor input, .gt-gantt__editor-input-shell) {
+  :where(
+    .gt-gantt__editor input,
+    .gt-gantt__editor select,
+    .gt-gantt__editor textarea,
+    .gt-gantt__editor-input-shell
+  ) {
     min-width: 0;
     border: 1px solid var(--gt-color-border);
     border-radius: 10px;
@@ -691,12 +738,18 @@
       background-color 120ms ease;
   }
 
-  :where(.gt-gantt__editor input) {
+  :where(.gt-gantt__editor input, .gt-gantt__editor select, .gt-gantt__editor textarea) {
+    width: 100%;
     min-height: 42px;
     padding: 9px 11px;
     font: inherit;
     font-size: 12px;
     line-height: 1.4;
+  }
+
+  :where(.gt-gantt__editor textarea) {
+    min-height: 82px;
+    resize: vertical;
   }
 
   :where(.gt-gantt__editor > form > .gt-gantt__editor-content > label > input) {
@@ -723,7 +776,11 @@
     background: transparent;
   }
 
-  :where(.gt-gantt__editor input:focus-visible) {
+  :where(
+    .gt-gantt__editor input:focus-visible,
+    .gt-gantt__editor select:focus-visible,
+    .gt-gantt__editor textarea:focus-visible
+  ) {
     outline: none;
     border-color: var(--gt-color-focus);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--gt-color-focus) 18%, transparent);
@@ -750,7 +807,12 @@
     cursor: default;
   }
 
-  :where(.gt-gantt__editor button:disabled, .gt-gantt__editor input:disabled) {
+  :where(
+    .gt-gantt__editor button:disabled,
+    .gt-gantt__editor input:disabled,
+    .gt-gantt__editor select:disabled,
+    .gt-gantt__editor textarea:disabled
+  ) {
     cursor: not-allowed;
     opacity: 0.58;
   }
@@ -793,6 +855,17 @@
     background: var(--gt-color-surface-muted);
   }
 
+  :where(.gt-gantt__editor-button--danger) {
+    margin-right: auto;
+    border-color: color-mix(in srgb, #b42318 32%, var(--gt-color-border));
+    color: #b42318;
+    background: color-mix(in srgb, #b42318 7%, var(--gt-color-surface));
+  }
+
+  :where(.gt-gantt__editor-button--danger:not(:disabled):hover) {
+    background: color-mix(in srgb, #b42318 13%, var(--gt-color-surface));
+  }
+
   :where(.gt-gantt__editor-button--primary) {
     margin-left: auto;
     border-color: var(--gt-color-task);
@@ -832,6 +905,49 @@
     margin-top: 1px;
   }
 
+  :where(.gt-gantt__properties-meta) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--gt-color-border);
+    border-radius: 10px;
+    background: var(--gt-color-border);
+  }
+
+  :where(.gt-gantt__properties-meta > div) {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+    padding: 10px;
+    background: var(--gt-color-surface-muted);
+  }
+
+  :where(.gt-gantt__properties-meta dt) {
+    color: var(--gt-color-text-muted);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  :where(.gt-gantt__properties-meta dd) {
+    margin: 0;
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :where(.gt-gantt__properties-note) {
+    margin: 0;
+    color: var(--gt-color-text-muted);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
   @keyframes gt-editor-spin {
     to {
       transform: rotate(360deg);
@@ -858,6 +974,8 @@
       .gt-gantt__interaction-preview,
       .gt-gantt__context-menu-item,
       .gt-gantt__editor input,
+      .gt-gantt__editor select,
+      .gt-gantt__editor textarea,
       .gt-gantt__editor-input-shell,
       .gt-gantt__editor-button
     ) {
@@ -885,6 +1003,17 @@
       border-radius: 16px;
     }
 
+    :where(.gt-gantt__editor-backdrop[data-editor-mode='properties']) {
+      padding: 10px;
+      place-items: end center;
+    }
+
+    :where(.gt-gantt__editor-backdrop[data-editor-mode='properties'] .gt-gantt__editor) {
+      width: 100%;
+      max-height: calc(100% - 10px);
+      border-radius: 16px;
+    }
+
     :where(.gt-gantt__editor-header) {
       padding: 18px 18px 16px;
     }
@@ -905,6 +1034,10 @@
     }
 
     :where(.gt-gantt__editor-schedule) {
+      grid-template-columns: 1fr;
+    }
+
+    :where(.gt-gantt__properties-meta) {
       grid-template-columns: 1fr;
     }
 

@@ -456,7 +456,7 @@ export function InteractivePage(): ReactElement {
             },
           ]}
           document={state.document}
-          features={{ contextMenu: true, editor: true, tooltip: true }}
+          features={{ contextMenu: true, properties: true, tooltip: true }}
           interactionMappers={interactionMappers}
           interactionSnap={{ anchor: RANGE_START, step: DAY }}
           label="Interactive delivery plan chart"

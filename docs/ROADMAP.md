@@ -125,7 +125,7 @@ Detailed completion evidence is recorded in
 | M2: Change kernel | Remainder of Slice 1 | Typed commands produce deterministic patches, inverse patches, transactions, and local history | `[x]` | [Completed plan](plans/2026-07-30-change-kernel-plan.md) |
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
-| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A3 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
+| M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[-]` A5 complete | [Active plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[ ]` | Not yet created |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -171,7 +171,7 @@ post-M4 work.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[-]` Appendix Slice A4 complete; A5 properties surfaces next
+**Status:** `[-]` Appendix Slice A5 complete; A6 progress editing next
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -216,7 +216,7 @@ for warm affected appearance/progress projection with no release threshold. Appe
 Slice A4 owns DOM/SVG paint, progress semantics, forced colors, and per-instance
 diagnostic delivery deduplication.
 
-Appendix Slice A4 is now in progress. Instance `appearanceVariants` and the
+Appendix Slice A4 is complete. Instance `appearanceVariants` and the
 source-compatible `taskVariants` fallback enter the React runtime as display inputs
 and feed the existing selective scene pipeline; paint-registry changes do not require
 a document mutation or geometry rebuild.
@@ -246,7 +246,20 @@ progress was not duplicated, the minimum observed label contrast across light, d
 and high-contrast partial progress was 4.53:1, the narrow document did not overflow,
 the console was clean, and all 73 inspected development requests returned 200. The
 required full `mise run ci` passed 65 files / 317 tests. A5 properties surfaces are
-next.
+complete with the accepted additive value, slot, and feature facade; the legacy
+`TaskEditor` contract remains unchanged. One selection-driven default surface now
+inspects and edits persisted tasks and lanes through the M4 command,
+acknowledgement, rejection, and history path. It covers schedule, description,
+integer-percent progress, semantic appearance, unambiguous lane moves, deletion,
+read-only metadata, unavailable variants, stale targets, custom replacement, focus
+return, and instance isolation.
+
+A5 focused properties coverage passed 10 tests; the complete gate passed 66 files /
+328 tests plus formatting, lint/types, and four packed artifacts. Production
+playground build and packed-declaration inspection passed. Chrome DevTools verified
+controlled task/lane properties at desktop and narrow widths plus narrow read-only
+inspection, with a clean console and 74 successful or cache-valid requests. Appendix
+Slice A6 owns direct pointer, pen, touch, and keyboard progress editing.
 
 ### Post-M4 persistence entity-change projection
 

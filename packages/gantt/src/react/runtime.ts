@@ -96,6 +96,8 @@ export interface GanttReactRuntime {
   ): Promise<GanttDispatchResult>;
   getHandle(): GanttHandle;
   getSnapshot(): GanttReactRuntimeSnapshot;
+  inspectLane(viewKey: string): boolean;
+  inspectTask(viewKey: string): boolean;
   keyboardAction(input: GanttKeyboardActionInput): boolean;
   keyboardFocus(viewKey: string): boolean;
   measure(measurement: GanttViewportMeasurement): void;
@@ -259,6 +261,17 @@ function taskTarget(task: TaskBarPrimitive | ChartSceneOccurrence): GanttTaskTar
   });
 }
 
+function laneTarget(
+  lane: ChartScene['lanes'][number],
+): Extract<GanttInteractionTarget, { readonly kind: 'lane' }> {
+  return Object.freeze({
+    kind: 'lane',
+    ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
+    ...(lane.resourceId === undefined ? {} : { resourceId: lane.resourceId }),
+    viewKey: lane.viewKey,
+  });
+}
+
 function occurrences(
   scene: ChartScene,
   catalog: readonly ChartSceneOccurrence[],
@@ -274,15 +287,22 @@ function occurrences(
     }),
   );
   return Object.freeze({
-    runtime: Object.freeze(
-      catalog.map((task) =>
+    runtime: Object.freeze([
+      ...scene.lanes.map((lane, laneIndex) =>
+        Object.freeze({
+          horizontalCenter: 0,
+          laneIndex,
+          target: laneTarget(lane),
+        }),
+      ),
+      ...catalog.map((task) =>
         Object.freeze({
           horizontalCenter: task.start + (task.end - task.start) / 2,
           laneIndex: task.laneIndex,
           target: taskTarget(task),
         }),
       ),
-    ),
+    ]),
     visible: Object.freeze(visible),
   });
 }
@@ -1399,6 +1419,47 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return true;
       }
       return false;
+    },
+
+    inspectLane(viewKey) {
+      if (disposed) {
+        return false;
+      }
+      const lane = snapshot.scene.lanes.find((candidate) => candidate.viewKey === viewKey);
+      if (lane === undefined) {
+        return false;
+      }
+      const target = laneTarget(lane);
+      const session = store.getSnapshot().session;
+      return updateSession(
+        Object.freeze({
+          focused: target,
+          selection: Object.freeze([target]),
+          viewport: session.viewport,
+        }),
+        'runtime',
+      );
+    },
+
+    inspectTask(viewKey) {
+      if (disposed) {
+        return false;
+      }
+      const target = snapshot.selector.occurrences.find(
+        (occurrence) => occurrence.target.viewKey === viewKey,
+      )?.target;
+      if (target === undefined) {
+        return false;
+      }
+      const session = store.getSnapshot().session;
+      return updateSession(
+        Object.freeze({
+          focused: target,
+          selection: Object.freeze([target]),
+          viewport: session.viewport,
+        }),
+        'runtime',
+      );
     },
 
     keyboardFocus(viewKey) {

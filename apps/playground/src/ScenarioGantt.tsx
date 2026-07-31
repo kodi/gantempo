@@ -64,6 +64,7 @@ export function ScenarioGantt({
       <Gantt
         className="chart-frame__chart"
         document={document}
+        {...(size === 'main' ? { features: { properties: true } } : {})}
         label={`${scenario.title} chart`}
         appearanceVariants={scenario.appearanceVariants}
         {...(editable
