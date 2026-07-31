@@ -219,6 +219,7 @@ function addRecord<C extends DocumentCollection>(
     value: DomainRecordByCollection[C],
     insertionIndex: number,
   ) => readonly EntityReference[],
+  validateValue?: (value: DomainRecordByCollection[C]) => Diagnostic | undefined,
 ): CommandOutcome {
   const normalized = normalizeCommandRecord(collection, input, '/command/value');
   if (!normalized.value) {
@@ -233,6 +234,10 @@ function addRecord<C extends DocumentCollection>(
         [normalized.value.id],
       ),
     ]);
+  }
+  const invalidValue = validateValue?.(normalized.value);
+  if (invalidValue !== undefined) {
+    return rejected(document, [invalidValue]);
   }
   const insertionIndex = index === undefined ? document[collection].length : index;
   if (
@@ -276,6 +281,10 @@ function updateRecord<C extends DocumentCollection>(
     current: DomainRecordByCollection[C],
     next: DomainRecordByCollection[C],
   ) => readonly EntityReference[],
+  validateValue?: (
+    current: DomainRecordByCollection[C],
+    next: DomainRecordByCollection[C],
+  ) => Diagnostic | undefined,
 ): CommandOutcome {
   if (typeof id !== 'string' || id.length === 0) {
     return rejected(document, [
@@ -308,6 +317,10 @@ function updateRecord<C extends DocumentCollection>(
   if (!normalized.value) {
     return rejected(document, normalized.diagnostics);
   }
+  const invalidValue = validateValue?.(current, normalized.value);
+  if (invalidValue !== undefined) {
+    return rejected(document, [invalidValue]);
+  }
   if (structuralEqual(current, normalized.value)) {
     return committedNoOp(document);
   }
@@ -320,6 +333,24 @@ function updateRecord<C extends DocumentCollection>(
       value: normalized.value,
     } as GanttPatch,
     affectedForValue?.(current, normalized.value) ?? [{ collection, id }],
+  );
+}
+
+function invalidMilestoneSchedule(task: TaskRecord, path: string): Diagnostic | undefined {
+  if (
+    task.kind !== 'milestone' ||
+    task.schedule === undefined ||
+    (task.schedule.mode === 'instant'
+      ? task.schedule.start === task.schedule.end
+      : task.schedule.startDate === task.schedule.endDate)
+  ) {
+    return undefined;
+  }
+  return diagnostic(
+    'command.invalid-interval',
+    `Milestone "${task.id}" must have equal schedule boundaries.`,
+    path,
+    [task.id],
   );
 }
 
@@ -781,11 +812,18 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
       const invalid = commandShape(document, command, ['type', 'value', 'index']);
       return (
         invalid ??
-        addRecord(document, 'tasks', command.value, command.index, (value, insertionIndex) => {
-          const tasks = [...document.tasks];
-          tasks.splice(insertionIndex, 0, value);
-          return taskChangeAffected(document.tasks, tasks, value.id);
-        })
+        addRecord(
+          document,
+          'tasks',
+          command.value,
+          command.index,
+          (value, insertionIndex) => {
+            const tasks = [...document.tasks];
+            tasks.splice(insertionIndex, 0, value);
+            return taskChangeAffected(document.tasks, tasks, value.id);
+          },
+          (value) => invalidMilestoneSchedule(value, '/command/value/schedule'),
+        )
       );
     }
     case 'task.update': {
@@ -824,6 +862,7 @@ export function applyGanttCommand(document: GanttDocument, command: GanttCommand
               document.tasks.map((task) => (task.id === current.id ? next : task)),
               current.id,
             ),
+          (_current, next) => invalidMilestoneSchedule(next, '/command/changes/schedule'),
         )
       );
     }

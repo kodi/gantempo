@@ -69,6 +69,23 @@ export function validateDocumentReferences(
 
   const sourceIndexByTaskId = new Map(document.tasks.map((task, index) => [task.id, index]));
   let tasks = document.tasks.map((task, index): TaskRecord => {
+    if (
+      task.kind === 'milestone' &&
+      task.schedule !== undefined &&
+      (task.schedule.mode === 'instant'
+        ? task.schedule.start !== task.schedule.end
+        : task.schedule.startDate !== task.schedule.endDate)
+    ) {
+      diagnostics.push(
+        Object.freeze({
+          code: 'presentation.milestone-interval' as const,
+          entityIds: Object.freeze([task.id]),
+          message: `Milestone "${task.id}" has unequal boundaries and is presented at its start.`,
+          path: `${recordPath(sourcePaths, 'tasks', task.id, index)}/schedule`,
+          severity: 'warning' as const,
+        }),
+      );
+    }
     if (task.parentId === undefined) {
       return task;
     }

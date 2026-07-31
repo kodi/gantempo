@@ -84,6 +84,7 @@ function fixture(): {
         width: 0.2,
         y: 18,
         height: 24,
+        presentation: { geometry: { kind: 'bar' }, intervalSource: 'canonical', kind: 'task' },
         clippedStart: false,
         clippedEnd: false,
       },

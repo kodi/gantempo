@@ -48,6 +48,7 @@ function fixture(): InteractionGestureOptions {
         laneId: 'lane-a',
         laneViewKey: 'lane-a-view',
         placementId: 'placement-a',
+        presentation: { geometry: { kind: 'bar' }, intervalSource: 'canonical', kind: 'task' },
         progress: { value: 0.25, width: 0.05, x: 0.1 },
         source: {
           kind: 'document-placement',

@@ -314,6 +314,115 @@ describe('staged chart scene pipeline', () => {
     expect(sorted.work.topologyBuilds).toBe(1);
   });
 
+  it('rebuilds descendant-derived summary geometry for affected ancestor lanes', () => {
+    const document: GanttDocument = {
+      assignments: [],
+      dependencies: [],
+      lanes: [],
+      placements: [],
+      resources: [],
+      schemaVersion: 1,
+      tasks: [
+        { id: 'summary', kind: 'summary', segments: [], title: 'Summary' },
+        {
+          id: 'child',
+          kind: 'task',
+          parentId: 'summary',
+          schedule: { end: START + 3 * DAY, mode: 'instant', start: START + DAY },
+          segments: [],
+          title: 'Child',
+        },
+      ],
+    };
+    const pipeline = createChartScenePipeline();
+    pipeline.build({ ...options(document), view: { kind: 'project' } });
+    const outcome = commit(document, {
+      changes: {
+        schedule: { end: START + 5 * DAY, mode: 'instant', start: START + 2 * DAY },
+      },
+      id: 'child',
+      type: 'task.update',
+    });
+    expect(outcome.affected).toEqual([
+      { collection: 'tasks', id: 'child' },
+      { collection: 'tasks', id: 'summary' },
+    ]);
+
+    const result = pipeline.build(
+      { ...options(outcome.document), view: { kind: 'project' } },
+      { affected: outcome.affected, kind: 'affected' },
+    );
+    expect(result.scene.taskBars.find((task) => task.taskId === 'summary')).toMatchObject({
+      end: START + 5 * DAY,
+      start: START + 2 * DAY,
+    });
+    expect(result.work).toMatchObject({
+      intervalBuilds: 1,
+      laneStackBuilds: 2,
+      topologyBuilds: 0,
+    });
+    expect(result.work.affectedLaneKeys).toHaveLength(2);
+  });
+
+  it('rebuilds callback topology for any changed project task semantic data', () => {
+    const document = fixture();
+    const include = (task: GanttDocument['tasks'][number]) => task.fields?.include === true;
+    const withFields: GanttDocument = {
+      ...document,
+      tasks: document.tasks.map((task, index) => ({
+        ...task,
+        ...(index === 0 ? { fields: { include: true } } : {}),
+      })),
+    };
+    const pipeline = createChartScenePipeline();
+    const first = pipeline.build({
+      ...options(withFields),
+      view: { filter: include, kind: 'project' },
+    });
+    expect(first.scene.lanes).toHaveLength(1);
+    const outcome = commit(withFields, {
+      changes: { fields: { include: true } },
+      id: 'task-b',
+      type: 'task.update',
+    });
+
+    const result = pipeline.build(
+      { ...options(outcome.document), view: { filter: include, kind: 'project' } },
+      { affected: outcome.affected, kind: 'affected' },
+    );
+    expect(result.work.topologyBuilds).toBe(1);
+    expect(result.scene.lanes).toHaveLength(2);
+  });
+
+  it('rebuilds all-day presentation intervals when the explicit time zone changes', () => {
+    const document: GanttDocument = {
+      ...fixture(),
+      tasks: [
+        {
+          id: 'task-a',
+          kind: 'task',
+          schedule: {
+            endDate: '2026-07-31',
+            mode: 'all-day',
+            startDate: '2026-07-30',
+          },
+          segments: [],
+          title: 'All day',
+        },
+      ],
+    };
+    const pipeline = createChartScenePipeline();
+    const utc = pipeline.build({ ...options(document), view: { kind: 'project' } });
+    const belgrade = pipeline.build({
+      ...options(document),
+      timeZone: 'Europe/Belgrade',
+      view: { kind: 'project' },
+    });
+
+    expect(belgrade.work).toMatchObject({ intervalBuilds: 1, topologyBuilds: 0 });
+    expect(belgrade.scene.taskBars[0]?.start).not.toBe(utc.scene.taskBars[0]?.start);
+  });
+
   it('keeps a frozen full occurrence catalog across horizontal and vertical viewport queries', () => {
     const pipeline = createChartScenePipeline();
     const document = fixture();

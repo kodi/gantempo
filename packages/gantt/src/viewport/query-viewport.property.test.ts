@@ -49,6 +49,8 @@ describe('viewport query properties', () => {
         const placements: ResolvedIntervalPlacement[] = input.lanes.flatMap(
           (specification, laneIndex) =>
             specification.intervals.map((item, intervalIndex) => ({
+              intervalSource: 'canonical' as const,
+              kind: 'task' as const,
               key: `placement-${laneIndex}-${intervalIndex}` as ViewPlacementKey,
               laneKey: `lane-${laneIndex}` as ViewLaneKey,
               taskId: `task-${laneIndex}-${intervalIndex}`,

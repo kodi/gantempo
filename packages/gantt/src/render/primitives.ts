@@ -1,6 +1,18 @@
 import type { Diagnostic } from '../model/diagnostics';
-import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
-import type { GanttViewDefinition, ViewLaneSource, ViewPlacementSource } from '../view/types';
+import type {
+  EntityId,
+  EpochMilliseconds,
+  GanttDocument,
+  TaskKind,
+  TimeRange,
+} from '../model/types';
+import type { ResolvedSummaryPresentation } from '../presentation/resolve-task-presentations';
+import type {
+  GanttViewDefinition,
+  ResolvedProjectTaskMetadata,
+  ViewLaneSource,
+  ViewPlacementSource,
+} from '../view/types';
 import type { EffectiveAppearancePrimitive, GanttAppearanceVariantOption } from './appearance';
 
 export interface ChartLayoutMetrics {
@@ -53,12 +65,26 @@ export interface LaneRowPrimitive {
   readonly title: string;
   readonly y: number;
   readonly height: number;
+  readonly project?: ResolvedProjectTaskMetadata;
 }
 
 export interface TaskProgressPrimitive {
   readonly value: number;
   readonly width: number;
   readonly x: number;
+}
+
+export type TaskPresentationGeometryPrimitive =
+  | { readonly kind: 'bar' }
+  | { readonly capHeight: number; readonly kind: 'summary' }
+  | { readonly centerX: number; readonly kind: 'milestone'; readonly size: number };
+
+export interface TaskPresentationPrimitive {
+  readonly geometry: TaskPresentationGeometryPrimitive;
+  readonly intervalSource: 'canonical' | 'descendants';
+  readonly kind: TaskKind;
+  readonly project?: ResolvedProjectTaskMetadata;
+  readonly summary?: ResolvedSummaryPresentation;
 }
 
 export interface TaskBarPrimitive {
@@ -80,6 +106,7 @@ export interface TaskBarPrimitive {
   readonly y: number;
   readonly height: number;
   readonly progress?: TaskProgressPrimitive;
+  readonly presentation: TaskPresentationPrimitive;
   readonly clippedStart: boolean;
   readonly clippedEnd: boolean;
 }

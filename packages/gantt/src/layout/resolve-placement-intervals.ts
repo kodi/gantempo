@@ -1,11 +1,20 @@
 import type { Diagnostic, DiagnosticCode } from '../model/diagnostics';
 import { buildDocumentIndexes } from '../model/indexes';
-import type { EntityId, EpochMilliseconds, GanttDocument, TaskSchedule } from '../model/types';
+import type { EntityId, EpochMilliseconds, GanttDocument, TaskKind } from '../model/types';
+import {
+  resolveCanonicalTaskSchedule,
+  resolveTaskPresentations,
+  type ResolvedSummaryPresentation,
+} from '../presentation/resolve-task-presentations';
+import { buildTaskHierarchyIndexes, getTaskDescendants } from '../hierarchy/task-hierarchy';
 import type { ResolvedViewPlacement } from '../view/types';
 
 export interface ResolvedIntervalPlacement extends ResolvedViewPlacement {
-  readonly start: EpochMilliseconds;
   readonly end: EpochMilliseconds;
+  readonly intervalSource: 'canonical' | 'descendants';
+  readonly kind: TaskKind;
+  readonly start: EpochMilliseconds;
+  readonly summary?: ResolvedSummaryPresentation;
 }
 
 export interface ResolvePlacementIntervalsResult {
@@ -28,59 +37,41 @@ function intervalDiagnostic(
   });
 }
 
-function scheduleDiagnostic(
-  schedule: TaskSchedule | undefined,
-  placement: ResolvedViewPlacement,
-  path: string,
-): Diagnostic | undefined {
-  const sourceId = placement.segmentId ?? placement.taskId;
-  const entityIds = [placement.taskId, sourceId];
-  if (schedule === undefined) {
-    return intervalDiagnostic(
-      'layout.missing-schedule',
-      `Placement source "${sourceId}" has no schedule.`,
-      path,
-      entityIds,
-    );
-  }
-  if (schedule.mode === 'all-day') {
-    return intervalDiagnostic(
-      'layout.unsupported-all-day-schedule',
-      `Placement source "${sourceId}" uses an all-day schedule that M3 cannot render.`,
-      path,
-      entityIds,
-    );
-  }
-  if (!Number.isFinite(schedule.start) || !Number.isFinite(schedule.end)) {
-    return intervalDiagnostic(
-      'layout.non-finite-interval',
-      `Placement source "${sourceId}" has a non-finite interval boundary.`,
-      path,
-      entityIds,
-    );
-  }
-  if (schedule.end <= schedule.start) {
-    return intervalDiagnostic(
-      'layout.invalid-interval',
-      `Placement source "${sourceId}" must end after it starts.`,
-      path,
-      entityIds,
-    );
-  }
-  return undefined;
-}
-
 /**
  * Dereferences task or explicit segment schedules once so stacking and viewport
- * algorithms operate only on validated half-open instant intervals.
+ * algorithms operate only on resolved intervals or milestone points.
  */
 export function resolvePlacementIntervals(
   document: GanttDocument,
   placements: readonly ResolvedViewPlacement[],
+  options: { readonly timeZone?: string } = {},
 ): ResolvePlacementIntervalsResult {
   const indexes = buildDocumentIndexes(document);
+  const hierarchy = buildTaskHierarchyIndexes(document.tasks);
+  const presentations = resolveTaskPresentations(document, options.timeZone ?? 'UTC');
+  const presentationByTaskId = new Map(
+    presentations.presentations.map((presentation) => [presentation.taskId, presentation]),
+  );
   const resolved: ResolvedIntervalPlacement[] = [];
   const diagnostics: Diagnostic[] = [];
+  const diagnosticTaskIds = new Set<EntityId>();
+
+  for (const placement of placements) {
+    if (placement.segmentId !== undefined) {
+      continue;
+    }
+    diagnosticTaskIds.add(placement.taskId);
+    if (presentationByTaskId.get(placement.taskId)?.kind === 'summary') {
+      for (const descendant of getTaskDescendants(hierarchy, placement.taskId)) {
+        diagnosticTaskIds.add(descendant.id);
+      }
+    }
+  }
+  diagnostics.push(
+    ...presentations.diagnostics.filter((item) =>
+      item.entityIds?.some((id) => diagnosticTaskIds.has(id)),
+    ),
+  );
 
   placements.forEach((placement, index) => {
     const task = indexes.tasksById.get(placement.taskId);
@@ -96,7 +87,6 @@ export function resolvePlacementIntervals(
       return;
     }
 
-    let schedule = task.schedule;
     if (placement.segmentId !== undefined) {
       const segment = indexes.segmentsByTaskId.get(task.id)?.get(placement.segmentId);
       if (!segment) {
@@ -110,25 +100,42 @@ export function resolvePlacementIntervals(
         );
         return;
       }
-      schedule = segment.schedule;
-    }
-
-    const invalidSchedule = scheduleDiagnostic(schedule, placement, `placements[${index}]`);
-    if (invalidSchedule) {
-      diagnostics.push(invalidSchedule);
+      const segmentResolution = resolveCanonicalTaskSchedule(
+        task,
+        segment.schedule,
+        `placements[${index}].segmentId`,
+        options.timeZone ?? 'UTC',
+      );
+      diagnostics.push(...segmentResolution.diagnostics);
+      if (segmentResolution.interval === undefined) {
+        return;
+      }
+      resolved.push(
+        Object.freeze({
+          ...placement,
+          end: segmentResolution.interval.end,
+          intervalSource: 'canonical',
+          kind: task.kind,
+          source: Object.freeze({ ...placement.source }),
+          start: segmentResolution.interval.start,
+        }),
+      );
       return;
     }
 
-    // The diagnostic helper proves this is the canonical instant interval branch.
-    if (schedule?.mode !== 'instant') {
+    const presentation = presentationByTaskId.get(task.id)!;
+    if (presentation.interval === undefined) {
       return;
     }
     resolved.push(
       Object.freeze({
         ...placement,
+        end: presentation.interval.end,
+        intervalSource: presentation.interval.source,
+        kind: presentation.kind,
         source: Object.freeze({ ...placement.source }),
-        start: schedule.start,
-        end: schedule.end,
+        start: presentation.interval.start,
+        ...(presentation.summary === undefined ? {} : { summary: presentation.summary }),
       }),
     );
   });

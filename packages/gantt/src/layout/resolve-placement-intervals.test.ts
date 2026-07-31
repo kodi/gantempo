@@ -74,7 +74,7 @@ describe('resolvePlacementIntervals', () => {
     });
   });
 
-  it('isolates absent, all-day, non-finite, zero-width, and reversed schedules', () => {
+  it('resolves all-day input and isolates absent, non-finite, zero-width, and reversed schedules', () => {
     const document = documentWithTasks([
       { id: 'absent', title: 'Absent', kind: 'task', segments: [] },
       {
@@ -121,10 +121,15 @@ describe('resolvePlacementIntervals', () => {
 
     const result = resolvePlacementIntervals(document, view.view.placements);
 
-    expect(result.placements.map((item) => item.taskId)).toEqual(['valid']);
+    expect(result.placements.map((item) => item.taskId)).toEqual(['all-day', 'valid']);
+    expect(result.placements[0]).toMatchObject({
+      end: Date.UTC(2026, 6, 31),
+      intervalSource: 'canonical',
+      kind: 'task',
+      start: Date.UTC(2026, 6, 30),
+    });
     expect(result.diagnostics.map((item) => item.code)).toEqual([
       'layout.missing-schedule',
-      'layout.unsupported-all-day-schedule',
       'layout.non-finite-interval',
       'layout.invalid-interval',
       'layout.invalid-interval',

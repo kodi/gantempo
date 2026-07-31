@@ -70,10 +70,14 @@ export function queryIntervalIndex(
       return;
     }
     nodesVisited += 1;
-    if (node.left && node.left.maxEnd > range.start) {
+    if (node.left && node.left.maxEnd >= range.start) {
       visit(node.left);
     }
-    if (node.placement.start < range.end && node.placement.end > range.start) {
+    const intersects =
+      node.placement.start === node.placement.end
+        ? node.placement.start >= range.start && node.placement.start < range.end
+        : node.placement.start < range.end && node.placement.end > range.start;
+    if (intersects) {
       matches.push(node);
     }
     if (node.placement.start < range.end) {

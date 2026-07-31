@@ -40,6 +40,7 @@ function task(
     width: 0.1,
     y,
     height: 24,
+    presentation: { geometry: { kind: 'bar' }, intervalSource: 'canonical', kind: 'task' },
     clippedStart: false,
     clippedEnd: false,
   };

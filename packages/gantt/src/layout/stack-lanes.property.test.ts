@@ -55,6 +55,8 @@ describe('stack layout properties', () => {
         const placements: ResolvedIntervalPlacement[] = specifications.flatMap(
           (specification, laneIndex) =>
             specification.intervals.map((item, itemIndex) => ({
+              intervalSource: 'canonical' as const,
+              kind: 'task' as const,
               key: `placement-${laneIndex}-${itemIndex}` as ViewPlacementKey,
               laneKey: `lane-${laneIndex}` as ViewLaneKey,
               taskId: `task-${laneIndex}-${itemIndex}`,

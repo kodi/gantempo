@@ -25,6 +25,8 @@ function interval(
   sourceOrder: number,
 ): ResolvedIntervalPlacement {
   return {
+    intervalSource: 'canonical',
+    kind: 'task',
     key: id as ViewPlacementKey,
     laneKey: laneId as ViewLaneKey,
     taskId: id,
@@ -62,6 +64,24 @@ describe('viewport kernel', () => {
       height: 90,
       timeRange: { start: 0, end: 40 },
     });
+  });
+
+  it('includes milestone points at the range start and excludes them at the range end', () => {
+    const layout = stackLanes(
+      [lane('lane', 0)],
+      [
+        { ...interval('start', 'lane', 20, 20, 0), kind: 'milestone' },
+        { ...interval('middle', 'lane', 25, 25, 1), kind: 'milestone' },
+        { ...interval('end', 'lane', 30, 30, 2), kind: 'milestone' },
+      ],
+    );
+    const result = queryViewport(createViewportKernel(layout), {
+      timeRange: { end: 30, start: 20 },
+      verticalExtent: 58,
+      verticalStart: 0,
+    });
+
+    expect(result.placements.map((item) => item.key)).toEqual(['start', 'middle']);
   });
 
   it('finds long intervals that begin far before the query start', () => {

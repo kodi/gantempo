@@ -353,6 +353,7 @@ function taskIntervalSignature(record: object | undefined): string | undefined {
         ? undefined
         : ['all-day', value.startDate, value.endDate];
   return JSON.stringify([
+    task.kind,
     schedule(task.schedule),
     task.segments.map((segment) => [segment.id, schedule(segment.schedule)]),
   ]);
@@ -360,14 +361,21 @@ function taskIntervalSignature(record: object | undefined): string | undefined {
 
 function taskTopologySignature(
   record: object | undefined,
-  viewKind: GanttViewDefinition['kind'],
+  view: GanttViewDefinition | undefined,
 ): string | undefined {
   if (record === undefined) {
     return undefined;
   }
   const task = record as GanttDocument['tasks'][number];
+  const viewKind = view?.kind ?? 'document';
+  if (view?.kind === 'project' && (view.filter !== undefined || view.sort !== undefined)) {
+    return JSON.stringify(task);
+  }
   return JSON.stringify([
     viewKind === 'project' ? task.title : undefined,
+    viewKind === 'project' ? task.kind : undefined,
+    viewKind === 'project' ? task.order : undefined,
+    viewKind === 'project' ? task.parentId : undefined,
     task.segments.map((segment) => segment.id),
   ]);
 }
@@ -392,8 +400,9 @@ function topologyAffected(
   affected: readonly EntityReference[],
   previousDocument: GanttDocument,
   nextDocument: GanttDocument,
-  viewKind: GanttViewDefinition['kind'],
+  view: GanttViewDefinition | undefined,
 ): boolean {
+  const viewKind = view?.kind ?? 'document';
   return affected.some((reference) => {
     const previous = recordById(previousDocument, reference);
     const next = recordById(nextDocument, reference);
@@ -401,7 +410,7 @@ function topologyAffected(
       return false;
     }
     if (reference.collection === 'tasks') {
-      return taskTopologySignature(previous, viewKind) !== taskTopologySignature(next, viewKind);
+      return taskTopologySignature(previous, view) !== taskTopologySignature(next, view);
     }
     if (reference.collection === 'placements') {
       return viewKind === 'document';
@@ -615,6 +624,7 @@ function lanePrimitive(
     title: lane.title,
     y: lane.y,
     height: lane.height,
+    ...(lane.project === undefined ? {} : { project: Object.freeze({ ...lane.project }) }),
   });
 }
 
@@ -679,7 +689,7 @@ function progressPrimitive(
 ): TaskBarPrimitive['progress'] {
   const progress = task.progress;
   if (
-    task.kind !== 'task' ||
+    (task.kind !== 'task' && task.kind !== 'summary') ||
     placement.segmentId !== undefined ||
     progress === undefined ||
     !Number.isFinite(progress) ||
@@ -714,6 +724,27 @@ function unresolvedAppearanceDiagnostic(
         message: `Semantic appearance variant "${appearance.variant}" is not registered.`,
         severity: 'warning',
       });
+}
+
+function uniqueDiagnostics(diagnostics: readonly Diagnostic[]): readonly Diagnostic[] {
+  const seen = new Set<string>();
+  return Object.freeze(
+    diagnostics.filter((item) => {
+      const key = JSON.stringify([
+        item.code,
+        item.severity,
+        item.path,
+        item.entityIds,
+        item.details,
+        item.message,
+      ]);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    }),
+  );
 }
 
 function reusablePrimitive<T>(
@@ -764,10 +795,6 @@ function rejectedScene(
   });
 }
 
-function effectiveViewKind(options: BuildChartSceneOptions): GanttViewDefinition['kind'] {
-  return options.view?.kind ?? 'document';
-}
-
 export function createChartScenePipeline(): ChartScenePipeline {
   let cache: PipelineCache | undefined;
 
@@ -794,6 +821,8 @@ export function createChartScenePipeline(): ChartScenePipeline {
       const metricsChanged = cache === undefined || !sameMetrics(cache.metrics, metrics);
       const viewChanged =
         cache === undefined || !sameViewDefinition(cache.options.view, options.view);
+      const presentationZoneChanged =
+        cache === undefined || cache.options.timeZone !== options.timeZone;
       const rangeChanged = cache === undefined || !sameRange(cache.options.range, options.range);
       const affected = invalidation?.kind === 'affected' ? invalidation.affected : [];
 
@@ -845,12 +874,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         viewChanged ||
         cache === undefined ||
         (documentChanged &&
-          topologyAffected(
-            affected,
-            cache.options.document,
-            options.document,
-            effectiveViewKind(options),
-          ));
+          topologyAffected(affected, cache.options.document, options.document, options.view));
       const topology = shouldBuildTopology
         ? resolveView(validation.document, options.view)
         : cache!.topology;
@@ -910,9 +934,12 @@ export function createChartScenePipeline(): ChartScenePipeline {
         forceAll ||
         topology !== cache?.topology ||
         cache?.intervals === undefined ||
+        presentationZoneChanged ||
         (documentChanged && intervalsAffected(affected, cache.options.document, options.document));
       const intervals = shouldBuildIntervals
-        ? resolvePlacementIntervals(validation.document, topology.view.placements)
+        ? resolvePlacementIntervals(validation.document, topology.view.placements, {
+            timeZone: options.timeZone,
+          })
         : cache!.intervals!;
       if (intervals !== cache?.intervals) {
         work.intervalBuilds += 1;
@@ -992,6 +1019,15 @@ export function createChartScenePipeline(): ChartScenePipeline {
             : indexes.lanesById.get(lane.laneId)?.appearance?.variant;
         const legacyTaskVariant = options.taskVariants?.[task.id];
         const progress = progressPrimitive(task, placement, options.range, scale);
+        const geometry =
+          placement.kind === 'milestone'
+            ? Object.freeze({ centerX: x, kind: 'milestone' as const, size: placement.height })
+            : placement.kind === 'summary'
+              ? Object.freeze({
+                  capHeight: Math.max(2, placement.height / 3),
+                  kind: 'summary' as const,
+                })
+              : Object.freeze({ kind: 'bar' as const });
         const primitive: TaskBarPrimitive = Object.freeze({
           appearance: resolveTaskAppearance(appearanceRegistry, {
             ...(laneVariant === undefined ? {} : { laneVariant }),
@@ -1011,6 +1047,13 @@ export function createChartScenePipeline(): ChartScenePipeline {
           y: placement.y,
           height: placement.height,
           ...(progress === undefined ? {} : { progress }),
+          presentation: Object.freeze({
+            geometry,
+            intervalSource: placement.intervalSource,
+            kind: placement.kind,
+            ...(lane.project === undefined ? {} : { project: Object.freeze({ ...lane.project }) }),
+            ...(placement.summary === undefined ? {} : { summary: placement.summary }),
+          }),
           clippedStart: placement.start < options.range.start,
           clippedEnd: placement.end > options.range.end,
         }) satisfies TaskBarPrimitive;
@@ -1045,7 +1088,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         }
       }
 
-      const diagnostics = Object.freeze([
+      const diagnostics = uniqueDiagnostics([
         ...validation.diagnostics,
         ...topology.diagnostics,
         ...intervals.diagnostics,

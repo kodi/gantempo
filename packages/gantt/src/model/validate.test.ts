@@ -87,6 +87,33 @@ describe('validateDocumentReferences', () => {
     expect(document.tasks.find((task) => task.id === 'a')?.parentId).toBe('b');
   });
 
+  it('preserves and diagnoses unequal milestone input at the permissive parse boundary', () => {
+    const result = parseGanttDocument({
+      schemaVersion: 1,
+      tasks: [
+        {
+          id: 'milestone',
+          kind: 'milestone',
+          schedule: { end: 20, mode: 'instant', start: 10 },
+          title: 'Milestone',
+        },
+      ],
+    });
+
+    expect(result.document?.tasks[0]?.schedule).toEqual({
+      end: 20,
+      mode: 'instant',
+      start: 10,
+    });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'presentation.milestone-interval',
+        path: '/tasks/0/schedule',
+        severity: 'warning',
+      }),
+    );
+  });
+
   it('omits invalid relationships and preserves valid document order', () => {
     const document = documentWith({
       assignments: [

@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first three slices are complete.
+first four slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-3 complete, Slice 4 next
+**Status:** `[-]` In progress; Slices 1-4 complete, Slice 5 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -210,7 +210,14 @@ inputs, and structured query/callback diagnostics. A 10,000-task fixture project
 2,000 collapsed root lanes; full `mise run ci` passes 71 files / 376 tests, 165
 formatted files, 154 lint/type files, and four artifacts. The 45.05 kB declaration
 adds only the accepted public filter/comparator types. Slice 4 summary and milestone
-presentation semantics are next.
+presentation now derives nested descendant spans and counts without persisted
+rollups, resolves explicit-zone all-day boundaries, emits summary bracket and
+milestone point semantics, paints only canonical summary progress, and rejects new
+unequal milestone edits while preserving diagnosed parse input. Point-aware stacking
+and viewport queries plus selective ancestor/callback/time-zone invalidation are
+verified. Full `mise run ci` passes 75 files / 393 tests, 171 formatted files, 160
+lint/type files, and four artifacts; the packed declaration is 46.13 kB. Slice 5
+accessible React tree integration is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -707,6 +714,19 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 4. A private iterative presentation engine derives
+  nested summary spans, canonical fallback intervals, descendant resolution counts,
+  read-only canonical summary progress, equal milestone points, and explicit-zone
+  all-day boundaries without mutating document data. Permissive unequal milestones
+  are preserved, diagnosed, and presented at their start; strict add/update/kind
+  conversion rejects unequal results. Scene primitives carry required kind/source/
+  geometry/tree/count semantics, and stacking/viewport kernels treat points with
+  half-open range rules. Fixed-seed properties, a 5,000-level chain, DST/skip-date,
+  clipping, virtualization, parse, command, selective-cache, and M3/M4 parity coverage
+  passed 51 focused files / 233 tests. Full `mise run ci` passed 75 files / 393 tests,
+  171 formatted files, 160 lint/type files, and four artifacts; the packed declaration
+  is 46.13 kB. Slice 5 accessible React tree integration is next.
 
 - 2026-07-31: Completed M5 Slice 3. The project view now resolves ordered task trees
   depth-first with private depth, child, expansion, and match metadata while

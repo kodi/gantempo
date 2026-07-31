@@ -22,6 +22,8 @@ function interval(
   sourceOrder: number,
 ): ResolvedIntervalPlacement {
   return {
+    intervalSource: 'canonical',
+    kind: 'task',
     key: id as ViewPlacementKey,
     laneKey: laneId as ViewLaneKey,
     taskId: id,
@@ -50,6 +52,20 @@ describe('stackLanes', () => {
     ]);
     expect(layout.lanes[0]).toMatchObject({ y: 0, height: 88, stackCount: 2 });
     expect(layout.lanes[0]?.placements.map((placement) => placement.y)).toEqual([17, 17, 47]);
+  });
+
+  it('stacks coincident points and intervals that begin at the same instant', () => {
+    const point = { ...interval('point', 'lane', 10, 10, 0), kind: 'milestone' as const };
+    const layout = stackLanes(
+      [lane('lane')],
+      [point, interval('bar', 'lane', 10, 20, 1), interval('after', 'lane', 20, 30, 2)],
+    );
+
+    expect(layout.lanes[0]?.placements.map(({ key, track }) => [key, track])).toEqual([
+      ['point', 0],
+      ['bar', 1],
+      ['after', 0],
+    ]);
   });
 
   it('uses the complete tie-break while retaining resolved placement order', () => {

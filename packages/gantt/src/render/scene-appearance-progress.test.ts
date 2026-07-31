@@ -163,7 +163,7 @@ describe('appearance and progress scene primitives', () => {
       x: 0,
       width: 0.2,
     });
-    expect(byId.get('summary')?.progress).toBeUndefined();
+    expect(byId.get('summary')?.progress).toMatchObject({ value: 0.5, width: 0.3, x: 0.2 });
     expect(byId.get('milestone')?.progress).toBeUndefined();
   });
 

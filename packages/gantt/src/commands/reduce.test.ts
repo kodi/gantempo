@@ -23,6 +23,60 @@ function expectCommittedRoundTrip(
 }
 
 describe('applyGanttCommand', () => {
+  it('rejects unequal milestone schedules for add, update, and kind conversion', () => {
+    const base = createPatchTestDocument();
+    const outcomes = [
+      applyGanttCommand(base, {
+        type: 'task.add',
+        value: {
+          id: 'unequal-milestone',
+          kind: 'milestone',
+          schedule: { end: 20, mode: 'instant', start: 10 },
+          title: 'Unequal',
+        },
+      }),
+      applyGanttCommand(base, {
+        changes: {
+          schedule: {
+            endDate: '2026-07-31',
+            mode: 'all-day',
+            startDate: '2026-07-30',
+          },
+        },
+        id: 'task-2',
+        type: 'task.update',
+      }),
+      applyGanttCommand(base, {
+        changes: { kind: 'milestone' },
+        id: 'task-1',
+        type: 'task.update',
+      }),
+    ];
+
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(['rejected', 'rejected', 'rejected']);
+    expect(outcomes.map((outcome) => outcome.diagnostics[0]?.code)).toEqual([
+      'command.invalid-interval',
+      'command.invalid-interval',
+      'command.invalid-interval',
+    ]);
+    expect(outcomes.every((outcome) => outcome.document === base)).toBe(true);
+
+    const permissive = {
+      ...base,
+      tasks: base.tasks.map((task) =>
+        task.id === 'task-2'
+          ? { ...task, schedule: { end: 20, mode: 'instant' as const, start: 10 } }
+          : task,
+      ),
+    };
+    const unrelated = applyGanttCommand(permissive, {
+      changes: { title: 'Still editable' },
+      id: 'task-1',
+      type: 'task.update',
+    });
+    expect(unrelated.status).toBe('committed');
+  });
+
   it('normalizes and applies add/set commands across all six document collections', () => {
     let document = createPatchTestDocument();
     const commands: readonly GanttCommand[] = [

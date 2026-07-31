@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-3 complete, Slice 4 next
+Status: In progress; Slices 1-4 complete, Slice 5 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -403,7 +403,7 @@ geometry and treegrid semantics can be correct.
 
 ### Slice 4: Resolve summary and milestone presentation semantics
 
-Status: `[ ]` Not started
+Status: `[x]` Done and verified
 
 **Goal**
 
@@ -971,7 +971,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 1: Freeze the M5 public and engine contracts
 - [x] Slice 2: Add hierarchy integrity, indexes, and strict reparenting
 - [x] Slice 3: Resolve project trees, expansion, filtering, and sorting
-- [ ] Slice 4: Resolve summary and milestone presentation semantics
+- [x] Slice 4: Resolve summary and milestone presentation semantics
 - [ ] Slice 5: Integrate hierarchical task kinds with React and accessibility
 - [ ] Slice 6: Add the Community dependency graph and cycle diagnostics
 - [ ] Slice 7: Route and render dependency paths
@@ -1067,16 +1067,39 @@ owns the full shapes and rationale. In summary:
   formatted files, 154 lint/type files, and four artifacts. The packed declaration is
   45.05 kB and exposes only the accepted project filter/comparator types; resolved
   tree metadata, query plumbing, and hierarchy engines remain private.
+- 2026-07-31: Slice 4 adds a private iterative task-presentation boundary. Summaries
+  span every usable descendant presentation recursively, ignore their own schedule
+  when such a span exists, fall back to their own schedule otherwise, and expose
+  frozen resolved/unresolved descendant counts. A 5,000-level chain verifies that the
+  rollup path is non-recursive. Canonical summary progress now paints read-only across
+  the resolved span; no progress value is calculated or written back.
+- 2026-07-31: All-day boundaries now resolve to the first instant of each canonical
+  date in the explicit instance time zone, including verified 23-hour and 25-hour
+  Europe/Belgrade days and a structured diagnostic for a date skipped entirely in
+  Pacific/Apia. Milestones preserve equal instant/all-day points, diagnose permissive
+  unequal parse input and present it at the start, while strict add/update/kind-
+  conversion commands reject unequal results without blocking unrelated edits.
+- 2026-07-31: Scene primitives now require semantic task presentation data: kind,
+  canonical/descendant interval source, bar/summary/milestone geometry, project-tree
+  metadata, and summary counts. Point-aware stacking and half-open viewport querying
+  include milestones at a range start and exclude them at its end. Selective tests
+  verify ancestor summary geometry, callback-sensitive topology, and time-zone
+  invalidation. Focused model/command/hierarchy/presentation/time/view/layout/viewport/
+  render/interaction/runtime verification passed 51 files / 233 tests. Full `mise run
+  ci` passed 75 files / 393 tests, 171 formatted files, 160 lint/type files, and four
+  artifacts; the packed declaration is 46.13 kB. Mise also reported a non-fatal
+  sandbox denial while refreshing its user cache; every repository gate passed.
 
 ## Next Slice
 
-Start Slice 4 in a private presentation boundary fed by canonical tasks and the Slice
-3 resolved project tree. Derive summary spans recursively from usable descendants,
-fall back to a summary's own schedule only when it has no usable descendants, expose
-explicit canonical summary progress read-only, and normalize milestones to point
-geometry while diagnosing permissive unequal input. Keep derived spans and progress
-out of `GanttDocument`, commands, patches, serialization, and persistence projection;
-preserve ordinary task/segment precedence and add deep-tree, invalid-descendant,
-all-day/DST, milestone, immutability, scene-parity, and property evidence. Record the
-evidence and run `mise run ci` before the Slice 4 commit; do not begin React treegrid
-integration from Slice 5 yet.
+Start Slice 5 at the runtime/session boundary, then feed its committed project collapse
+state into the Slice 3 query without changing `GanttDocument`. Add controlled and
+uncontrolled reconciliation, collapse actions, branch-aware selection/focus recovery,
+and selector summaries before changing DOM. Then render project rows as a treegrid
+with levels, expansion state, branch controls, summary brackets/progress, milestone
+diamonds, kind-aware accessible names, hit targets, slots/classes, properties, and
+stable disabled reasons for unsupported move/resize/progress/schedule operations.
+Verify controlled/uncontrolled/read-only, keyboard, properties, occurrence lifetime,
+hydration, and axe behavior alongside the existing M4 suites. Record exact evidence
+and run `mise run ci` before the Slice 5 commit; do not begin dependency graph work
+from Slice 6 yet.

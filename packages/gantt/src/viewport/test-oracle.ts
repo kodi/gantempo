@@ -29,8 +29,10 @@ export function queryViewportBruteForce(
     if (lane.y + lane.height <= query.verticalStart || lane.y >= verticalEnd) {
       continue;
     }
-    const visible = lane.placements.filter(
-      (placement) => placement.start < query.timeRange.end && placement.end > query.timeRange.start,
+    const visible = lane.placements.filter((placement) =>
+      placement.start === placement.end
+        ? placement.start >= query.timeRange.start && placement.start < query.timeRange.end
+        : placement.start < query.timeRange.end && placement.end > query.timeRange.start,
     );
     placements.push(...visible);
     lanes.push(

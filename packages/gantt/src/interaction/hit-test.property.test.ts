@@ -170,6 +170,11 @@ describe(`hit-test brute-force parity seed=${PROPERTY_SEED}`, () => {
               width: width / 1_000,
               y: lane.y + offset,
               height,
+              presentation: {
+                geometry: { kind: 'bar' },
+                intervalSource: 'canonical',
+                kind: 'task',
+              },
               clippedStart: specification.clippedStart,
               clippedEnd: specification.clippedEnd,
             };

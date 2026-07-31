@@ -76,11 +76,12 @@ function assignTracks(
 
   for (const placement of [...placements].sort(compareForStack)) {
     let track = trackEnds.findIndex((end) => end <= placement.start);
+    const occupiedEnd = placement.end === placement.start ? placement.start + 1 : placement.end;
     if (track === -1) {
       track = trackEnds.length;
-      trackEnds.push(placement.end);
+      trackEnds.push(occupiedEnd);
     } else {
-      trackEnds[track] = placement.end;
+      trackEnds[track] = occupiedEnd;
     }
     if (tracks.has(placement.key)) {
       throw new RangeError(`Layout placement key "${placement.key}" must be unique.`);
