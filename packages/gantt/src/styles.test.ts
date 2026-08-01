@@ -78,6 +78,18 @@ describe('lane properties trigger stylesheet', () => {
   });
 });
 
+describe('clipped task label stylesheet', () => {
+  it('presents a directional continuation cue with a forced-colors fallback', () => {
+    expect(stylesheet).toContain("[data-clipped-start='true'] .gt-gantt__task-label");
+    expect(stylesheet).toContain("content: '…'");
+    expect(stylesheet).toContain('linear-gradient(to right, transparent, #000 12px)');
+    expect(stylesheet).toContain('linear-gradient(to left, transparent, #000 12px)');
+    expect(stylesheet).toMatch(
+      /@media \(forced-colors: active\)[\s\S]*\[data-clipped-start='true'\][\s\S]*mask-image: none;/,
+    );
+  });
+});
+
 describe('default tooltip stylesheet', () => {
   it('lays out a compact human schedule and duration badge', () => {
     expect(stylesheet).toContain('.gt-gantt__tooltip-schedule');
