@@ -275,6 +275,76 @@ describe('Gantt React facade in a DOM environment', () => {
     expect(task.getAttribute('aria-label')).toContain('0% complete');
   });
 
+  it('continues clipped rounded bars beyond the physical viewport edge', async () => {
+    const base = documentFixture();
+    const clippedDocument: GanttDocument = {
+      ...base,
+      tasks: [
+        {
+          ...base.tasks[0]!,
+          progress: 1,
+          schedule: { end: START + 2 * DAY, mode: 'instant', start: START - DAY },
+        },
+      ],
+    };
+    const mounted = await render(
+      <>
+        <Gantt {...commonProps()} direction="ltr" document={clippedDocument} />
+        <Gantt {...commonProps()} direction="rtl" document={clippedDocument} />
+      </>,
+    );
+    const roots = mounted.container.querySelectorAll<HTMLElement>('[data-gt-part="root"]');
+    const ltrTask = roots[0]!.querySelector<SVGGElement>('[data-gt-part="task"]')!;
+    const rtlTask = roots[1]!.querySelector<SVGGElement>('[data-gt-part="task"]')!;
+    const ltrTrack = ltrTask.querySelector<SVGRectElement>('[data-gt-part="task-track"]')!;
+    const ltrProgress = ltrTask.querySelector<SVGRectElement>('[data-gt-part="task-progress"]')!;
+    const rtlTrack = rtlTask.querySelector<SVGRectElement>('[data-gt-part="task-track"]')!;
+
+    expect(ltrTask.dataset.clippedStart).toBe('true');
+    expect(ltrTrack.getAttribute('x')).toBe('calc(0% - 6px)');
+    expect(ltrTrack.getAttribute('width')).toMatch(/^calc\(.+% \+ 6px\)$/);
+    expect(ltrProgress.getAttribute('x')).toBe('calc(0% - 6px)');
+    expect(ltrProgress.getAttribute('width')).toBe(ltrTrack.getAttribute('width'));
+
+    expect(rtlTask.dataset.clippedStart).toBe('true');
+    expect(rtlTrack.getAttribute('x')).not.toContain('calc');
+    expect(rtlTrack.getAttribute('width')).toMatch(/^calc\(.+% \+ 6px\)$/);
+  });
+
+  it('keeps progress handles on the completed-time endpoint when a task is clipped', async () => {
+    const base = documentFixture();
+    const clippedDocument: GanttDocument = {
+      ...base,
+      tasks: [
+        {
+          ...base.tasks[0]!,
+          progress: 0.5,
+          schedule: { end: START + 3 * DAY, mode: 'instant', start: START - DAY },
+        },
+      ],
+    };
+    const mounted = await render(
+      <>
+        <Gantt {...commonProps()} direction="ltr" defaultDocument={clippedDocument} />
+        <Gantt {...commonProps()} direction="rtl" defaultDocument={clippedDocument} />
+      </>,
+    );
+    const roots = mounted.container.querySelectorAll<HTMLElement>('[data-gt-part="root"]');
+
+    for (const [root, expectedX] of [
+      [roots[0]!, (1 / 7) * 100],
+      [roots[1]!, (6 / 7) * 100],
+    ] as const) {
+      const task = root.querySelector<SVGGElement>('[data-gt-part="task"]')!;
+      const handle = task.querySelector<SVGRectElement>('[data-gt-part="progress-handle"]')!;
+      const hitTarget = task.querySelector<SVGRectElement>('[data-gt-part="progress-hit-target"]')!;
+
+      expect(task.dataset.clippedStart).toBe('true');
+      expect(Number.parseFloat(handle.getAttribute('x')!)).toBeCloseTo(expectedX, 10);
+      expect(Number.parseFloat(hitTarget.getAttribute('x')!)).toBeCloseTo(expectedX, 10);
+    }
+  });
+
   it('deduplicates unresolved variants per mounted instance and registry revision', async () => {
     const base = documentFixture();
     const document: GanttDocument = {

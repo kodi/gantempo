@@ -251,6 +251,36 @@ function percent(value: number): string {
   return `${value * 100}%`;
 }
 
+const TASK_BAR_RADIUS = 6;
+
+// SVG rects cannot square only one corner pair, so move a clipped rounded cap
+// beyond the viewport and let the timeline's existing overflow clip flatten it.
+function clippedBarGeometry(
+  x: number,
+  width: number,
+  direction: 'ltr' | 'rtl',
+  clippedStart: boolean,
+  clippedEnd: boolean,
+): { readonly width: string; readonly x: string } {
+  const clippedLeft = direction === 'rtl' ? clippedEnd : clippedStart;
+  const clippedRight = direction === 'rtl' ? clippedStart : clippedEnd;
+  const extension = Number(clippedLeft) + Number(clippedRight);
+  return {
+    width:
+      extension === 0
+        ? percent(width)
+        : `calc(${percent(width)} + ${extension * TASK_BAR_RADIUS}px)`,
+    x: clippedLeft ? `calc(${percent(x)} - ${TASK_BAR_RADIUS}px)` : percent(x),
+  };
+}
+
+function progressEndpointX(task: TaskBarPrimitive, direction: 'ltr' | 'rtl'): number {
+  if (task.progress === undefined) {
+    return direction === 'rtl' ? task.x + task.width : task.x;
+  }
+  return direction === 'rtl' ? task.progress.x : task.progress.x + task.progress.width;
+}
+
 function laneStyle(y: number, height: number, defaultHeight: number): GanttLaneStyle {
   return {
     '--gt-lane-height-ratio': height / defaultHeight,
@@ -932,6 +962,24 @@ function GanttTask({
   const TaskContent = slots?.TaskContent ?? DefaultTaskContent;
   const geometry = task.presentation.geometry;
   const ordinaryTask = geometry.kind === 'bar';
+  const trackGeometry = clippedBarGeometry(
+    task.x,
+    task.width,
+    direction,
+    ordinaryTask && task.clippedStart,
+    ordinaryTask && task.clippedEnd,
+  );
+  const progressGeometry =
+    task.progress === undefined
+      ? undefined
+      : clippedBarGeometry(
+          task.progress.x,
+          task.progress.width,
+          direction,
+          ordinaryTask && task.clippedStart,
+          ordinaryTask && task.clippedEnd && task.progress.width === task.width,
+        );
+  const progressHandleX = progressEndpointX(task, direction);
   const trackClass = joinClasses(
     geometry.kind === 'summary'
       ? 'gt-gantt__task-summary'
@@ -1009,9 +1057,9 @@ function GanttTask({
           height={percent(
             (geometry.kind === 'summary' ? geometry.capHeight : task.height) / timelineHeight,
           )}
-          rx={geometry.kind === 'summary' ? undefined : '6'}
-          width={percent(task.width)}
-          x={percent(task.x)}
+          rx={geometry.kind === 'summary' ? undefined : TASK_BAR_RADIUS}
+          width={geometry.kind === 'summary' ? percent(task.width) : trackGeometry.width}
+          x={geometry.kind === 'summary' ? percent(task.x) : trackGeometry.x}
           y={percent(
             (geometry.kind === 'summary'
               ? task.y + (task.height - geometry.capHeight) / 2
@@ -1028,9 +1076,11 @@ function GanttTask({
           height={percent(
             (geometry.kind === 'summary' ? geometry.capHeight : task.height) / timelineHeight,
           )}
-          rx={geometry.kind === 'summary' ? undefined : '6'}
-          width={percent(task.progress.width)}
-          x={percent(task.progress.x)}
+          rx={geometry.kind === 'summary' ? undefined : TASK_BAR_RADIUS}
+          width={
+            geometry.kind === 'summary' ? percent(task.progress.width) : progressGeometry?.width
+          }
+          x={geometry.kind === 'summary' ? percent(task.progress.x) : progressGeometry?.x}
           y={percent(
             (geometry.kind === 'summary'
               ? task.y + (task.height - geometry.capHeight) / 2
@@ -1117,13 +1167,7 @@ function GanttTask({
             data-progress={task.progress?.value ?? 0}
             height={percent(task.height / timelineHeight)}
             width="12"
-            x={percent(
-              task.x +
-                task.width *
-                  (direction === 'rtl'
-                    ? 1 - (task.progress?.value ?? 0)
-                    : (task.progress?.value ?? 0)),
-            )}
+            x={percent(progressHandleX)}
             y={percent(task.y / timelineHeight)}
           />
           <rect
@@ -1133,13 +1177,7 @@ function GanttTask({
             data-progress={task.progress?.value ?? 0}
             height={percent(task.height / timelineHeight)}
             width="2"
-            x={percent(
-              task.x +
-                task.width *
-                  (direction === 'rtl'
-                    ? 1 - (task.progress?.value ?? 0)
-                    : (task.progress?.value ?? 0)),
-            )}
+            x={percent(progressHandleX)}
             y={percent(task.y / timelineHeight)}
           />
         </>
