@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 5 complete
+Status: In progress; Slice 6 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -632,7 +632,7 @@ Verification:
 
 ### Slice 6: Extract DOM interaction and measurement adapters
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: make `GanttSurface` declarative by moving browser event/lifecycle translation to
 narrow hooks that call the existing runtime facade.
@@ -666,6 +666,23 @@ Verification:
 - `mise run ci`.
 
 Dependencies: Slice 5.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/Gantt.wheel.dom.test.tsx
+  packages/gantt/src/react/Gantt.keyboard.dom.test.tsx
+  packages/gantt/src/react/Gantt.dom.test.tsx
+  packages/gantt/src/react/Gantt.project.dom.test.tsx
+  packages/gantt/src/react/Gantt.structure.dom.test.tsx` passed 5 files / 68 tests;
+- `vp test run packages/gantt/src/react/Gantt*.test.tsx` passed the complete React
+  DOM selection: 8 files / 92 tests, including listener/observer cleanup and
+  multi-instance coverage;
+- browser-free automation covers synthetic pointer, wheel, focus, capture fallback,
+  and cleanup behavior; no live physical trackpad input is available in the test
+  environment, so that remains a Slice 8 browser gate;
+- `git diff --check` passed;
+- `mise run ci` passed on 2026-08-01: 93 test files / 493 tests, 232 formatted
+  files, 221 lint/type files, and the 196-artifact package build.
 
 ### Slice 7: Decompose the private React runtime by state-machine ownership
 
@@ -939,11 +956,30 @@ These are implementation judgments, not reasons to change the public API:
 - `Gantt.tsx` fell from 2,731 to 2,287 lines with no overlay container, slot, DOM,
   focus, SSR, or public API change.
 
+### 2026-08-01 — Slice 6 DOM adapters
+
+- Added focused private adapters for pointer geometry and target lookup, task gesture,
+  dependency-link and empty-canvas pan capture, keyboard event translation,
+  DOM/logical focus bridging, measured viewport/retained-range lifecycle, and native
+  wheel/trackpad/Alt-zoom navigation.
+- The pointer hook keeps task click-versus-drag bookkeeping, dependency pointer IDs,
+  pan presentation state, pointer capture/release fallbacks, and cancellation cleanup
+  instance-local. It calls the existing runtime facade rather than duplicating
+  command or gesture semantics in React.
+- The measurement hook retains the focused/preview range, observes the body and
+  timeline, uses a passive scroll listener, and clears runtime measurement on every
+  teardown. The wheel hook retains the native non-passive listener required for
+  conditional `preventDefault`, RTL anchor mirroring, and native vertical fallback.
+- `Gantt.tsx` fell from 2,287 to 1,680 lines. Its remaining surface code is chart
+  composition, overlay workflows, and keyboard/menu orchestration rather than raw
+  pointer/observer/wheel lifecycle.
+
 ## Next Slice
 
-Start Slice 6 by extracting pointer geometry/candidate lookup, task and dependency
-gestures, empty-canvas pan, keyboard/focus translation, measured viewport lifecycle,
-and native wheel navigation into focused DOM adapter hooks. Keep explicit dependency
-lists and current pointer-capture, passive-listener, cleanup, and synthetic-event
-fallback behavior. Run wheel, keyboard, pointer, project, focus, and React runtime DOM
-tests plus `mise run ci` before marking Slice 6 done.
+Start Slice 7 in `react/runtime.ts` by moving display input normalization/equality and
+selector/occurrence derivation into pure private modules, then split viewport/range/
+pan/fit/zoom, keyboard/link, and pointer gesture ownership into instance-local
+controllers with explicit host callbacks. Keep one runtime instance and facade,
+synchronous transitions, scene cache identity, publish/rebuild order, callback error
+isolation, and controlled acknowledgement semantics. Run the complete runtime and DOM
+suites, runtime and scene benchmarks, and `mise run ci` before marking Slice 7 done.

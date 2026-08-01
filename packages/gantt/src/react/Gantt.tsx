@@ -7,32 +7,24 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
   type CSSProperties,
   type FocusEvent as ReactFocusEvent,
   type ForwardRefExoticComponent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactElement,
   type ReactNode,
   type RefAttributes,
 } from 'react';
 
 import { createGanttLocalization, type GanttLocalization } from '../localization/format';
-import { adjacentTimeScaleLevel } from '../time/adaptive-scale';
-import {
-  normalizeNavigationDelta,
-  type NavigationDeltaUnit,
-} from '../interaction/viewport-navigation';
 import { createAppearanceRegistry } from '../render/appearance';
 import type { TaskBarPrimitive } from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import { GanttLocalizationProvider } from './localization-context';
 import {
   createGanttReactRuntime,
-  type GanttKeyboardAction,
   type GanttReactRuntime,
   type GanttReactRuntimeSnapshot,
 } from './runtime';
@@ -79,6 +71,11 @@ import { TimeHeader } from './surface/TimeHeader';
 import { ZoomControls } from './surface/ZoomControls';
 import { useOverlayController } from './surface/overlays/controller';
 import { OverlayLayer } from './surface/overlays/OverlayLayer';
+import { useMeasuredViewport } from './surface/dom/useMeasuredViewport';
+import { useWheelNavigation } from './surface/dom/useWheelNavigation';
+import { keyboardActionForEvent } from './surface/dom/keyboard';
+import { usePointerInteractions } from './surface/dom/usePointerInteractions';
+import { useFocusBridge } from './surface/dom/useFocusBridge';
 import {
   buildDependencySummaryMap,
   buildGanttSurfaceModel,
@@ -89,7 +86,6 @@ import type {
   GanttDependencySummary,
   GanttDependencyPropertiesValue,
   GanttHandle,
-  GanttInteractionState,
   GanttItemPropertiesValue,
   GanttLaneColumn,
   GanttProps,
@@ -103,135 +99,6 @@ interface GanttRootStyle extends CSSProperties {
   readonly '--gt-lane-column-width': string;
   readonly '--gt-timeline-height': string;
   readonly '--gt-timeline-height-ratio': number;
-}
-
-const WHEEL_LINE_SIZE = 16;
-const MEANINGFUL_WHEEL_DELTA = 0.5;
-
-function wheelDeltaUnit(deltaMode: number): NavigationDeltaUnit {
-  return deltaMode === WheelEvent.DOM_DELTA_LINE
-    ? 'line'
-    : deltaMode === WheelEvent.DOM_DELTA_PAGE
-      ? 'page'
-      : 'pixel';
-}
-
-function excludesChartWheel(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    target.closest(
-      'input, textarea, select, button, a[href], [contenteditable="true"], [data-gt-part="overlay-host"]',
-    ) !== null
-  );
-}
-
-function keyboardActionForEvent(
-  event: ReactKeyboardEvent<HTMLElement>,
-  editingMode?: Extract<GanttInteractionState, { readonly status: 'keyboard' }>['mode'] | 'link',
-): GanttKeyboardAction | undefined {
-  const adjustment =
-    event.key === 'ArrowLeft'
-      ? 'left'
-      : event.key === 'ArrowRight'
-        ? 'right'
-        : event.key === 'ArrowUp'
-          ? 'up'
-          : event.key === 'ArrowDown'
-            ? 'down'
-            : undefined;
-  if (editingMode !== undefined) {
-    if (event.altKey || event.ctrlKey || event.metaKey) {
-      return undefined;
-    }
-    if (editingMode === 'link') {
-      if (adjustment !== undefined) return { direction: adjustment, type: 'navigate' };
-      if (event.key === 'Home' || event.key === 'End') {
-        return { direction: event.key === 'Home' ? 'home' : 'end', type: 'navigate' };
-      }
-      if (event.key === 'Enter') return { type: 'commit' };
-      return event.key === 'Escape' ? { type: 'cancel' } : undefined;
-    }
-    if (editingMode === 'progress' && (event.key === 'Home' || event.key === 'End')) {
-      return {
-        boundary: event.key === 'Home' ? 'start' : 'end',
-        direction: event.key === 'Home' ? 'left' : 'right',
-        type: 'adjust',
-      };
-    }
-    if (adjustment !== undefined) {
-      return {
-        ...(editingMode === 'progress' && event.shiftKey ? { accelerated: true } : {}),
-        direction: adjustment,
-        type: 'adjust',
-      };
-    }
-    if (event.shiftKey) {
-      return undefined;
-    }
-    if (event.key === 'Enter') {
-      return { type: 'commit' };
-    }
-    return event.key === 'Escape' ? { type: 'cancel' } : undefined;
-  }
-  const platformModifier = event.ctrlKey || event.metaKey;
-  const key = event.key.toLowerCase();
-  if (platformModifier && !event.altKey && key === 'z') {
-    return { action: event.shiftKey ? 'redo' : 'undo', type: 'history' };
-  }
-  if (platformModifier && !event.altKey && key === 'y') {
-    return { action: 'redo', type: 'history' };
-  }
-  if (
-    (event.key === 'PageUp' || event.key === 'PageDown') &&
-    !event.ctrlKey &&
-    !event.metaKey &&
-    !event.shiftKey
-  ) {
-    return {
-      axis: event.altKey ? 'horizontal' : 'vertical',
-      direction: event.key === 'PageUp' ? -1 : 1,
-      type: 'page',
-    };
-  }
-  if (!event.altKey && !event.ctrlKey && !event.metaKey) {
-    if (event.key === '+' || event.key === '=') return { direction: 'in', type: 'zoom' };
-    if (event.key === '-' || event.key === '_') return { direction: 'out', type: 'zoom' };
-    if (event.key === '0' && !event.shiftKey) return { type: 'fit' };
-  }
-  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-    return undefined;
-  }
-  if (adjustment !== undefined) {
-    return { direction: adjustment, type: 'navigate' };
-  }
-  if (event.key === 'Home' || event.key === 'End') {
-    return { direction: event.key === 'Home' ? 'home' : 'end', type: 'navigate' };
-  }
-  if (event.key === ' ') {
-    return { type: 'toggle-selection' };
-  }
-  if (event.key === 'Enter') {
-    return { type: 'activate' };
-  }
-  if (key === 'm') {
-    return { mode: 'move', type: 'begin' };
-  }
-  if (key === 'p') {
-    return { mode: 'progress', type: 'begin' };
-  }
-  if (key === 's') {
-    return { mode: 'resize-start', type: 'begin' };
-  }
-  if (key === 'e') {
-    return { mode: 'resize-end', type: 'begin' };
-  }
-  if (key === 'n') {
-    return { type: 'create' };
-  }
-  if (key === 'l') {
-    return { type: 'link' };
-  }
-  return event.key === 'Delete' || event.key === 'Backspace' ? { type: 'delete' } : undefined;
 }
 
 function GanttSurface({
@@ -284,18 +151,6 @@ function GanttSurface({
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
   const accessibilityId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const hadLogicalTaskFocus = useRef(false);
-  const taskActivationPointer = useRef<
-    | {
-        moved: boolean;
-        readonly viewKey: string;
-        readonly x: number;
-        readonly y: number;
-      }
-    | undefined
-  >(undefined);
-  const dependencyPointer = useRef<number | undefined>(undefined);
-  const [panState, setPanState] = useState<'idle' | 'panning' | 'pressing'>('idle');
   const helpId = `${accessibilityId}-keyboard-help`;
   const {
     boundary: overlayBoundary,
@@ -442,48 +297,14 @@ function GanttSurface({
       ? undefined
       : taskByViewKey.get(dependencyPreview.target.viewKey);
 
-  useLayoutEffect(() => {
-    const body = bodyRef.current;
-    if (body !== null && body.scrollTop !== verticalStart) {
-      body.scrollTop = verticalStart;
-    }
-  }, [bodyRef, verticalStart]);
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    if (root === null) {
-      return;
-    }
-    if (focusedViewKey !== undefined) {
-      hadLogicalTaskFocus.current = true;
-      const task = Array.from(root.querySelectorAll<SVGGElement>('[data-gt-part="task"]')).find(
-        (element) => element.dataset.viewKey === focusedViewKey,
-      );
-      if (task !== undefined && root.ownerDocument.activeElement !== task) {
-        task.focus();
-      }
-      return;
-    }
-    if (focusedDependencyId !== undefined) {
-      const dependency = Array.from(
-        root.querySelectorAll<SVGGElement>('[data-gt-part="dependency"]'),
-      ).find((element) => element.dataset.dependencyId === focusedDependencyId);
-      if (dependency !== undefined && root.ownerDocument.activeElement !== dependency) {
-        dependency.focus();
-      }
-      return;
-    }
-    if (logicalTaskFocused) {
-      if (hadLogicalTaskFocus.current) {
-        root.focus();
-      }
-      hadLogicalTaskFocus.current = true;
-      return;
-    }
-    if (hadLogicalTaskFocus.current) {
-      hadLogicalTaskFocus.current = false;
-      root.focus();
-    }
-  }, [focusedDependencyId, focusedViewKey, logicalTaskFocused]);
+  useFocusBridge({
+    bodyRef,
+    focusedDependencyId,
+    focusedViewKey,
+    logicalTaskFocused,
+    rootRef,
+    verticalStart,
+  });
   useEffect(() => {
     if (tooltip !== undefined && activeTooltipTask === undefined) {
       setTooltip(undefined);
@@ -544,26 +365,33 @@ function GanttSurface({
       current === undefined ? undefined : { ...current, selectionKey: nextSelectionKey },
     );
   }, [editor, scene.lanes, selection, taskByViewKey]);
-  const geometry = useCallback(() => {
-    const body = bodyRef.current;
-    const timeline = timelineRef.current;
-    if (body === null || timeline === null) {
-      return undefined;
-    }
-    const bodyRect = body.getBoundingClientRect();
-    const timelineRect = timeline.getBoundingClientRect();
-    const height = body.clientHeight || bodyRect.height;
-    if (timelineRect.width <= 0 || height <= 0) {
-      return undefined;
-    }
-    return {
-      height,
-      verticalStart: body.scrollTop,
-      width: timelineRect.width,
-      x: timelineRect.left,
-      y: bodyRect.top,
-    };
-  }, [bodyRef, timelineRef]);
+  const dismissOverlays = useCallback(() => {
+    setTooltip(undefined);
+    setMenu(undefined);
+  }, [setMenu, setTooltip]);
+  const {
+    consumeTaskDrag,
+    geometry,
+    onHeaderPointerCancel,
+    onHeaderPointerDown,
+    onHeaderPointerMove,
+    onHeaderPointerUp,
+    onLinkPointerDown,
+    onPointerCancel,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    panState,
+  } = usePointerInteractions({
+    bodyRef,
+    createTaskEnabled: interactionMappers?.createTask !== undefined,
+    disabled,
+    dismissOverlays,
+    editorOpen,
+    panCapable,
+    runtime,
+    timelineRef,
+  });
   const showTooltip = useCallback(
     (element: Element, task: TaskBarPrimitive) => {
       showOverlayTooltip(tooltipEnabled, task.viewKey, element);
@@ -716,16 +544,12 @@ function GanttSurface({
   );
   const onTaskActivate = useCallback(
     (task: TaskBarPrimitive) => {
-      const pointer = taskActivationPointer.current;
-      taskActivationPointer.current = undefined;
-      if (pointer?.viewKey === task.viewKey && pointer.moved) {
-        return;
-      }
+      if (consumeTaskDrag(task.viewKey)) return;
       if (propertiesEnabled) {
         openEditor(task.viewKey);
       }
     },
-    [openEditor, propertiesEnabled],
+    [consumeTaskDrag, openEditor, propertiesEnabled],
   );
   const onTaskMouseEnter = useCallback(
     (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => {
@@ -736,321 +560,6 @@ function GanttSurface({
   const onTaskMouseLeave = useCallback(() => {
     setTooltip(undefined);
   }, []);
-  const candidateViewKey = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.target;
-    return target instanceof Element
-      ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
-      : undefined;
-  }, []);
-  const dependencyCandidateViewKey = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>): string | undefined => {
-      const pointed = event.currentTarget.ownerDocument.elementFromPoint?.(
-        event.clientX,
-        event.clientY,
-      );
-      const target = pointed ?? event.target;
-      return target instanceof Element
-        ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
-        : undefined;
-    },
-    [],
-  );
-  const onLinkPointerDown = useCallback(
-    (event: ReactPointerEvent<SVGCircleElement>, task: TaskBarPrimitive) => {
-      if (disabled || event.button !== 0 || event.isPrimary === false) return;
-      const resolvedPointerType =
-        event.pointerType === 'touch' || event.pointerType === 'pen' ? event.pointerType : 'mouse';
-      if (!runtime.beginDependencyLink(task.viewKey, resolvedPointerType)) return;
-      dependencyPointer.current = event.pointerId;
-      setTooltip(undefined);
-      setMenu(undefined);
-      event.preventDefault();
-      event.stopPropagation();
-      try {
-        timelineRef.current?.setPointerCapture?.(event.pointerId);
-      } catch {
-        // Synthetic adapters can lack a browser-managed active pointer.
-      }
-    },
-    [disabled, runtime, timelineRef],
-  );
-  const progressCandidateViewKey = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.target;
-    return target instanceof Element &&
-      target.closest('[data-gt-part="progress-handle"], [data-gt-part="progress-hit-target"]') !==
-        null
-      ? target.closest<SVGGElement>('[data-gt-part="task"]')?.dataset.viewKey
-      : undefined;
-  }, []);
-  const pointerType = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    return event.pointerType === 'touch' || event.pointerType === 'pen'
-      ? event.pointerType
-      : 'mouse';
-  }, []);
-  const pointerInput = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const bounds = geometry();
-      if (bounds === undefined) {
-        return undefined;
-      }
-      const candidate = candidateViewKey(event);
-      const progressCandidate = progressCandidateViewKey(event);
-      return {
-        ...(candidate === undefined ? {} : { candidateViewKey: candidate }),
-        geometry: bounds,
-        point: { x: event.clientX, y: event.clientY },
-        pointerId: event.pointerId,
-        ...(progressCandidate === undefined ? {} : { progressCandidateViewKey: progressCandidate }),
-      };
-    },
-    [candidateViewKey, geometry, progressCandidateViewKey],
-  );
-  const beginPan = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>, axis: 'both' | 'horizontal'): boolean => {
-      if (editorOpen || event.pointerType !== 'mouse' || event.isPrimary === false) {
-        return false;
-      }
-      const input = pointerInput(event);
-      if (
-        input === undefined ||
-        !runtime.panPointerDown({
-          axis,
-          geometry: input.geometry,
-          point: input.point,
-          pointerId: input.pointerId,
-        })
-      ) {
-        return false;
-      }
-      setTooltip(undefined);
-      setMenu(undefined);
-      setPanState('pressing');
-      event.preventDefault();
-      try {
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-      } catch {
-        // Synthetic adapters can lack a browser-managed active pointer.
-      }
-      return true;
-    },
-    [editorOpen, pointerInput, runtime],
-  );
-  const movePan = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>): boolean => {
-      const input = pointerInput(event);
-      if (input === undefined) {
-        return false;
-      }
-      const result = runtime.panPointerMove(input);
-      if (!result.handled) {
-        return false;
-      }
-      if (result.active) {
-        setPanState('panning');
-      }
-      event.preventDefault();
-      return true;
-    },
-    [pointerInput, runtime],
-  );
-  const finishPan = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>, cancel: boolean): boolean => {
-      const result = cancel
-        ? {
-            active: false,
-            handled: runtime.panPointerCancel(event.pointerId),
-          }
-        : runtime.panPointerUp(event.pointerId);
-      if (!result.handled) {
-        return false;
-      }
-      setPanState('idle');
-      event.preventDefault();
-      try {
-        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-          event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-      } catch {
-        // Capture can already be released before cancellation or pointerup.
-      }
-      return true;
-    },
-    [runtime],
-  );
-  const onPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const input = pointerInput(event);
-      const mousePan =
-        event.pointerType === 'mouse' &&
-        event.isPrimary !== false &&
-        (event.button === 1 ||
-          (event.button === 0 &&
-            input?.candidateViewKey === undefined &&
-            interactionMappers?.createTask === undefined));
-      if (mousePan) {
-        if (beginPan(event, 'both')) {
-          return;
-        }
-        if (event.button === 1 || panCapable || editorOpen) {
-          return;
-        }
-      }
-      if (event.button !== 0 || event.isPrimary === false) {
-        return;
-      }
-      if (input === undefined) {
-        return;
-      }
-      if (input.candidateViewKey !== undefined) {
-        taskActivationPointer.current = {
-          moved: false,
-          viewKey: input.candidateViewKey,
-          x: event.clientX,
-          y: event.clientY,
-        };
-      } else {
-        taskActivationPointer.current = undefined;
-      }
-      if (input.candidateViewKey === undefined) {
-        runtime.clearTaskFocusAndSelection();
-        const activeElement = event.currentTarget.ownerDocument.activeElement;
-        if (
-          (activeElement instanceof HTMLElement || activeElement instanceof SVGElement) &&
-          event.currentTarget.contains(activeElement) &&
-          activeElement.closest('[data-gt-part="task"]') !== null
-        ) {
-          activeElement.blur();
-        }
-        if (mousePan) {
-          return;
-        }
-      }
-      if (disabled || !runtime.pointerDown({ ...input, pointerType: pointerType(event) })) {
-        return;
-      }
-      event.preventDefault();
-      try {
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-      } catch {
-        // Synthetic adapters can lack a browser-managed active pointer.
-      }
-    },
-    [
-      beginPan,
-      disabled,
-      editorOpen,
-      interactionMappers?.createTask,
-      panCapable,
-      pointerInput,
-      pointerType,
-      runtime,
-    ],
-  );
-  const onPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (dependencyPointer.current === event.pointerId) {
-        const candidate = dependencyCandidateViewKey(event);
-        runtime.updateDependencyLink(candidate);
-        event.preventDefault();
-        return;
-      }
-      if (movePan(event)) {
-        return;
-      }
-      const input = pointerInput(event);
-      const activation = taskActivationPointer.current;
-      if (
-        activation !== undefined &&
-        !activation.moved &&
-        Math.hypot(event.clientX - activation.x, event.clientY - activation.y) >= 4
-      ) {
-        taskActivationPointer.current = { ...activation, moved: true };
-      }
-      if (input !== undefined && runtime.pointerMove(input)) {
-        event.preventDefault();
-      }
-    },
-    [dependencyCandidateViewKey, movePan, pointerInput, runtime],
-  );
-  const onPointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (dependencyPointer.current === event.pointerId) {
-        const candidate = dependencyCandidateViewKey(event);
-        runtime.updateDependencyLink(candidate);
-        dependencyPointer.current = undefined;
-        event.preventDefault();
-        try {
-          if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          }
-        } catch {
-          // Capture can already be released by the browser before pointerup dispatch.
-        }
-        void runtime.commitDependencyLink();
-        return;
-      }
-      if (finishPan(event, false)) {
-        return;
-      }
-      if (disabled) {
-        return;
-      }
-      event.preventDefault();
-      try {
-        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-          event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-      } catch {
-        // Capture can already be released by the browser before pointerup dispatch.
-      }
-      void runtime.pointerUp(event.pointerId);
-    },
-    [dependencyCandidateViewKey, disabled, finishPan, runtime],
-  );
-  const onPointerCancel = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (dependencyPointer.current === event.pointerId) {
-        dependencyPointer.current = undefined;
-        runtime.cancelDependencyLink();
-        event.preventDefault();
-        return;
-      }
-      taskActivationPointer.current = undefined;
-      if (finishPan(event, true)) {
-        return;
-      }
-      if (runtime.pointerCancel(event.pointerId)) {
-        event.preventDefault();
-      }
-    },
-    [finishPan, runtime],
-  );
-  const onHeaderPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button === 0) {
-        beginPan(event, 'horizontal');
-      }
-    },
-    [beginPan],
-  );
-  const onHeaderPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      movePan(event);
-    },
-    [movePan],
-  );
-  const onHeaderPointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      finishPan(event, false);
-    },
-    [finishPan],
-  );
-  const onHeaderPointerCancel = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      finishPan(event, true);
-    },
-    [finishPan],
-  );
   const onFocusCapture = useCallback(
     (event: ReactFocusEvent<HTMLDivElement>) => {
       const target = event.target;
@@ -2124,136 +1633,20 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
       onDiagnostics(diagnostics);
     }
   }, [appearanceRegistrySignature, localization, onDiagnostics, scene.diagnostics]);
-  useEffect(() => {
-    const body = bodyRef.current;
-    const timeline = timelineRef.current;
-    if (body === null || timeline === null) {
-      return;
-    }
-    const measure = () => {
-      const current = runtime.getSnapshot();
-      const focused = current.selector.session.focused;
-      const focusedTask =
-        focused?.kind === 'task'
-          ? current.scene.taskBars.find((task) => task.viewKey === focused.viewKey)
-          : undefined;
-      const previewCandidate =
-        'preview' in current.selector.interaction
-          ? current.selector.interaction.preview
-          : undefined;
-      const preview = previewCandidate?.kind === 'dependency' ? undefined : previewCandidate;
-      const retainedStart =
-        focusedTask === undefined && preview === undefined
-          ? undefined
-          : Math.max(
-              0,
-              Math.min(focusedTask?.y ?? Infinity, preview?.y ?? Infinity) -
-                (preview === undefined ? 0 : current.scene.bounds.defaultLaneHeight * 2),
-            );
-      const retainedEnd =
-        focusedTask === undefined && preview === undefined
-          ? undefined
-          : Math.max(
-              focusedTask === undefined ? -Infinity : focusedTask.y + focusedTask.height,
-              preview === undefined ? -Infinity : preview.y + preview.height,
-            ) + (preview === undefined ? 0 : current.scene.bounds.defaultLaneHeight * 2);
-      runtime.measure({
-        clientHeight: body.clientHeight,
-        clientWidth: timeline.clientWidth,
-        verticalStart: body.scrollTop,
-        ...(retainedStart === undefined || retainedEnd === undefined
-          ? {}
-          : {
-              retainedRange: {
-                start: retainedStart,
-                end: retainedEnd,
-              },
-            }),
-      });
-    };
-    body.addEventListener('scroll', measure, { passive: true });
-    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : undefined;
-    observer?.observe(body);
-    observer?.observe(timeline);
-    measure();
-    return () => {
-      body.removeEventListener('scroll', measure);
-      observer?.disconnect();
-      runtime.clearMeasurement();
-    };
-  }, [runtime, scene.emptyState]);
-  useEffect(() => {
-    const body = bodyRef.current;
-    const chart = chartRef.current;
-    const timeline = timelineRef.current;
-    if (body === null || chart === null || timeline === null) {
-      return;
-    }
-    const onWheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.metaKey || excludesChartWheel(event.target)) {
-        return;
-      }
-      if (event.altKey) {
-        const current = runtime.getSnapshot().selector;
-        const direction = event.deltaY < 0 ? 'in' : event.deltaY > 0 ? 'out' : undefined;
-        const level =
-          direction === undefined
-            ? current.scaleLevel
-            : adjacentTimeScaleLevel(current.scaleLevel, direction);
-        if (direction === undefined || level === current.scaleLevel) return;
-        const bounds = timeline.getBoundingClientRect();
-        if (bounds.width <= 0) return;
-        const physicalRatio = Math.max(
-          0,
-          Math.min(1, (event.clientX - bounds.left) / bounds.width),
-        );
-        const anchorRatio = localization.direction === 'rtl' ? 1 - physicalRatio : physicalRatio;
-        const anchorTime =
-          current.range.start + (current.range.end - current.range.start) * anchorRatio;
-        if (!runtime.zoomTo(level, { anchorRatio, anchorTime })) return;
-        event.preventDefault();
-        return;
-      }
-      const unit = wheelDeltaUnit(event.deltaMode);
-      const horizontalDelta = normalizeNavigationDelta(event.deltaX, unit, {
-        lineSize: WHEEL_LINE_SIZE,
-        pageSize: timeline.clientWidth,
-      });
-      const verticalDelta = normalizeNavigationDelta(event.deltaY, unit, {
-        lineSize: WHEEL_LINE_SIZE,
-        pageSize: body.clientHeight,
-      });
-      const hasHorizontal = Math.abs(horizontalDelta) >= MEANINGFUL_WHEEL_DELTA;
-      const shiftedVertical = event.shiftKey && !hasHorizontal ? verticalDelta : 0;
-      const acceptedHorizontal = hasHorizontal ? horizontalDelta : shiftedVertical;
-      if (acceptedHorizontal === 0) {
-        return;
-      }
-      const horizontal = runtime.navigateViewport({
-        horizontalDelta: acceptedHorizontal,
-        viewportHeight: body.clientHeight,
-        viewportWidth: timeline.clientWidth,
-      });
-      if (!horizontal.horizontal) {
-        return;
-      }
-      const acceptedVertical = shiftedVertical === 0 ? verticalDelta : 0;
-      if (acceptedVertical !== 0) {
-        const vertical = runtime.navigateViewport({
-          verticalDelta: acceptedVertical,
-          viewportHeight: body.clientHeight,
-          viewportWidth: timeline.clientWidth,
-        });
-        if (!vertical.vertical) {
-          const maxScrollTop = Math.max(0, body.scrollHeight - body.clientHeight);
-          body.scrollTop = Math.max(0, Math.min(maxScrollTop, body.scrollTop + acceptedVertical));
-        }
-      }
-      event.preventDefault();
-    };
-    chart.addEventListener('wheel', onWheel, { passive: false });
-    return () => chart.removeEventListener('wheel', onWheel);
-  }, [localization.direction, runtime, scene.emptyState]);
+  useMeasuredViewport({
+    bodyRef,
+    empty: scene.emptyState !== undefined,
+    runtime,
+    timelineRef,
+  });
+  useWheelNavigation({
+    bodyRef,
+    chartRef,
+    direction: localization.direction,
+    empty: scene.emptyState !== undefined,
+    runtime,
+    timelineRef,
+  });
 
   return (
     <GanttRuntimeProvider runtime={runtime}>
