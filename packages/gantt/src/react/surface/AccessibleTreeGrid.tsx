@@ -1,9 +1,51 @@
-import type { ReactElement, ReactNode } from 'react';
+import { memo, type ReactElement, type ReactNode } from 'react';
 
 import type { GanttReactRuntimeSnapshot } from '../runtime';
 import type { GanttLaneColumn } from '../types';
 
-export function AccessibleTreeGrid({
+const AccessibleLaneRow = memo(function AccessibleLaneRow({
+  accessibilityId,
+  lane,
+  laneIndex,
+  ownedTaskIds,
+  renderLaneColumn,
+  resolvedColumns,
+}: {
+  readonly accessibilityId: string;
+  readonly lane: GanttReactRuntimeSnapshot['scene']['lanes'][number];
+  readonly laneIndex: number;
+  readonly ownedTaskIds: string | undefined;
+  readonly renderLaneColumn: (column: GanttLaneColumn, laneViewKey: string) => ReactNode;
+  readonly resolvedColumns: readonly GanttLaneColumn[];
+}): ReactElement {
+  return (
+    <div
+      aria-expanded={lane.project?.hasChildren ? lane.project.expanded : undefined}
+      aria-level={(lane.project?.depth ?? 0) + 1}
+      aria-rowindex={laneIndex + 2}
+      id={`${accessibilityId}-row-${laneIndex}`}
+      role="row"
+    >
+      {resolvedColumns.map((column, columnIndex) => (
+        <span
+          aria-colindex={columnIndex + 1}
+          key={column.id}
+          role={columnIndex === 0 ? 'rowheader' : 'gridcell'}
+        >
+          {renderLaneColumn(column, lane.viewKey)}
+        </span>
+      ))}
+      <span
+        aria-colindex={resolvedColumns.length + 1}
+        aria-label={`${lane.title} timeline`}
+        aria-owns={ownedTaskIds}
+        role="gridcell"
+      />
+    </div>
+  );
+});
+
+export const AccessibleTreeGrid = memo(function AccessibleTreeGrid({
   accessibilityId,
   helpId,
   label,
@@ -58,33 +100,18 @@ export function AccessibleTreeGrid({
           </div>
         ) : (
           scene.lanes.map((lane, laneIndex) => (
-            <div
-              aria-expanded={lane.project?.hasChildren ? lane.project.expanded : undefined}
-              aria-level={(lane.project?.depth ?? 0) + 1}
-              aria-rowindex={laneIndex + 2}
-              id={`${accessibilityId}-row-${laneIndex}`}
+            <AccessibleLaneRow
+              accessibilityId={accessibilityId}
               key={lane.viewKey}
-              role="row"
-            >
-              {resolvedColumns.map((column, columnIndex) => (
-                <span
-                  aria-colindex={columnIndex + 1}
-                  key={column.id}
-                  role={columnIndex === 0 ? 'rowheader' : 'gridcell'}
-                >
-                  {renderLaneColumn(column, lane.viewKey)}
-                </span>
-              ))}
-              <span
-                aria-colindex={resolvedColumns.length + 1}
-                aria-label={`${lane.title} timeline`}
-                aria-owns={taskDomIdsByLane.get(lane.viewKey)?.join(' ') || undefined}
-                role="gridcell"
-              />
-            </div>
+              lane={lane}
+              laneIndex={laneIndex}
+              ownedTaskIds={taskDomIdsByLane.get(lane.viewKey)?.join(' ') || undefined}
+              renderLaneColumn={renderLaneColumn}
+              resolvedColumns={resolvedColumns}
+            />
           ))
         )}
       </div>
     </div>
   );
-}
+});

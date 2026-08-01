@@ -4,6 +4,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactElement,
 } from 'react';
+import { memo } from 'react';
 
 import type { GanttLocalization } from '../../localization/format';
 import type { TaskBarPrimitive } from '../../render/primitives';
@@ -24,7 +25,7 @@ import {
   taskSummary,
 } from './presentation';
 
-export function TaskItem({
+export const TaskItem = memo(function TaskItem({
   classNames,
   direction,
   describedBy,
@@ -342,4 +343,4 @@ export function TaskItem({
       ) : null}
     </g>
   );
-}
+});

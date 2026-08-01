@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { memo, type ReactElement } from 'react';
 
 import type { GanttLocalization } from '../../localization/format';
 import type { DependencyPathPrimitive } from '../../render/primitives';
@@ -13,7 +13,7 @@ function dependencyStateEqual(
   return previous.every((value, index) => value === next[index]);
 }
 
-export function DependencyItem({
+export const DependencyItem = memo(function DependencyItem({
   classNames,
   dependency,
   disabled,
@@ -148,4 +148,4 @@ export function DependencyItem({
       ) : null}
     </g>
   );
-}
+});

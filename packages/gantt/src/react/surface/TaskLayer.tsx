@@ -4,6 +4,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactElement,
 } from 'react';
+import { memo } from 'react';
 
 import type { GanttLocalization } from '../../localization/format';
 import type { TaskBarPrimitive } from '../../render/primitives';
@@ -12,7 +13,7 @@ import type { GanttProps } from '../types';
 import { joinClasses } from './presentation';
 import { TaskItem } from './TaskItem';
 
-export function TaskLayer({
+export const TaskLayer = memo(function TaskLayer({
   classNames,
   disabled,
   helpId,
@@ -26,9 +27,10 @@ export function TaskLayer({
   onMouseLeave,
   progressEditableTaskIds,
   rovingViewKey,
-  scene,
   slots,
   taskDomIds,
+  tasks,
+  timelineHeight,
   tooltipId,
   tooltipViewKey,
 }: {
@@ -48,15 +50,16 @@ export function TaskLayer({
   readonly onMouseLeave: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
   readonly progressEditableTaskIds: ReadonlySet<string>;
   readonly rovingViewKey: string | undefined;
-  readonly scene: GanttReactRuntimeSnapshot['scene'];
   readonly slots?: GanttProps['slots'];
   readonly taskDomIds: ReadonlyMap<string, string>;
+  readonly tasks: GanttReactRuntimeSnapshot['scene']['taskBars'];
+  readonly timelineHeight: number;
   readonly tooltipId: string;
   readonly tooltipViewKey: string | undefined;
 }): ReactElement {
   return (
     <>
-      {scene.taskBars.map((task) => (
+      {tasks.map((task) => (
         <TaskItem
           classNames={classNames}
           direction={localization.direction}
@@ -79,9 +82,9 @@ export function TaskLayer({
           slots={slots}
           task={task}
           tabIndex={task.viewKey === rovingViewKey ? 0 : -1}
-          timelineHeight={scene.bounds.timelineHeight}
+          timelineHeight={timelineHeight}
         />
       ))}
     </>
   );
-}
+});

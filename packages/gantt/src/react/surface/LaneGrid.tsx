@@ -1,5 +1,5 @@
 import { ChevronRight, EllipsisVertical } from 'lucide-react';
-import type { ReactElement, ReactNode } from 'react';
+import { memo, type ReactElement, type ReactNode } from 'react';
 
 import type { GanttLocalization } from '../../localization/format';
 import type { GanttReactRuntimeSnapshot } from '../runtime';
@@ -14,7 +14,74 @@ import {
   resolveClassName,
 } from './presentation';
 
-export function LaneGrid({
+const LaneRow = memo(function LaneRow({
+  classNames,
+  columnTemplate,
+  defaultLaneHeight,
+  disabled,
+  lane,
+  laneSummary,
+  propertiesEnabled,
+  renderLaneColumn,
+  resolvedColumns,
+}: {
+  readonly classNames?: GanttProps['classNames'];
+  readonly columnTemplate: string;
+  readonly defaultLaneHeight: number;
+  readonly disabled: boolean;
+  readonly lane: GanttReactRuntimeSnapshot['scene']['lanes'][number];
+  readonly laneSummary: GanttLaneSummary;
+  readonly propertiesEnabled: boolean;
+  readonly renderLaneColumn: (column: GanttLaneColumn, laneViewKey: string) => ReactNode;
+  readonly resolvedColumns: readonly GanttLaneColumn[];
+}): ReactElement {
+  return (
+    <div
+      aria-hidden="true"
+      className={joinClasses(
+        'gt-gantt__lane',
+        resolveClassName(classNames?.lane, idleClassState(disabled, laneSummary.target)),
+      )}
+      data-lane-id={lane.laneId}
+      data-gt-appearance-resolution={lane.appearance?.resolution}
+      data-gt-appearance-source={lane.appearance?.source}
+      data-gt-part="lane"
+      data-gt-variant={lane.appearance?.variant}
+      data-resource-id={lane.resourceId}
+      data-view-key={lane.viewKey}
+      style={{
+        ...laneStyle(lane.y, lane.height, defaultLaneHeight),
+        ...appearanceStyle(lane.appearance),
+        gridTemplateColumns: columnTemplate,
+      }}
+    >
+      <span aria-hidden="true" className="gt-gantt__lane-accent" data-gt-part="lane-accent" />
+      {resolvedColumns.map((column) => (
+        <div
+          className={joinClasses(
+            'gt-gantt__lane-header',
+            resolveClassName(classNames?.laneHeader, idleClassState(disabled, laneSummary.target)),
+          )}
+          data-column-id={column.id}
+          data-gt-part="lane-header"
+          key={column.id}
+          style={
+            column.id === resolvedColumns[0]?.id && lane.project !== undefined
+              ? { paddingInlineStart: 38 + lane.project.depth * 16 }
+              : undefined
+          }
+        >
+          {renderLaneColumn(column, lane.viewKey)}
+        </div>
+      ))}
+      {propertiesEnabled ? (
+        <div className="gt-gantt__lane-properties-cell" data-gt-part="lane-properties-cell" />
+      ) : null}
+    </div>
+  );
+});
+
+export const LaneGrid = memo(function LaneGrid({
   accessibilityId,
   classNames,
   columnTemplate,
@@ -44,55 +111,18 @@ export function LaneGrid({
   return (
     <div className="gt-gantt__lanes" data-gt-part="lane-list">
       {scene.lanes.map((lane) => (
-        <div
-          aria-hidden="true"
-          className={joinClasses(
-            'gt-gantt__lane',
-            resolveClassName(
-              classNames?.lane,
-              idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
-            ),
-          )}
-          data-lane-id={lane.laneId}
-          data-gt-appearance-resolution={lane.appearance?.resolution}
-          data-gt-appearance-source={lane.appearance?.source}
-          data-gt-part="lane"
-          data-gt-variant={lane.appearance?.variant}
-          data-resource-id={lane.resourceId}
-          data-view-key={lane.viewKey}
+        <LaneRow
+          classNames={classNames}
+          columnTemplate={columnTemplate}
+          defaultLaneHeight={scene.bounds.defaultLaneHeight}
+          disabled={disabled}
           key={lane.viewKey}
-          style={{
-            ...laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight),
-            ...appearanceStyle(lane.appearance),
-            gridTemplateColumns: columnTemplate,
-          }}
-        >
-          <span aria-hidden="true" className="gt-gantt__lane-accent" data-gt-part="lane-accent" />
-          {resolvedColumns.map((column) => (
-            <div
-              className={joinClasses(
-                'gt-gantt__lane-header',
-                resolveClassName(
-                  classNames?.laneHeader,
-                  idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
-                ),
-              )}
-              data-column-id={column.id}
-              data-gt-part="lane-header"
-              key={column.id}
-              style={
-                column.id === resolvedColumns[0]?.id && lane.project !== undefined
-                  ? { paddingInlineStart: 38 + lane.project.depth * 16 }
-                  : undefined
-              }
-            >
-              {renderLaneColumn(column, lane.viewKey)}
-            </div>
-          ))}
-          {propertiesEnabled ? (
-            <div className="gt-gantt__lane-properties-cell" data-gt-part="lane-properties-cell" />
-          ) : null}
-        </div>
+          lane={lane}
+          laneSummary={laneSummaries.get(lane.viewKey)!}
+          propertiesEnabled={propertiesEnabled}
+          renderLaneColumn={renderLaneColumn}
+          resolvedColumns={resolvedColumns}
+        />
       ))}
       {scene.lanes.map((lane, laneIndex) =>
         lane.project?.hasChildren ? (
@@ -145,4 +175,4 @@ export function LaneGrid({
         : null}
     </div>
   );
-}
+});

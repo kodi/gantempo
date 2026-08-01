@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 3 complete
+Status: In progress; Slice 4 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -524,7 +524,7 @@ Verification:
 
 ### Slice 4: Isolate item subscriptions and render fan-out
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: ensure the new component boundaries improve steady-state React work rather than
 only distribute lines across files.
@@ -559,6 +559,23 @@ Verification:
 - `mise run ci`.
 
 Dependencies: Slice 3.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/Gantt*.test.tsx
+  packages/gantt/src/react/surface/*.test.ts` passed 11 files / 100 tests;
+- the fixed `m4-runtime-v2` benchmark reported 312.26 selection/focus updates/s,
+  132.33 pointer preview updates/s, 410.41 measured scroll queries/s, and
+  82,773.41 indexed mouse hit tests/s for 2,000 tasks across 400 lanes;
+- the fixed `m4-appendix-scene-v1` benchmark reported 39.4832 cold builds/s,
+  81.1822 warm label updates/s, 87.1351 warm appearance/progress updates/s, and
+  5269.71 vertical viewport queries/s;
+- the fixed `m5-project-v1` benchmark reported 9.3391 cold builds/s, 9.0449
+  collapse updates/s, 8.4822 filter updates/s, 8.6080 dependency updates/s, and
+  10.5251 zoom updates/s;
+- `git diff --check` passed;
+- `mise run ci` passed on 2026-08-01: 93 test files / 493 tests, 224 formatted
+  files, 213 lint/type files, and the 180-artifact package build.
 
 ### Slice 5: Isolate overlay lifecycle and editor workflows
 
@@ -868,11 +885,32 @@ These are implementation judgments, not reasons to change the public API:
 - `Gantt.tsx` fell from 3,500 to 2,705 lines. The fixed scene benchmarks retained
   their expected fixture shapes and completed before the full gate.
 
+### 2026-08-01 — Slice 4 target-local rendering
+
+- Applied ordinary `memo` at task, dependency, lane-row, lane-timeline, and accessible
+  row boundaries after stabilizing the props those boundaries actually consume. No
+  custom memo comparator was added.
+- The Slice 1 probe moved from positive unrelated fan-out to zero renders: focusing
+  and selecting Task A still renders Task A, while Task B, Task C, their unrelated
+  lane rows, and their custom cell callbacks remain at zero. Focusing dependency A–B
+  renders that dependency while dependency B–C remains at zero.
+- Changed task slots and class callbacks still propagate immediately through the
+  memoized layers. Target-specific task and dependency interaction state remains
+  subscribed inside the corresponding item.
+- Stabilized current-value handler lookups, immutable lane summaries, unchanged
+  dependency routes, and runtime dependency selector summaries. The runtime now
+  retains an unchanged dependency summary array across selection-only rebuilds rather
+  than cloning every dependency record and summary.
+- The fixed runtime and scene benchmarks completed without changing their fixture
+  topology. `Gantt.tsx` is 2,731 lines; the small increase from Slice 3 is the stable
+  boundary wiring, not restored rendering logic.
+
 ## Next Slice
 
-Start Slice 4 at the new task, dependency, and lane boundaries. Stabilize only the
-inputs that the render probes prove unstable, apply ordinary `memo` where shallow
-props are sufficient, and convert the characterized unrelated Task B and Lane B
-renders to zero-render assertions while retaining immediate custom slot/class
-updates. Run the focused render-isolation and React behavior suites, current runtime
-interaction and scene benchmarks, and `mise run ci` before marking Slice 4 done.
+Start Slice 5 by moving tooltip, menu, editor, portal-host, modal-isolation, focus,
+and command workflow ownership behind one instance-local private overlay controller
+and dedicated overlay component. Preserve all current portal boundaries, collision
+behavior, slot bindings, dismissal, scroll locking, focus trap/return, and editor
+commands; extend the render probes to prove overlay-only changes do not render static
+task, dependency, or lane rows. Run focused overlay/property tests, the full React DOM
+suite, and `mise run ci` before marking Slice 5 done.

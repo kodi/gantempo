@@ -403,6 +403,7 @@ function dependencyTarget(dependencyId: EntityId): GanttDependencyTarget {
 function occurrences(
   scene: ChartScene,
   catalog: readonly ChartSceneOccurrence[],
+  previousDependencies?: GanttSelectorSnapshot['dependencies'],
 ): {
   readonly dependencies: GanttSelectorSnapshot['dependencies'];
   readonly runtime: readonly GanttRuntimeOccurrence[];
@@ -439,19 +440,47 @@ function occurrences(
         : { unresolvedDescendantCount: task.presentation.summary.unresolvedDescendantCount }),
     }),
   );
+  const previousDependencyById = new Map(
+    previousDependencies?.map((summary) => [summary.dependency.id, summary]),
+  );
+  const dependencies = scene.dependencySummaries.map((summary) => {
+    const previous = previousDependencyById.get(summary.dependency.id);
+    const previousLag = previous?.dependency.lag;
+    const nextLag = summary.dependency.lag;
+    if (
+      previous !== undefined &&
+      previous.dependency.fromTaskId === summary.dependency.fromTaskId &&
+      previous.dependency.toTaskId === summary.dependency.toTaskId &&
+      previous.dependency.type === summary.dependency.type &&
+      previousLag?.mode === nextLag?.mode &&
+      previousLag?.unit === nextLag?.unit &&
+      previousLag?.value === nextLag?.value &&
+      (previous.dependency.fields === summary.dependency.fields ||
+        JSON.stringify(previous.dependency.fields) === JSON.stringify(summary.dependency.fields)) &&
+      previous.fromTitle === summary.fromTitle &&
+      previous.hiddenEndpoint === summary.hiddenEndpoint &&
+      previous.status === summary.status &&
+      previous.toTitle === summary.toTitle
+    ) {
+      return previous;
+    }
+    return Object.freeze({
+      dependency: Object.freeze({ ...summary.dependency }),
+      fromTitle: summary.fromTitle,
+      hiddenEndpoint: summary.hiddenEndpoint,
+      status: summary.status,
+      target: dependencyTarget(summary.dependency.id),
+      toTitle: summary.toTitle,
+    });
+  });
+  const stableDependencies =
+    previousDependencies !== undefined &&
+    dependencies.length === previousDependencies.length &&
+    dependencies.every((dependency, index) => dependency === previousDependencies[index])
+      ? previousDependencies
+      : Object.freeze(dependencies);
   return Object.freeze({
-    dependencies: Object.freeze(
-      scene.dependencySummaries.map((summary) =>
-        Object.freeze({
-          dependency: Object.freeze({ ...summary.dependency }),
-          fromTitle: summary.fromTitle,
-          hiddenEndpoint: summary.hiddenEndpoint,
-          status: summary.status,
-          target: dependencyTarget(summary.dependency.id),
-          toTitle: summary.toTitle,
-        }),
-      ),
-    ),
+    dependencies: stableDependencies,
     runtime: Object.freeze([
       ...scene.lanes.map((lane, laneIndex) =>
         Object.freeze({
@@ -957,7 +986,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             ]),
           });
     lastDocument = storeSnapshot.document;
-    const sceneOccurrences = occurrences(scene, derived.occurrences);
+    const sceneOccurrences = occurrences(
+      scene,
+      derived.occurrences,
+      snapshot?.selector.dependencies,
+    );
     store.setOccurrences(sceneOccurrences.runtime);
     const reconciledStore = store.getSnapshot();
     return Object.freeze({

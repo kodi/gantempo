@@ -25,6 +25,12 @@ export function reactTestDocument(): GanttDocument {
         toTaskId: 'task-b',
         type: 'finish-to-start',
       },
+      {
+        fromTaskId: 'task-b',
+        id: 'dependency-b-c',
+        toTaskId: 'task-c',
+        type: 'finish-to-start',
+      },
     ],
     lanes: [
       { id: 'lane-a', title: 'Lane A' },
@@ -33,6 +39,7 @@ export function reactTestDocument(): GanttDocument {
     placements: [
       { id: 'placement-a', laneId: 'lane-a', taskId: 'task-a' },
       { id: 'placement-b', laneId: 'lane-a', taskId: 'task-b' },
+      { id: 'placement-c', laneId: 'lane-b', taskId: 'task-c' },
     ],
     resources: [],
     schemaVersion: 1,
@@ -58,6 +65,17 @@ export function reactTestDocument(): GanttDocument {
         },
         segments: [],
         title: 'Task B',
+      },
+      {
+        id: 'task-c',
+        kind: 'task',
+        schedule: {
+          end: REACT_TEST_START + 6 * REACT_TEST_DAY,
+          mode: 'instant',
+          start: REACT_TEST_START + 5 * REACT_TEST_DAY,
+        },
+        segments: [],
+        title: 'Task C',
       },
     ],
   };

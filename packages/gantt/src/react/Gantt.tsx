@@ -78,7 +78,11 @@ import {
 import { TaskLayer } from './surface/TaskLayer';
 import { TimeHeader } from './surface/TimeHeader';
 import { ZoomControls } from './surface/ZoomControls';
-import { buildGanttSurfaceModel } from './surface/surface-model';
+import {
+  buildDependencySummaryMap,
+  buildGanttSurfaceModel,
+  stabilizeDependencyPaths,
+} from './surface/surface-model';
 import type {
   GanttContextMenuItem,
   GanttDependencySummary,
@@ -446,7 +450,6 @@ function GanttSurface({
   );
   const {
     columnTemplate,
-    dependencySummaryById,
     laneColumnWidth,
     laneSummaries,
     resolvedColumns,
@@ -458,12 +461,24 @@ function GanttSurface({
       buildGanttSurfaceModel({
         accessibilityId,
         columns,
-        dependencySummaries,
+        dependencySummaries: [],
         propertiesEnabled,
         scene,
       }),
-    [accessibilityId, columns, dependencySummaries, propertiesEnabled, scene],
+    [accessibilityId, columns, propertiesEnabled, scene],
   );
+  const dependencySummaryByIdRef = useRef<ReadonlyMap<string, GanttDependencySummary>>(new Map());
+  const dependencySummaryById = useMemo(
+    () => buildDependencySummaryMap(dependencySummaries, dependencySummaryByIdRef.current),
+    [dependencySummaries],
+  );
+  dependencySummaryByIdRef.current = dependencySummaryById;
+  const stableDependencyPathsRef = useRef(scene.dependencyPaths);
+  const stableDependencyPaths = stabilizeDependencyPaths(
+    stableDependencyPathsRef.current,
+    scene.dependencyPaths,
+  );
+  stableDependencyPathsRef.current = stableDependencyPaths;
   const progressEditableTaskIds = useMemo(
     () =>
       new Set(
@@ -999,7 +1014,9 @@ function GanttSurface({
   );
   const openEditor = useCallback(
     (viewKey: string): boolean => {
-      const task = taskByViewKey.get(viewKey);
+      const task = runtime
+        .getSnapshot()
+        .scene.taskBars.find((candidate) => candidate.viewKey === viewKey);
       if (task === undefined) {
         return false;
       }
@@ -1032,7 +1049,7 @@ function GanttSurface({
       });
       return true;
     },
-    [disabled, legacyEditorEnabled, propertiesEnabled, runtime, taskByViewKey],
+    [disabled, legacyEditorEnabled, propertiesEnabled, runtime],
   );
   const openLaneProperties = useCallback(
     (viewKey: string): boolean => {
@@ -1067,7 +1084,9 @@ function GanttSurface({
   const openDependencyProperties = useCallback(
     (dependencyId: string): boolean => {
       if (!propertiesEnabled) return false;
-      const dependency = dependencySummaryById.get(dependencyId);
+      const dependency = runtime
+        .getSnapshot()
+        .selector.dependencies.find((candidate) => candidate.target.dependencyId === dependencyId);
       if (dependency === undefined) return false;
       runtime.inspectDependency(dependencyId);
       setTooltip(undefined);
@@ -1081,7 +1100,7 @@ function GanttSurface({
       });
       return true;
     },
-    [dependencySummaryById, propertiesEnabled, runtime],
+    [propertiesEnabled, runtime],
   );
   const onDependencyActivate = useCallback(
     (dependencyId: string) => runtime.inspectDependency(dependencyId),
@@ -1970,13 +1989,18 @@ function GanttSurface({
   };
   const overlayClassState = (task: TaskBarPrimitive) => idleClassState(disabled, taskTarget(task));
   const LaneHeader = slots?.LaneHeader ?? DefaultLaneHeader;
-  const renderLaneColumn = (column: GanttLaneColumn, laneViewKey: string): ReactNode => {
-    const lane = laneSummaries.get(laneViewKey)!;
-    if (column.renderCell !== undefined) {
-      return column.renderCell({ disabled, lane });
-    }
-    return <LaneHeader {...idleClassState(disabled, lane.target)} lane={lane} />;
-  };
+  const laneSummariesRef = useRef(laneSummaries);
+  laneSummariesRef.current = laneSummaries;
+  const renderLaneColumn = useCallback(
+    (column: GanttLaneColumn, laneViewKey: string): ReactNode => {
+      const lane = laneSummariesRef.current.get(laneViewKey)!;
+      if (column.renderCell !== undefined) {
+        return column.renderCell({ disabled, lane });
+      }
+      return <LaneHeader {...idleClassState(disabled, lane.target)} lane={lane} />;
+    },
+    [LaneHeader, disabled],
+  );
   const Tooltip = slots?.Tooltip ?? DefaultTooltip;
   const ContextMenu = slots?.ContextMenu ?? DefaultContextMenu;
   const TaskEditor = slots?.TaskEditor ?? DefaultTaskEditor;
@@ -2367,13 +2391,14 @@ function GanttSurface({
 
                   <DependencyLayer
                     classNames={classNames}
+                    dependencies={stableDependencyPaths}
                     dependencySummaryById={dependencySummaryById}
                     disabled={disabled}
                     localization={localization}
                     markerId={dependencyMarkerId}
                     onActivate={onDependencyActivate}
                     onOpenProperties={openDependencyProperties}
-                    scene={scene}
+                    timelineHeight={scene.bounds.timelineHeight}
                   />
 
                   <DependencyPreview
@@ -2398,9 +2423,10 @@ function GanttSurface({
                     onMouseLeave={onTaskMouseLeave}
                     progressEditableTaskIds={progressEditableTaskIds}
                     rovingViewKey={rovingViewKey}
-                    scene={scene}
                     slots={slots}
                     taskDomIds={taskDomIds}
+                    tasks={scene.taskBars}
+                    timelineHeight={scene.bounds.timelineHeight}
                     tooltipId={tooltipId}
                     tooltipViewKey={tooltip?.viewKey}
                   />

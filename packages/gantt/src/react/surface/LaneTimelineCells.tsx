@@ -1,10 +1,10 @@
-import type { ReactElement } from 'react';
+import { memo, type ReactElement } from 'react';
 
 import type { GanttReactRuntimeSnapshot } from '../runtime';
 import type { GanttLaneSummary, GanttProps } from '../types';
 import { appearanceStyle, idleClassState, laneStyle, resolveClassName } from './presentation';
 
-export function LaneTimelineCells({
+export const LaneTimelineCells = memo(function LaneTimelineCells({
   classNames,
   disabled,
   laneSummaries,
@@ -37,4 +37,4 @@ export function LaneTimelineCells({
       ))}
     </div>
   );
-}
+});

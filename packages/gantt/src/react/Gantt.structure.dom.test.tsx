@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -35,6 +35,7 @@ describe('Gantt structural and render-isolation contract', () => {
       null,
       'grid',
       'dependencies',
+      'task',
       'task',
       'task',
     ]);
@@ -103,10 +104,11 @@ describe('Gantt structural and render-isolation contract', () => {
     expect(first).not.toContain('data-gt-overlay-owner');
   });
 
-  it('records the pre-boundary task-content and lane-cell render fan-out', async () => {
+  it('isolates task-content and lane-cell renders to the affected target', async () => {
     const user = userEvent.setup();
     const taskRenders = new Map<string, number>();
     const laneRenders = new Map<string, number>();
+    const dependencyRenders = new Map<string, number>();
     const TaskContent = ({ task }: GanttTaskContentProps) => {
       taskRenders.set(task.target.taskId, (taskRenders.get(task.target.taskId) ?? 0) + 1);
       return <span>{task.title}</span>;
@@ -121,19 +123,31 @@ describe('Gantt structural and render-isolation contract', () => {
             header: 'Probe',
             id: 'probe',
             renderCell: ({ lane }) => {
-              const laneId = lane.target.laneId!;
-              laneRenders.set(laneId, (laneRenders.get(laneId) ?? 0) + 1);
+              laneRenders.set(lane.title, (laneRenders.get(lane.title) ?? 0) + 1);
               return lane.title;
             },
           },
         ]}
+        classNames={{
+          dependencyPath: ({ target }) => {
+            if (target?.kind === 'dependency') {
+              dependencyRenders.set(
+                target.dependencyId,
+                (dependencyRenders.get(target.dependencyId) ?? 0) + 1,
+              );
+            }
+            return undefined;
+          },
+        }}
         defaultDocument={reactTestDocument()}
         slots={{ LaneHeader, TaskContent }}
+        view={{ kind: 'project' }}
       />,
     );
     installReactTestGeometry(mounted.container);
     taskRenders.clear();
     laneRenders.clear();
+    dependencyRenders.clear();
 
     const task = mounted.container.querySelector<SVGGElement>(
       '[data-gt-part="task"][data-task-id="task-a"]',
@@ -142,9 +156,54 @@ describe('Gantt structural and render-isolation contract', () => {
     await user.keyboard(' ');
 
     expect(taskRenders.get('task-a')).toBeGreaterThan(0);
-    // These two assertions lock the pre-extraction baseline. Slice 4 converts them to
-    // zero-render isolation assertions once item and lane inputs have stable identities.
-    expect(taskRenders.get('task-b')).toBeGreaterThan(0);
-    expect(laneRenders.get('lane-b')).toBeGreaterThan(0);
+    expect(taskRenders.get('task-b') ?? 0).toBe(0);
+    expect(taskRenders.get('task-c') ?? 0).toBe(0);
+    expect(laneRenders.get('Task B') ?? 0).toBe(0);
+    expect(laneRenders.get('Task C') ?? 0).toBe(0);
+
+    dependencyRenders.clear();
+    expect(
+      Array.from(
+        mounted.container.querySelectorAll<SVGGElement>('[data-gt-part="dependency"]'),
+        (element) => element.dataset.dependencyId,
+      ),
+    ).toContain('dependency-a-b');
+    const dependency = mounted.container.querySelector<SVGGElement>(
+      '[data-gt-part="dependency"][data-dependency-id="dependency-a-b"]',
+    )!;
+    fireEvent.focus(dependency);
+    expect(dependency.getAttribute('data-selected')).toBe('true');
+    expect(dependencyRenders.get('dependency-a-b')).toBeGreaterThan(0);
+    expect(dependencyRenders.get('dependency-b-c') ?? 0).toBe(0);
+  });
+
+  it('propagates changed slot and class callbacks across memo boundaries', () => {
+    const FirstTaskContent = ({ task }: GanttTaskContentProps) => <span>{task.title} first</span>;
+    const SecondTaskContent = ({ task }: GanttTaskContentProps) => <span>{task.title} second</span>;
+    const mounted = render(
+      <Gantt
+        {...reactTestProps()}
+        classNames={{ task: 'task-first' }}
+        defaultDocument={reactTestDocument()}
+        slots={{ TaskContent: FirstTaskContent }}
+      />,
+    );
+    const task = mounted.container.querySelector<SVGGElement>(
+      '[data-gt-part="task"][data-task-id="task-a"]',
+    )!;
+    expect(task.classList.contains('task-first')).toBe(true);
+    expect(task.textContent).toContain('Task A first');
+
+    mounted.rerender(
+      <Gantt
+        {...reactTestProps()}
+        classNames={{ task: 'task-second' }}
+        defaultDocument={reactTestDocument()}
+        slots={{ TaskContent: SecondTaskContent }}
+      />,
+    );
+    expect(task.classList.contains('task-first')).toBe(false);
+    expect(task.classList.contains('task-second')).toBe(true);
+    expect(task.textContent).toContain('Task A second');
   });
 });
