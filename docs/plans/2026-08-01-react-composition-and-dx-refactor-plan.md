@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 1 complete
+Status: In progress; Slice 2 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -431,7 +431,7 @@ Dependencies: Slice 0.
 
 ### Slice 2: Extract pure presentation/editor adapters and default surfaces
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: remove independent leaf logic from `Gantt.tsx` and split the existing default
 surface collection without changing behavior.
@@ -459,9 +459,14 @@ Expected output:
 
 Verification:
 
-- focused surface, property, customization, localization, and facade tests;
-- `git diff --check`;
-- `mise run ci`.
+- `vp test run packages/gantt/src/react/Gantt.customization.dom.test.tsx
+  packages/gantt/src/react/Gantt.properties.dom.test.tsx
+  packages/gantt/src/react/Gantt.localization-rtl.dom.test.tsx
+  packages/gantt/src/react/Gantt.dom.test.tsx
+  packages/gantt/src/react/surface/*.test.ts` passed 6 files / 62 tests;
+- `git diff --check` passed;
+- `mise run ci` passed on 2026-08-01: 92 test files / 489 tests, 210 formatted
+  files, 199 lint/type files, and the 154-artifact package build.
 
 Dependencies: Slice 1.
 
@@ -819,11 +824,26 @@ These are implementation judgments, not reasons to change the public API:
 - The first full gate found only formatter drift in the new test; after
   `vp check --fix`, the required `mise run ci` rerun passed completely.
 
+### 2026-08-01 — Slice 2 pure adapters and default surfaces
+
+- Moved geometry, appearance/class, task/lane summary, target, accessible-name, and
+  item-state helpers into `surface/presentation.ts`; moved legacy editor and canonical
+  task/lane property validation, values, elapsed duration, and command mapping into
+  `surface/editor-commands.ts`.
+- Added focused pure tests for clipped geometry, lane/class presentation, legacy
+  validation, canonical property validation, task/placement transaction mapping, and
+  elapsed-duration formatting.
+- Split all seven default surfaces into named files under `react/surfaces/` with one
+  private aggregation index. Public prop types remain in `react/types.ts`; the root
+  package exports and package export map are unchanged.
+- `Gantt.tsx` fell from the 4,028-line planning baseline to 3,500 lines without a DOM,
+  accessibility, runtime, style, or public API change.
+
 ## Next Slice
 
-Start Slice 2 in `packages/gantt/src/react/Gantt.tsx` and
-`packages/gantt/src/react/surfaces.tsx`. Move pure presentation and editor-command
-helpers into narrow private modules first, then split each existing default surface
-without changing the public types or package exports. Run the focused customization,
-properties, localization, facade, and surface tests plus `mise run ci` before marking
-Slice 2 done or beginning visual component extraction.
+Start Slice 3 in `packages/gantt/src/react/Gantt.tsx` and the new
+`packages/gantt/src/react/surface/` folder. Build one per-scene `surface-model.ts`
+index first, then extract task, dependency, lane, time/grid/control, accessible, and
+preview components while preserving the Slice 1 structure assertions and exact SVG
+paint order. Run focused DOM/project/customization/localization/keyboard tests, scene
+benchmarks, and `mise run ci` before marking Slice 3 done.
