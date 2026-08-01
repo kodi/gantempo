@@ -63,11 +63,33 @@ describe('Gantt structural and render-isolation contract', () => {
 
   it('owns overlays outside the chart and restores task focus when the editor closes', async () => {
     const user = userEvent.setup();
+    const staticRenders = { dependencies: 0, lanes: 0, tasks: 0 };
+    const TaskContent = ({ task }: GanttTaskContentProps) => {
+      staticRenders.tasks += 1;
+      return <span>{task.title}</span>;
+    };
     const mounted = render(
       <Gantt
         {...reactTestProps()}
+        classNames={{
+          dependencyPath: () => {
+            staticRenders.dependencies += 1;
+            return undefined;
+          },
+        }}
+        columns={[
+          {
+            header: 'Probe',
+            id: 'probe',
+            renderCell: ({ lane }) => {
+              staticRenders.lanes += 1;
+              return lane.title;
+            },
+          },
+        ]}
         defaultDocument={reactTestDocument()}
         features={{ editor: true, tooltip: true }}
+        slots={{ TaskContent }}
       />,
     );
     const root = mounted.container.querySelector<HTMLElement>('[data-gt-part="root"]')!;
@@ -81,12 +103,17 @@ describe('Gantt structural and render-isolation contract', () => {
     const overlayOwner = tooltip.closest<HTMLElement>('[data-gt-overlay-owner]');
     expect(overlayOwner?.parentElement).toBe(document.body);
     expect(root.contains(tooltip)).toBe(false);
+    staticRenders.dependencies = 0;
+    staticRenders.lanes = 0;
+    staticRenders.tasks = 0;
 
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('dialog', { name: 'Edit Task A' })).toBeTruthy();
+    expect(staticRenders).toEqual({ dependencies: 0, lanes: 0, tasks: 0 });
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(task);
+    expect(staticRenders).toEqual({ dependencies: 0, lanes: 0, tasks: 0 });
   });
 
   it('server-renders deterministic structure without a browser-owned overlay host', () => {

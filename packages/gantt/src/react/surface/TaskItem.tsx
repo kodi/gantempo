@@ -3,14 +3,15 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactElement,
+  ComponentType,
 } from 'react';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 
 import type { GanttLocalization } from '../../localization/format';
 import type { TaskBarPrimitive } from '../../render/primitives';
 import { useGanttSelector } from '../context';
 import { DefaultTaskContent } from '../surfaces';
-import type { GanttClassNameState, GanttProps } from '../types';
+import type { GanttClassNameState, GanttProps, GanttTaskContentProps } from '../types';
 import {
   appearanceStyle,
   clippedBarGeometry,
@@ -24,6 +25,18 @@ import {
   taskAccessibleName,
   taskSummary,
 } from './presentation';
+
+const TaskContentSlot = memo(function TaskContentSlot({
+  Content,
+  state,
+  summary,
+}: {
+  readonly Content: ComponentType<GanttTaskContentProps>;
+  readonly state: GanttClassNameState;
+  readonly summary: ReturnType<typeof taskSummary>;
+}): ReactElement {
+  return <Content {...state} task={summary} />;
+});
 
 export const TaskItem = memo(function TaskItem({
   classNames,
@@ -93,19 +106,33 @@ export const TaskItem = memo(function TaskItem({
       ] as const;
     }, targetStateEqual);
   const accessibleName = taskAccessibleName(task, localization);
-  const summary = taskSummary(task);
+  const summary = useMemo(() => taskSummary(task), [task]);
   const appearance = task.appearance;
-  const state = Object.freeze({
-    disabled,
-    dragging,
-    focused,
-    invalid: rejected,
-    pending,
-    progressing,
-    resizing,
-    selected,
-    target: summary.target,
-  }) satisfies GanttClassNameState;
+  const state = useMemo(
+    () =>
+      Object.freeze({
+        disabled,
+        dragging,
+        focused,
+        invalid: rejected,
+        pending,
+        progressing,
+        resizing,
+        selected,
+        target: summary.target,
+      }) satisfies GanttClassNameState,
+    [
+      disabled,
+      dragging,
+      focused,
+      pending,
+      progressing,
+      rejected,
+      resizing,
+      selected,
+      summary.target,
+    ],
+  );
   const TaskContent = slots?.TaskContent ?? DefaultTaskContent;
   const geometry = task.presentation.geometry;
   const ordinaryTask = geometry.kind === 'bar';
@@ -254,7 +281,7 @@ export const TaskItem = memo(function TaskItem({
           )}
           data-gt-part="task-content"
         >
-          <TaskContent {...state} task={summary} />
+          <TaskContentSlot Content={TaskContent} state={state} summary={summary} />
         </div>
       </foreignObject>
       {linkEnabled ? (

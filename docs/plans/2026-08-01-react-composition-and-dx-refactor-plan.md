@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 4 complete
+Status: In progress; Slice 5 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -579,7 +579,7 @@ Verification:
 
 ### Slice 5: Isolate overlay lifecycle and editor workflows
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: keep tooltip, context-menu, editor, portal, modal, and command workflow changes
 out of the chart renderer and prevent overlay state from rerendering static chart
@@ -616,6 +616,19 @@ Verification:
 - `mise run ci`.
 
 Dependencies: Slice 4.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/Gantt*.test.tsx
+  packages/gantt/src/index.test.tsx apps/playground/src/project-ssr.dom.test.tsx`
+  passed 10 files / 106 tests, covering overlay customization, task/lane/dependency
+  properties, focus return, pending/rejection, multiple instances, package SSR, and
+  playground SSR/hydration;
+- the overlay render probe opens and closes the tooltip/editor while recording zero
+  custom task-content, lane-cell, and dependency-path renders;
+- `git diff --check` passed;
+- `mise run ci` passed on 2026-08-01: 93 test files / 493 tests, 226 formatted
+  files, 215 lint/type files, and the 184-artifact package build.
 
 ### Slice 6: Extract DOM interaction and measurement adapters
 
@@ -905,12 +918,32 @@ These are implementation judgments, not reasons to change the public API:
   topology. `Gantt.tsx` is 2,731 lines; the small increase from Slice 3 is the stable
   boundary wiring, not restored rendering logic.
 
+### 2026-08-01 — Slice 5 overlay subsystem
+
+- Added one instance-local private overlay controller for tooltip, menu, and editor
+  state plus stable open/position/close operations. Chart-facing tooltip and context
+  handlers no longer acquire new identities when an overlay opens or closes.
+- Moved body-level host creation, instance theme mirroring, scroll/resize and outside
+  dismissal, collision adjustment, menu/editor initial focus, modal sibling isolation,
+  body-scroll locking, exact cleanup, focus restoration, slot-binding diagnostics,
+  and pending/rejection closure into the controller. Portal creation is owned by a
+  dedicated `OverlayLayer`.
+- Task/lane/dependency editor validation and command callbacks continue to use the
+  pure Slice 2 adapters and controller state transitions, preserving controlled
+  pending and rejection behavior. Overlay disappearance still reconciles stale
+  task/lane/dependency targets and properties selection changes.
+- Added a memoized task-content boundary inside `TaskItem`: removing a tooltip ID from
+  the task wrapper no longer invokes unchanged consumer content. The overlay probe now
+  records zero static task-content, lane-cell, and dependency-path renders through
+  editor open and close.
+- `Gantt.tsx` fell from 2,731 to 2,287 lines with no overlay container, slot, DOM,
+  focus, SSR, or public API change.
+
 ## Next Slice
 
-Start Slice 5 by moving tooltip, menu, editor, portal-host, modal-isolation, focus,
-and command workflow ownership behind one instance-local private overlay controller
-and dedicated overlay component. Preserve all current portal boundaries, collision
-behavior, slot bindings, dismissal, scroll locking, focus trap/return, and editor
-commands; extend the render probes to prove overlay-only changes do not render static
-task, dependency, or lane rows. Run focused overlay/property tests, the full React DOM
-suite, and `mise run ci` before marking Slice 5 done.
+Start Slice 6 by extracting pointer geometry/candidate lookup, task and dependency
+gestures, empty-canvas pan, keyboard/focus translation, measured viewport lifecycle,
+and native wheel navigation into focused DOM adapter hooks. Keep explicit dependency
+lists and current pointer-capture, passive-listener, cleanup, and synthetic-event
+fallback behavior. Run wheel, keyboard, pointer, project, focus, and React runtime DOM
+tests plus `mise run ci` before marking Slice 6 done.

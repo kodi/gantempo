@@ -19,7 +19,6 @@ import {
   type ReactNode,
   type RefAttributes,
 } from 'react';
-import { createPortal } from 'react-dom';
 
 import { createGanttLocalization, type GanttLocalization } from '../localization/format';
 import { adjacentTimeScaleLevel } from '../time/adaptive-scale';
@@ -78,6 +77,8 @@ import {
 import { TaskLayer } from './surface/TaskLayer';
 import { TimeHeader } from './surface/TimeHeader';
 import { ZoomControls } from './surface/ZoomControls';
+import { useOverlayController } from './surface/overlays/controller';
+import { OverlayLayer } from './surface/overlays/OverlayLayer';
 import {
   buildDependencySummaryMap,
   buildGanttSurfaceModel,
@@ -91,7 +92,6 @@ import type {
   GanttInteractionState,
   GanttItemPropertiesValue,
   GanttLaneColumn,
-  GanttOverlayContainer,
   GanttProps,
   GanttTaskEditorValue,
 } from './types';
@@ -104,45 +104,6 @@ interface GanttRootStyle extends CSSProperties {
   readonly '--gt-timeline-height': string;
   readonly '--gt-timeline-height-ratio': number;
 }
-
-interface TaskOverlayPosition {
-  // Collision measurement runs after the surface exists and only once per opening.
-  readonly adjusted?: boolean;
-  readonly viewKey: string;
-  readonly x: number;
-  readonly y: number;
-}
-
-interface EditorOverlay {
-  readonly error?: string;
-  readonly kind: 'dependency' | 'lane' | 'task';
-  readonly mode: 'legacy' | 'properties';
-  readonly pending: boolean;
-  readonly selectionKey?: string;
-  readonly viewKey: string;
-}
-
-type OverlayBoundary = 'root' | 'viewport';
-
-const OVERLAY_SAFE_AREA = 8;
-const THEME_PROPERTIES = [
-  '--gt-color-border',
-  '--gt-color-empty',
-  '--gt-color-focus',
-  '--gt-color-grid',
-  '--gt-color-surface',
-  '--gt-color-surface-muted',
-  '--gt-color-task',
-  '--gt-color-task-text',
-  '--gt-color-text',
-  '--gt-color-text-muted',
-  '--gt-header-height',
-  '--gt-row-height',
-  '--gt-z-overlay',
-] as const;
-
-const DEVELOPMENT =
-  (import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } }).env?.DEV === true;
 
 const WHEEL_LINE_SIZE = 16;
 const MEANINGFUL_WHEEL_DELTA = 0.5;
@@ -162,87 +123,6 @@ function excludesChartWheel(target: EventTarget | null): boolean {
       'input, textarea, select, button, a[href], [contenteditable="true"], [data-gt-part="overlay-host"]',
     ) !== null
   );
-}
-
-function resolveOverlayTarget(
-  container: GanttOverlayContainer | undefined,
-  root: HTMLElement,
-): Element | DocumentFragment | null {
-  const resolved = typeof container === 'function' ? container() : container;
-  if (resolved === 'root') {
-    return null;
-  }
-  if (resolved === undefined || resolved === 'document') {
-    return root.ownerDocument.body;
-  }
-  return resolved;
-}
-
-function syncOverlayTheme(root: HTMLElement, host: HTMLElement): void {
-  const view = root.ownerDocument.defaultView;
-  if (view === null) {
-    return;
-  }
-  const computed = view.getComputedStyle(root);
-  // A body-level portal leaves the root's inheritance tree, so mirror only the
-  // instance-scoped theme contract and typography onto its owned wrapper.
-  const properties = new Set<string>(THEME_PROPERTIES);
-  for (let index = 0; index < computed.length; index += 1) {
-    const property = computed.item(index);
-    if (property.startsWith('--gt-')) {
-      properties.add(property);
-    }
-  }
-  for (const property of properties) {
-    const value = computed.getPropertyValue(property);
-    if (value !== '') {
-      host.style.setProperty(property, value);
-    }
-  }
-  host.style.fontFamily = computed.fontFamily;
-  host.style.fontSize = computed.fontSize;
-  host.style.lineHeight = computed.lineHeight;
-}
-
-function adjustedOverlayPosition(
-  position: TaskOverlayPosition,
-  surface: HTMLElement,
-  host: HTMLElement,
-  boundary: OverlayBoundary,
-): TaskOverlayPosition {
-  const surfaceRect = surface.getBoundingClientRect();
-  const hostRect = host.getBoundingClientRect();
-  const view = host.ownerDocument.defaultView;
-  const hasMeasuredHost = hostRect.width > 0 && hostRect.height > 0;
-  const bounds =
-    boundary === 'viewport'
-      ? {
-          bottom: hasMeasuredHost ? hostRect.bottom : (view?.innerHeight ?? hostRect.bottom),
-          left: hasMeasuredHost ? hostRect.left : 0,
-          right: hasMeasuredHost ? hostRect.right : (view?.innerWidth ?? hostRect.right),
-          top: hasMeasuredHost ? hostRect.top : 0,
-        }
-      : hostRect;
-  let x = position.x;
-  let y = position.y;
-  if (surfaceRect.right > bounds.right - OVERLAY_SAFE_AREA) {
-    x -= surfaceRect.right - (bounds.right - OVERLAY_SAFE_AREA);
-  }
-  if (surfaceRect.left < bounds.left + OVERLAY_SAFE_AREA) {
-    x += bounds.left + OVERLAY_SAFE_AREA - surfaceRect.left;
-  }
-  if (surfaceRect.bottom > bounds.bottom - OVERLAY_SAFE_AREA) {
-    y -= surfaceRect.bottom - (bounds.bottom - OVERLAY_SAFE_AREA);
-  }
-  if (surfaceRect.top < bounds.top + OVERLAY_SAFE_AREA) {
-    y += bounds.top + OVERLAY_SAFE_AREA - surfaceRect.top;
-  }
-  return {
-    ...position,
-    adjusted: true,
-    x: Math.max(OVERLAY_SAFE_AREA, x),
-    y: Math.max(OVERLAY_SAFE_AREA, y),
-  };
 }
 
 function keyboardActionForEvent(
@@ -405,8 +285,6 @@ function GanttSurface({
   const accessibilityId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const hadLogicalTaskFocus = useRef(false);
-  const menuSurfaceRef = useRef<HTMLDivElement | null>(null);
-  const editorSurfaceRef = useRef<HTMLDivElement | null>(null);
   const taskActivationPointer = useRef<
     | {
         moved: boolean;
@@ -417,20 +295,37 @@ function GanttSurface({
     | undefined
   >(undefined);
   const dependencyPointer = useRef<number | undefined>(undefined);
-  const tooltipSurfaceRef = useRef<HTMLDivElement | null>(null);
-  const [localOverlayHost, setLocalOverlayHost] = useState<HTMLDivElement | null>(null);
-  const [externalOverlayHost, setExternalOverlayHost] = useState<HTMLDivElement | null>(null);
-  const [tooltip, setTooltip] = useState<TaskOverlayPosition | undefined>();
-  const [menu, setMenu] = useState<TaskOverlayPosition | undefined>();
-  const [editor, setEditor] = useState<EditorOverlay | undefined>();
   const [panState, setPanState] = useState<'idle' | 'panning' | 'pressing'>('idle');
-  const overlayBoundary: OverlayBoundary = overlayContainer === 'root' ? 'root' : 'viewport';
-  const overlayHost = overlayBoundary === 'root' ? localOverlayHost : externalOverlayHost;
   const helpId = `${accessibilityId}-keyboard-help`;
-  const tooltipId = `${accessibilityId}-tooltip`;
-  const menuId = `${accessibilityId}-context-menu`;
-  const editorId = `${accessibilityId}-editor`;
-  const editorErrorId = `${accessibilityId}-editor-error`;
+  const {
+    boundary: overlayBoundary,
+    closeEditor,
+    closeMenu,
+    editor,
+    editorErrorId,
+    editorId,
+    editorSurfaceRef,
+    host: overlayHost,
+    menu,
+    menuId,
+    menuSurfaceRef,
+    position: overlayPosition,
+    setEditor,
+    setLocalHost: setLocalOverlayHost,
+    setMenu,
+    setTooltip,
+    showTooltip: showOverlayTooltip,
+    tooltip,
+    tooltipId,
+    tooltipSurfaceRef,
+  } = useOverlayController({
+    accessibilityId,
+    className,
+    interaction,
+    overlayContainer,
+    rootRef,
+    slots,
+  });
   const dependencyMarkerId = `${accessibilityId.replaceAll(':', '')}-dependency-arrow`;
   const tooltipEnabled = features?.tooltip === true || slots?.Tooltip !== undefined;
   const menuEnabled =
@@ -548,41 +443,6 @@ function GanttSurface({
       : taskByViewKey.get(dependencyPreview.target.viewKey);
 
   useLayoutEffect(() => {
-    if (overlayBoundary === 'root') {
-      setExternalOverlayHost(null);
-      return;
-    }
-    const root = rootRef.current;
-    if (root === null) {
-      return;
-    }
-    const target = resolveOverlayTarget(overlayContainer, root);
-    if (target === null) {
-      setExternalOverlayHost(null);
-      return;
-    }
-    const host = root.ownerDocument.createElement('div');
-    host.className = 'gt-gantt gt-gantt__overlays gt-gantt__overlays--viewport';
-    host.dataset.gantempo = '';
-    host.dataset.gtOverlayBoundary = 'viewport';
-    host.dataset.gtOverlayOwner = accessibilityId;
-    host.dataset.gtPart = 'overlay-host';
-    target.append(host);
-    syncOverlayTheme(root, host);
-    setExternalOverlayHost(host);
-    return () => {
-      setExternalOverlayHost((current) => (current === host ? null : current));
-      host.remove();
-    };
-  }, [accessibilityId, overlayBoundary, overlayContainer]);
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    if (root !== null && externalOverlayHost !== null) {
-      syncOverlayTheme(root, externalOverlayHost);
-    }
-  }, [className, externalOverlayHost]);
-
-  useLayoutEffect(() => {
     const body = bodyRef.current;
     if (body !== null && body.scrollTop !== verticalStart) {
       body.scrollTop = verticalStart;
@@ -624,61 +484,6 @@ function GanttSurface({
       root.focus();
     }
   }, [focusedDependencyId, focusedViewKey, logicalTaskFocused]);
-  const focusTaskElement = useCallback((viewKey: string) => {
-    queueMicrotask(() => {
-      const root = rootRef.current;
-      const task = Array.from(
-        root?.querySelectorAll<SVGGElement>('[data-gt-part="task"]') ?? [],
-      ).find((element) => element.dataset.viewKey === viewKey);
-      (task ?? root)?.focus();
-    });
-  }, []);
-  const focusLaneElement = useCallback((viewKey: string) => {
-    queueMicrotask(() => {
-      const root = rootRef.current;
-      const lane = Array.from(
-        root?.querySelectorAll<HTMLButtonElement>('[data-gt-part="lane-properties-trigger"]') ?? [],
-      ).find((element) => element.dataset.viewKey === viewKey);
-      (lane ?? root)?.focus();
-    });
-  }, []);
-  const focusDependencyElement = useCallback((dependencyId: string) => {
-    queueMicrotask(() => {
-      const root = rootRef.current;
-      const dependency = Array.from(
-        root?.querySelectorAll<SVGGElement>('[data-gt-part="dependency"]') ?? [],
-      ).find((element) => element.dataset.dependencyId === dependencyId);
-      (dependency ?? root)?.focus();
-    });
-  }, []);
-  const closeMenu = useCallback(
-    (restoreFocus = true) => {
-      const viewKey = menu?.viewKey;
-      setMenu(undefined);
-      if (restoreFocus && viewKey !== undefined) {
-        focusTaskElement(viewKey);
-      }
-    },
-    [focusTaskElement, menu?.viewKey],
-  );
-  const closeEditor = useCallback(
-    (restoreFocus = true) => {
-      const viewKey = editor?.viewKey;
-      const kind = editor?.kind;
-      setEditor(undefined);
-      if (restoreFocus && viewKey !== undefined) {
-        if (kind === 'lane') {
-          focusLaneElement(viewKey);
-        } else if (kind === 'dependency') {
-          focusDependencyElement(viewKey);
-        } else {
-          focusTaskElement(viewKey);
-        }
-      }
-    },
-    [editor?.kind, editor?.viewKey, focusDependencyElement, focusLaneElement, focusTaskElement],
-  );
-
   useEffect(() => {
     if (tooltip !== undefined && activeTooltipTask === undefined) {
       setTooltip(undefined);
@@ -739,232 +544,6 @@ function GanttSurface({
       current === undefined ? undefined : { ...current, selectionKey: nextSelectionKey },
     );
   }, [editor, scene.lanes, selection, taskByViewKey]);
-  useEffect(() => {
-    if (menu === undefined) {
-      return;
-    }
-    const surface = menuSurfaceRef.current;
-    const ownerDocument = surface?.ownerDocument ?? rootRef.current?.ownerDocument;
-    if (ownerDocument === undefined) {
-      return;
-    }
-    const dismiss = (event: PointerEvent) => {
-      if (
-        event.target !== null &&
-        menuSurfaceRef.current !== null &&
-        !menuSurfaceRef.current.contains(event.target as Node)
-      ) {
-        closeMenu();
-      }
-    };
-    ownerDocument.addEventListener('pointerdown', dismiss);
-    return () => ownerDocument.removeEventListener('pointerdown', dismiss);
-  }, [closeMenu, menu]);
-  useEffect(() => {
-    if (menu === undefined && tooltip === undefined) {
-      return;
-    }
-    const ownerDocument = rootRef.current?.ownerDocument;
-    const view = ownerDocument?.defaultView;
-    if (ownerDocument === undefined || view === null || view === undefined) {
-      return;
-    }
-    const dismissTransientSurface = () => {
-      setTooltip(undefined);
-      if (menu !== undefined) {
-        closeMenu();
-      }
-    };
-    ownerDocument.addEventListener('scroll', dismissTransientSurface, true);
-    view.addEventListener('resize', dismissTransientSurface);
-    return () => {
-      ownerDocument.removeEventListener('scroll', dismissTransientSurface, true);
-      view.removeEventListener('resize', dismissTransientSurface);
-    };
-  }, [closeMenu, menu, tooltip]);
-  useLayoutEffect(() => {
-    if (
-      tooltip === undefined ||
-      tooltip.adjusted === true ||
-      tooltipSurfaceRef.current === null ||
-      overlayHost === null
-    ) {
-      return;
-    }
-    const adjusted = adjustedOverlayPosition(
-      tooltip,
-      tooltipSurfaceRef.current,
-      overlayHost,
-      overlayBoundary,
-    );
-    if (adjusted.x !== tooltip.x || adjusted.y !== tooltip.y) {
-      setTooltip(adjusted);
-    }
-  }, [overlayBoundary, overlayHost, tooltip]);
-  useLayoutEffect(() => {
-    if (
-      menu === undefined ||
-      menu.adjusted === true ||
-      menuSurfaceRef.current === null ||
-      overlayHost === null
-    ) {
-      return;
-    }
-    const adjusted = adjustedOverlayPosition(
-      menu,
-      menuSurfaceRef.current,
-      overlayHost,
-      overlayBoundary,
-    );
-    if (adjusted.x !== menu.x || adjusted.y !== menu.y) {
-      setMenu(adjusted);
-    }
-  }, [menu, overlayBoundary, overlayHost]);
-  useLayoutEffect(() => {
-    if (menu !== undefined) {
-      const firstItem = menuSurfaceRef.current?.querySelector<HTMLElement>(
-        '[role="menuitem"]:not([disabled])',
-      );
-      (firstItem ?? menuSurfaceRef.current)?.focus();
-    }
-  }, [menu]);
-  useLayoutEffect(() => {
-    if (editor !== undefined) {
-      const firstField =
-        editorSurfaceRef.current?.querySelector<HTMLElement>(
-          'input:not([disabled]), textarea:not([disabled]), select:not([disabled])',
-        ) ?? editorSurfaceRef.current?.querySelector<HTMLElement>('button:not([disabled])');
-      (firstField ?? editorSurfaceRef.current)?.focus();
-    }
-  }, [editor?.viewKey]);
-  useLayoutEffect(() => {
-    if (!editorOpen || overlayBoundary !== 'viewport' || overlayHost === null) {
-      return;
-    }
-    const ownerDocument = overlayHost.ownerDocument;
-    const body = ownerDocument.body;
-    if (overlayHost.parentElement !== body) {
-      return;
-    }
-    const previous = new Map<
-      Element,
-      {
-        readonly ariaHidden: string | null;
-        readonly inert: boolean;
-      }
-    >();
-    const isolate = (element: Element) => {
-      if (element === overlayHost || previous.has(element)) {
-        return;
-      }
-      previous.set(element, {
-        ariaHidden: element.getAttribute('aria-hidden'),
-        inert: element.hasAttribute('inert'),
-      });
-      element.setAttribute('aria-hidden', 'true');
-      element.setAttribute('inert', '');
-    };
-    for (const element of body.children) {
-      isolate(element);
-    }
-    // Application portals can append new body siblings while the editor is open.
-    // Observe only direct children so the modal boundary stays isolated and cleanup
-    // can restore every element's exact prior state.
-    const MutationObserverConstructor = ownerDocument.defaultView?.MutationObserver;
-    const observer =
-      MutationObserverConstructor === undefined
-        ? undefined
-        : new MutationObserverConstructor((records) => {
-            for (const record of records) {
-              for (const node of record.addedNodes) {
-                if (node.nodeType === 1) {
-                  isolate(node as Element);
-                }
-              }
-            }
-          });
-    observer?.observe(body, { childList: true });
-    const previousOverflow = body.style.overflow;
-    const previousPaddingRight = body.style.paddingRight;
-    const view = ownerDocument.defaultView;
-    const scrollbarWidth =
-      view === null ? 0 : Math.max(0, view.innerWidth - ownerDocument.documentElement.clientWidth);
-    const computedPadding =
-      view === null ? 0 : Number.parseFloat(view.getComputedStyle(body).paddingRight) || 0;
-    body.style.overflow = 'hidden';
-    if (scrollbarWidth > 0) {
-      body.style.paddingRight = `${computedPadding + scrollbarWidth}px`;
-    }
-    return () => {
-      observer?.disconnect();
-      for (const [element, { ariaHidden, inert }] of previous) {
-        if (ariaHidden === null) {
-          element.removeAttribute('aria-hidden');
-        } else {
-          element.setAttribute('aria-hidden', ariaHidden);
-        }
-        element.toggleAttribute('inert', inert);
-      }
-      body.style.overflow = previousOverflow;
-      body.style.paddingRight = previousPaddingRight;
-    };
-  }, [editorOpen, overlayBoundary, overlayHost]);
-  useLayoutEffect(() => {
-    if (!DEVELOPMENT) {
-      return;
-    }
-    if (
-      tooltip !== undefined &&
-      slots?.Tooltip !== undefined &&
-      tooltipSurfaceRef.current === null
-    ) {
-      console.warn('Gantt Tooltip slot must spread the provided bindings onto its owning element.');
-    }
-    if (menu !== undefined && slots?.ContextMenu !== undefined && menuSurfaceRef.current === null) {
-      console.warn(
-        'Gantt ContextMenu slot must spread the provided bindings onto its owning element.',
-      );
-    }
-    if (
-      editor?.mode === 'legacy' &&
-      slots?.TaskEditor !== undefined &&
-      editorSurfaceRef.current === null
-    ) {
-      console.warn(
-        'Gantt TaskEditor slot must spread the provided bindings onto its owning element.',
-      );
-    }
-    if (
-      editor?.mode === 'properties' &&
-      slots?.ItemProperties !== undefined &&
-      editorSurfaceRef.current === null
-    ) {
-      console.warn(
-        'Gantt ItemProperties slot must spread the provided bindings onto its owning element.',
-      );
-    }
-  }, [editor, menu, slots, tooltip]);
-  useEffect(() => {
-    if (editor?.pending !== true) {
-      return;
-    }
-    if (interaction.status === 'rejected') {
-      setEditor((current) =>
-        current === undefined
-          ? undefined
-          : {
-              ...current,
-              error: interaction.announcement,
-              pending: false,
-            },
-      );
-      return;
-    }
-    if (interaction.status === 'idle') {
-      closeEditor();
-    }
-  }, [closeEditor, editor?.pending, interaction]);
-
   const geometry = useCallback(() => {
     const body = bodyRef.current;
     const timeline = timelineRef.current;
@@ -985,32 +564,11 @@ function GanttSurface({
       y: bodyRect.top,
     };
   }, [bodyRef, timelineRef]);
-  const overlayPosition = useCallback(
-    (
-      viewKey: string,
-      element: Element,
-      clientX?: number,
-      clientY?: number,
-    ): TaskOverlayPosition => {
-      const rootRect = rootRef.current?.getBoundingClientRect();
-      const taskRect = element.getBoundingClientRect();
-      const rootLeft = overlayBoundary === 'root' ? (rootRect?.left ?? 0) : 0;
-      const rootTop = overlayBoundary === 'root' ? (rootRect?.top ?? 0) : 0;
-      return {
-        viewKey,
-        x: Math.max(OVERLAY_SAFE_AREA, (clientX ?? taskRect.left + taskRect.width / 2) - rootLeft),
-        y: Math.max(OVERLAY_SAFE_AREA, (clientY ?? taskRect.bottom + 6) - rootTop),
-      };
-    },
-    [overlayBoundary],
-  );
   const showTooltip = useCallback(
     (element: Element, task: TaskBarPrimitive) => {
-      if (tooltipEnabled && menu === undefined && editor === undefined) {
-        setTooltip(overlayPosition(task.viewKey, element));
-      }
+      showOverlayTooltip(tooltipEnabled, task.viewKey, element);
     },
-    [editor, menu, overlayPosition, tooltipEnabled],
+    [showOverlayTooltip, tooltipEnabled],
   );
   const openEditor = useCallback(
     (viewKey: string): boolean => {
@@ -2046,172 +1604,170 @@ function GanttSurface({
     role: 'dialog',
     tabIndex: -1,
   } as const;
-  const overlays =
-    overlayHost === null
-      ? null
-      : createPortal(
-          <>
-            {tooltip !== undefined && activeTooltipSummary !== undefined ? (
-              <Tooltip
-                bindings={{
-                  className: joinClasses(
-                    'gt-gantt__tooltip',
-                    resolveClassName(classNames?.tooltip, overlayClassState(activeTooltipTask!)),
-                  ),
-                  dir: localization.direction,
-                  id: tooltipId,
-                  ref: (element) => {
-                    tooltipSurfaceRef.current = element;
-                  },
-                  role: 'tooltip',
-                  style: { left: tooltip.x, top: tooltip.y },
+  const overlays = (
+    <OverlayLayer host={overlayHost}>
+      <>
+        {tooltip !== undefined && activeTooltipSummary !== undefined ? (
+          <Tooltip
+            bindings={{
+              className: joinClasses(
+                'gt-gantt__tooltip',
+                resolveClassName(classNames?.tooltip, overlayClassState(activeTooltipTask!)),
+              ),
+              dir: localization.direction,
+              id: tooltipId,
+              ref: (element) => {
+                tooltipSurfaceRef.current = element;
+              },
+              role: 'tooltip',
+              style: { left: tooltip.x, top: tooltip.y },
+            }}
+            task={activeTooltipSummary}
+          />
+        ) : null}
+        {menu !== undefined && activeMenuSummary !== undefined ? (
+          <ContextMenu
+            bindings={{
+              'aria-label': `${activeMenuSummary.title} actions`,
+              className: joinClasses(
+                'gt-gantt__context-menu',
+                resolveClassName(classNames?.contextMenu, overlayClassState(activeMenuTask!)),
+              ),
+              dir: localization.direction,
+              id: menuId,
+              onKeyDown: (event) => {
+                event.stopPropagation();
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  closeMenu();
+                  return;
+                }
+                const items = Array.from(
+                  menuSurfaceRef.current?.querySelectorAll<HTMLElement>(
+                    '[role="menuitem"]:not([disabled])',
+                  ) ?? [],
+                );
+                const current = items.indexOf(document.activeElement as HTMLElement);
+                const next =
+                  event.key === 'ArrowDown'
+                    ? items[(current + 1) % items.length]
+                    : event.key === 'ArrowUp'
+                      ? items[(current <= 0 ? items.length : current) - 1]
+                      : event.key === 'Home'
+                        ? items[0]
+                        : event.key === 'End'
+                          ? items.at(-1)
+                          : undefined;
+                if (next !== undefined) {
+                  event.preventDefault();
+                  next.focus();
+                }
+              },
+              ref: (element) => {
+                menuSurfaceRef.current = element;
+              },
+              role: 'menu',
+              style: { left: menu.x, top: menu.y },
+              tabIndex: -1,
+            }}
+            items={menuItems}
+            onSelect={onMenuSelect}
+            task={activeMenuSummary}
+          />
+        ) : null}
+        {editor !== undefined &&
+        ((editor.mode === 'legacy' && activeEditorSummary !== undefined) ||
+          (editor.mode === 'properties' &&
+            (activeEditorValue !== undefined || activeDependencyValue !== undefined))) ? (
+          <div
+            className="gt-gantt__editor-backdrop"
+            data-editor-mode={editor.mode}
+            data-gt-part="editor-backdrop"
+            onPointerDown={(event) => {
+              if (event.currentTarget === event.target && !editor.pending) {
+                closeEditor();
+              }
+            }}
+          >
+            {editor.kind === 'dependency' && activeDependencyValue !== undefined ? (
+              <DependencyProperties
+                bindings={editorBindings}
+                {...(editor.error === undefined ? {} : { error: editor.error })}
+                errorId={editorErrorId}
+                initialValue={activeDependencyValue}
+                key={`dependency:${activeDependencyValue.dependencyId}`}
+                onCancel={() => closeEditor()}
+                onDelete={onDependencyPropertiesDelete}
+                onSubmit={onDependencyPropertiesSubmit}
+                pending={editor.pending}
+                readOnly={disabled}
+              />
+            ) : editor.mode === 'properties' && activeEditorValue !== undefined ? (
+              slots?.ItemProperties === undefined ? (
+                <DefaultItemProperties
+                  appearanceVariants={registeredAppearanceVariants}
+                  bindings={editorBindings}
+                  {...(elapsedDuration(activeEditorValue) === undefined
+                    ? {}
+                    : { duration: elapsedDuration(activeEditorValue)! })}
+                  {...(editor.error === undefined ? {} : { error: editor.error })}
+                  errorId={editorErrorId}
+                  initialValue={activeEditorValue}
+                  key={`${activeEditorValue.kind}:${
+                    activeEditorValue.kind === 'task'
+                      ? activeEditorValue.taskId
+                      : activeEditorValue.laneId
+                  }`}
+                  {...(laneMoveDisabledReason === undefined ? {} : { laneMoveDisabledReason })}
+                  lanes={propertyLaneOptions}
+                  onCancel={() => closeEditor()}
+                  onDelete={onItemPropertiesDelete}
+                  onSubmit={onItemPropertiesSubmit}
+                  parentTasks={propertyParentOptions}
+                  pending={editor.pending}
+                  readOnly={disabled}
+                  {...(activeEditorLaneRecord?.resourceId === undefined
+                    ? {}
+                    : { resourceId: activeEditorLaneRecord.resourceId })}
+                />
+              ) : (
+                <slots.ItemProperties
+                  bindings={editorBindings}
+                  {...(editor.error === undefined ? {} : { error: editor.error })}
+                  errorId={editorErrorId}
+                  initialValue={activeEditorValue}
+                  key={`${activeEditorValue.kind}:${
+                    activeEditorValue.kind === 'task'
+                      ? activeEditorValue.taskId
+                      : activeEditorValue.laneId
+                  }`}
+                  onCancel={() => closeEditor()}
+                  onDelete={onItemPropertiesDelete}
+                  onSubmit={onItemPropertiesSubmit}
+                  pending={editor.pending}
+                />
+              )
+            ) : activeEditorSummary !== undefined ? (
+              <TaskEditor
+                bindings={editorBindings}
+                {...(editor.error === undefined ? {} : { error: editor.error })}
+                errorId={editorErrorId}
+                initialValue={{
+                  end: activeEditorSummary.end,
+                  start: activeEditorSummary.start,
+                  title: activeEditorSummary.title,
                 }}
-                task={activeTooltipSummary}
+                onCancel={() => closeEditor()}
+                onSubmit={onEditorSubmit}
+                pending={editor.pending}
+                task={activeEditorSummary}
               />
             ) : null}
-            {menu !== undefined && activeMenuSummary !== undefined ? (
-              <ContextMenu
-                bindings={{
-                  'aria-label': `${activeMenuSummary.title} actions`,
-                  className: joinClasses(
-                    'gt-gantt__context-menu',
-                    resolveClassName(classNames?.contextMenu, overlayClassState(activeMenuTask!)),
-                  ),
-                  dir: localization.direction,
-                  id: menuId,
-                  onKeyDown: (event) => {
-                    event.stopPropagation();
-                    if (event.key === 'Escape') {
-                      event.preventDefault();
-                      closeMenu();
-                      return;
-                    }
-                    const items = Array.from(
-                      menuSurfaceRef.current?.querySelectorAll<HTMLElement>(
-                        '[role="menuitem"]:not([disabled])',
-                      ) ?? [],
-                    );
-                    const current = items.indexOf(document.activeElement as HTMLElement);
-                    const next =
-                      event.key === 'ArrowDown'
-                        ? items[(current + 1) % items.length]
-                        : event.key === 'ArrowUp'
-                          ? items[(current <= 0 ? items.length : current) - 1]
-                          : event.key === 'Home'
-                            ? items[0]
-                            : event.key === 'End'
-                              ? items.at(-1)
-                              : undefined;
-                    if (next !== undefined) {
-                      event.preventDefault();
-                      next.focus();
-                    }
-                  },
-                  ref: (element) => {
-                    menuSurfaceRef.current = element;
-                  },
-                  role: 'menu',
-                  style: { left: menu.x, top: menu.y },
-                  tabIndex: -1,
-                }}
-                items={menuItems}
-                onSelect={onMenuSelect}
-                task={activeMenuSummary}
-              />
-            ) : null}
-            {editor !== undefined &&
-            ((editor.mode === 'legacy' && activeEditorSummary !== undefined) ||
-              (editor.mode === 'properties' &&
-                (activeEditorValue !== undefined || activeDependencyValue !== undefined))) ? (
-              <div
-                className="gt-gantt__editor-backdrop"
-                data-editor-mode={editor.mode}
-                data-gt-part="editor-backdrop"
-                onPointerDown={(event) => {
-                  if (event.currentTarget === event.target && !editor.pending) {
-                    closeEditor();
-                  }
-                }}
-              >
-                {editor.kind === 'dependency' && activeDependencyValue !== undefined ? (
-                  <DependencyProperties
-                    bindings={editorBindings}
-                    {...(editor.error === undefined ? {} : { error: editor.error })}
-                    errorId={editorErrorId}
-                    initialValue={activeDependencyValue}
-                    key={`dependency:${activeDependencyValue.dependencyId}`}
-                    onCancel={() => closeEditor()}
-                    onDelete={onDependencyPropertiesDelete}
-                    onSubmit={onDependencyPropertiesSubmit}
-                    pending={editor.pending}
-                    readOnly={disabled}
-                  />
-                ) : editor.mode === 'properties' && activeEditorValue !== undefined ? (
-                  slots?.ItemProperties === undefined ? (
-                    <DefaultItemProperties
-                      appearanceVariants={registeredAppearanceVariants}
-                      bindings={editorBindings}
-                      {...(elapsedDuration(activeEditorValue) === undefined
-                        ? {}
-                        : { duration: elapsedDuration(activeEditorValue)! })}
-                      {...(editor.error === undefined ? {} : { error: editor.error })}
-                      errorId={editorErrorId}
-                      initialValue={activeEditorValue}
-                      key={`${activeEditorValue.kind}:${
-                        activeEditorValue.kind === 'task'
-                          ? activeEditorValue.taskId
-                          : activeEditorValue.laneId
-                      }`}
-                      {...(laneMoveDisabledReason === undefined ? {} : { laneMoveDisabledReason })}
-                      lanes={propertyLaneOptions}
-                      onCancel={() => closeEditor()}
-                      onDelete={onItemPropertiesDelete}
-                      onSubmit={onItemPropertiesSubmit}
-                      parentTasks={propertyParentOptions}
-                      pending={editor.pending}
-                      readOnly={disabled}
-                      {...(activeEditorLaneRecord?.resourceId === undefined
-                        ? {}
-                        : { resourceId: activeEditorLaneRecord.resourceId })}
-                    />
-                  ) : (
-                    <slots.ItemProperties
-                      bindings={editorBindings}
-                      {...(editor.error === undefined ? {} : { error: editor.error })}
-                      errorId={editorErrorId}
-                      initialValue={activeEditorValue}
-                      key={`${activeEditorValue.kind}:${
-                        activeEditorValue.kind === 'task'
-                          ? activeEditorValue.taskId
-                          : activeEditorValue.laneId
-                      }`}
-                      onCancel={() => closeEditor()}
-                      onDelete={onItemPropertiesDelete}
-                      onSubmit={onItemPropertiesSubmit}
-                      pending={editor.pending}
-                    />
-                  )
-                ) : activeEditorSummary !== undefined ? (
-                  <TaskEditor
-                    bindings={editorBindings}
-                    {...(editor.error === undefined ? {} : { error: editor.error })}
-                    errorId={editorErrorId}
-                    initialValue={{
-                      end: activeEditorSummary.end,
-                      start: activeEditorSummary.start,
-                      title: activeEditorSummary.title,
-                    }}
-                    onCancel={() => closeEditor()}
-                    onSubmit={onEditorSubmit}
-                    pending={editor.pending}
-                    task={activeEditorSummary}
-                  />
-                ) : null}
-              </div>
-            ) : null}
-          </>,
-          overlayHost,
-        );
+          </div>
+        ) : null}
+      </>
+    </OverlayLayer>
+  );
 
   return (
     <div
