@@ -127,6 +127,7 @@ Detailed completion evidence is recorded in
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
+| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[ ]` | [Planned](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -154,6 +155,9 @@ M4 item-properties appendix [done]
 M5 basic project Gantt [done]
   |
   v
+Post-M5 React composition/DX refactor [planned]
+  |
+  v
 M6 advanced scheduling/resources
   |
   v
@@ -165,27 +169,30 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. M5 is complete with all thirteen
-slices verified; M6 detailed planning is next.
+slices verified. The planned internal React composition and DX refactor is the next
+foundation step before M6 detailed planning.
 
 ## Current Focus
 
-### M6: Advanced scheduling and resources
+### Post-M5: React composition and DX refactor
 
-**Status:** `[ ]` Detailed planning next; M5 complete
+**Status:** `[ ]` Planned; implementation explicitly deferred; M5 complete
 
 The
-[completed M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
-splits architecture Slice 4 into 13 ordered implementation slices: contract freeze;
-hierarchy integrity; project-tree projection; summary/milestone semantics; accessible
-React integration; dependency graph analysis; dependency geometry; dependency editing;
-adaptive zoom; localization and RTL; selective Community integration; public/SSR
-consumers; and final milestone evidence. Every slice and milestone exit gate is now
-verified. The next action is to create the M6 detailed plan before implementation.
+[React composition and DX refactor plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md)
+is the next implementation handoff. It preserves the completed public API, DOM and
+accessibility behavior, scene/runtime ownership, SSR contract, and package facade
+while decomposing the 4,028-line React component, independent default surfaces, and
+the private React runtime by cohesive product and subscription boundaries. The plan
+explicitly avoids exporting renderer internals or componentizing individual SVG
+elements merely to reduce line counts.
 
-Planning preserves the completed M1–M4 model, command, view, runtime, interaction,
-customization, persistence, package, and SSR boundaries. Community M5 remains manual
-and diagnostic: automatic scheduling, working calendars, persisted summary rollups,
-critical path, resource planning, and other Pro behavior remain M6 scope.
+The 2026-08-01 pass is documentation-only at the user's request. Implementation starts
+with black-box structure and render-isolation evidence, then moves pure helpers and
+default surfaces, visual layers, subscriptions, overlays, DOM adapters, and finally
+private runtime controllers. `Gantt`, root exports, props, slots, class hooks, data
+parts, controlled ownership, command behavior, and renderer/kernel boundaries remain
+unchanged. M6 planning follows the verified cleanup rather than being mixed into it.
 
 The accepted
 [basic project Gantt contract](decisions/2026-07-31-basic-project-gantt-contract.md)
@@ -770,6 +777,16 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-01: Created the post-M5
+  [React composition and DX refactor plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md)
+  after auditing the 4,028-line `react/Gantt.tsx`, the 2,669-line private React
+  runtime, default surfaces, adjacent large kernels, public facade, and existing
+  React ownership contracts. The documentation-only plan identifies internal task,
+  dependency, lane, accessibility, control, preview, and overlay components; keeps
+  current slots as the public reuse boundary; requires render-isolation evidence;
+  and defers M6 until the cleanup is verified. No source, test, style, package, or
+  architecture change was made in this planning pass.
 
 - 2026-07-31: Completed M5 Slice 13 and the M5 milestone. Chrome DevTools verified
   controlled English LTR and Arabic RTL desktop cases, runtime-owned Serbian and
