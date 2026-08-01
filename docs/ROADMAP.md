@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first eleven slices are complete.
+first twelve slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-11 complete, Slice 12 next
+**Status:** `[-]` In progress; Slices 1-12 complete, Slice 13 final evidence next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -256,8 +256,16 @@ pending command across simultaneous project/session/range changes; locks the acc
 root facade; and verifies React/browser-free Community kernels with no Pro scheduling
 or licensing path. The fixed-seed 2,000-task/400-summary/1,599-dependency benchmark
 records observations without thresholds. Full `mise run ci` passes 87 test files / 470
-tests, 191 formatted files, 180 lint/type files, and four artifacts. Slice 12 public
-consumer, SSR, and packed-package proof is next.
+tests, 191 formatted files, 180 lint/type files, and four artifacts. Slice 12 now adds
+the deterministic `/project` public consumer across controlled, runtime-owned, and
+read-only ownership; deep hierarchy, summary/milestone, dependency, filter/sort,
+adaptive zoom, localization, RTL, cycle-diagnostic, SSR, and hydration cases; and
+concise public guidance. A fresh 348.8 kB/139-file tarball passed isolated runtime,
+type, stylesheet, peer, no-browser-global, and tree-shaking checks. Preserved-module
+packaging reduced the model-only root consumer bundle to 41,495 bytes without React
+or chart code while keeping the same public root. Full `mise run ci` passes 89 test
+files / 477 tests, 197 formatted files, 186 lint/type files, and 138 package artifacts.
+Slice 13 final Chrome DevTools and milestone evidence is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -754,6 +762,17 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 12. The deterministic `/project` route now composes
+  the complete public Community project Gantt through package-root imports with
+  controlled/runtime-owned/read-only, English/Serbian/Arabic, LTR/RTL, cycle,
+  filter/sort, zoom/fit, and SSR/hydration cases. Runtime canonical validation now
+  accepts preserved graph diagnostics, and preserved-module packaging lets a pure
+  model root import tree-shake to 41,495 bytes without React/chart code. Production
+  playground build and a fresh 348.8 kB/139-file tarball consumer passed runtime,
+  type, stylesheet, peer, and no-browser-global checks. Full `mise run ci` passed 89
+  files / 477 tests, 197 formatted files, 186 lint/type files, and 138 artifacts.
+  Slice 13 final Chrome DevTools and milestone evidence is next.
 
 - 2026-07-31: Completed M5 Slice 11. Scene caching now treats formatter identity as a
   tick input and exposes dependency-primitive work, with cached/cold parity across

@@ -223,14 +223,16 @@ await gantt.current?.redo();
 
 Session ownership is independent from document ownership. Supply `session` plus
 `onSessionChange` to control selection, focus, and vertical viewport intent, or
-`defaultSession` to keep them local. The horizontal `range` remains controlled in M4;
-handle `onRangeChange` when using `scrollToTime`.
+`defaultSession` to keep them local. Range ownership is independent too: use `range`
+plus `onRangeChange` for controlled navigation, or `defaultRange` for an
+instance-owned viewport.
 
 ### Timeline navigation
 
-Horizontal navigation proposes a new semantic time range; it does not scroll a wide
-DOM canvas. Keep `range` in application state and acknowledge `onRangeChange` for
-wheel, trackpad, mouse-grab, keyboard-page, edge-auto-pan, and imperative navigation:
+Horizontal navigation changes a semantic time range; it does not scroll a wide DOM
+canvas. Keep `range` in application state and acknowledge `onRangeChange` for a
+controlled chart, or supply `defaultRange` to let the runtime adopt wheel, trackpad,
+mouse-grab, keyboard-page, edge-auto-pan, and imperative navigation:
 
 ```tsx
 const [range, setRange] = useState({
@@ -267,7 +269,8 @@ passes through and imperative horizontal reveal fails closed.
 
 The public handle is occurrence-aware and intentionally narrow:
 `dispatch`, `undo`, `redo`, `canUndo`, `canRedo`, `focusTask`, `scrollToTask`,
-`scrollToTime`, `getDocument`, `getSelection`, and `getSession`. Occurrence targets
+`scrollToTime`, `zoomTo`, `fitToProject`, `getDocument`, `getSelection`, and
+`getSession`. Occurrence targets
 come from semantic callbacks such as `onFocusChange`, `onTaskActivate`, and
 `onSelectionChange`; their `viewKey` values are opaque.
 
@@ -501,7 +504,11 @@ const view: GanttViewDefinition = {
 />;
 ```
 
-Built-in `{ kind: 'project' }` follows canonical task order. Built-in
+Built-in `{ kind: 'project' }` resolves `parentId` into an accessible tree and follows
+canonical sibling order unless the view supplies a pure filter or sort. Ancestors of
+matching descendants remain visible. Summary intervals and progress are derived from
+descendants, empty summaries remain present, milestones render as points, and
+collapsed IDs live in session state rather than the document. Built-in
 `{ kind: 'resource' }` follows resource and assignment order. Custom descriptors
 follow caller order and require non-empty stable keys; they remain derived input and
 are never serialized into `GanttDocument`.
@@ -513,8 +520,29 @@ exposed through the applicable `data-task-id`, `data-lane-id`, `data-resource-id
 
 Renderable instant intervals use half-open `[start, end)` semantics. An explicit
 `segmentId` selects that segment; otherwise a placement uses its task schedule.
-All-day schedules are not coerced to instants. Missing or invalid individual
-intervals emit structured `layout.*` diagnostics without removing usable siblings.
+All-day schedules are resolved against the explicit time zone for presentation; the
+canonical date-only values are preserved. Missing or invalid individual intervals
+emit structured diagnostics without removing usable siblings.
+
+## Basic project Gantt
+
+Community project charts compose hierarchy, summary and milestone presentation,
+manual dependency relationships, adaptive calendar zoom, localization, and per-chart
+LTR or RTL direction through the package root. Dependency analysis reports cycles and
+unsupported working-time lag without moving dates automatically. The fixed message
+catalog has deterministic fallback, while caller-provided `locale`, `timeZone`, and
+`messages` keep formatting explicit and SSR-safe.
+
+Use `document` for controlled or read-only ownership, or `defaultDocument` for a
+runtime-owned editable document. Pair either with controlled `range` or
+`defaultRange`. Server rendering and hydration must receive the same document, view,
+locale, direction, time zone, messages, and initial range; none are inferred from
+browser globals during render.
+
+The deterministic `/project` playground route exercises the full composition. Its
+query parameters select `ownership=controlled|uncontrolled|read-only`,
+`locale=en-US|sr-Latn|ar`, `direction=ltr|rtl`, and the optional `cycle=1` diagnostic
+fixture.
 
 Overlapping bars use deterministic stacking and grow the lane beyond its minimum
 outer height when necessary. Touching intervals may share a track. Variable lane
@@ -624,7 +652,7 @@ vp dev apps/playground
 
 The playground exercises the canonical model, pure change kernel, resolved
 view/layout/viewport pipeline, interaction runtime, public facade, and DOM/SVG
-renderer. It has five routes:
+renderer. It has six routes:
 
 - `/` keeps the default persisted document view at a large, useful size and
   acknowledges navigation in local scenario state;
@@ -637,7 +665,10 @@ renderer. It has five routes:
   allow/reject/replace interception, derived resource mapping, lifecycle events, and
   imperative focus/scroll with an acknowledged controlled range;
 - `/navigation` is a deterministic two-axis stress surface with 144 scheduled events
-  across 36 lanes, a fixed 18-month UTC period, and a 12-week initial range.
+  across 36 lanes, a fixed 18-month UTC period, and a 12-week initial range;
+- `/project` is the package-root M5 consumer for deep hierarchy, summaries,
+  milestones, four dependency types, adaptive zoom, controlled/runtime-owned/read-only
+  ownership, localization, RTL, SSR, and opt-in cycle diagnostics.
 
 The equivalent mise command is `mise run dev`. To verify the standalone playground
 build, run `pnpm build:playground`.

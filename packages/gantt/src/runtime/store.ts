@@ -45,11 +45,19 @@ function cloneCanonicalDocument(document: GanttDocument): {
 } {
   const serialization = serializeGanttDocument(document);
   const parsed = parseGanttDocument(JSON.parse(serialization));
-  if (
-    parsed.document === undefined ||
-    parsed.diagnostics.some((item) => item.severity === 'error')
-  ) {
-    throw new TypeError('The runtime requires a canonical GanttDocument.');
+  // Graph diagnostics such as duplicate relationships and dependency cycles are
+  // canonical document state. Other errors mean parsing repaired or removed input.
+  const structuralErrors = parsed.diagnostics.filter(
+    (diagnostic) =>
+      diagnostic.severity === 'error' &&
+      diagnostic.code !== 'dependency.cycle' &&
+      diagnostic.code !== 'dependency.duplicate',
+  );
+  if (parsed.document === undefined || structuralErrors.length > 0) {
+    const reason = structuralErrors.map((diagnostic) => diagnostic.code).join(', ');
+    throw new TypeError(
+      `The runtime requires a canonical GanttDocument${reason.length === 0 ? '.' : `; found ${reason}.`}`,
+    );
   }
   const { revision: _revision, ...content } = parsed.document;
   return Object.freeze({

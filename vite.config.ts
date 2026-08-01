@@ -29,7 +29,9 @@ export default defineConfig({
     format: ['esm'],
     outDir: 'packages/gantt/dist',
     platform: 'neutral',
+    root: 'packages/gantt/src',
     sourcemap: true,
     target: 'es2022',
+    unbundle: true,
   },
 });

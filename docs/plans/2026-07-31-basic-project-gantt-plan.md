@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-11 complete, Slice 12 next
+Status: In progress; Slices 1-12 complete, Slice 13 final evidence next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -859,7 +859,7 @@ only after hierarchy, dependencies, zoom, filtering, and RTL coexist.
 
 ### Slice 12: Add public consumers, SSR examples, and package proof
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -889,6 +889,27 @@ design surface that implementation follows accidentally.
 - reproducible public Community examples and clean package consumption;
 - no playground or workspace-source dependency in consumer proof.
 
+**Completed in this slice**
+
+- added the deterministic `/project` package-root consumer with a four-level tree,
+  nested and empty summaries, instant and all-day milestones, an unscheduled task,
+  every dependency type, opt-in cycle diagnostics, ancestor-preserving filter,
+  sibling sort, adaptive zoom/fit, and nonvisual relationship summaries;
+- made query parameters select controlled, runtime-owned, and read-only document
+  ownership plus English, Serbian Latin, Arabic, LTR, and RTL inputs without changing
+  the fixture, and added an external public-handle command that visibly proves each
+  ownership path;
+- added package-root SSR/static-render and hydration examples with explicit document,
+  range, view, locale, direction, time zone, messages, and scale inputs, plus focused
+  mismatch-free Arabic RTL hydration coverage;
+- corrected the runtime canonical guard so model-preserved dependency duplicates and
+  cycles remain renderable diagnostics while structural parse repairs still reject;
+- changed packaging from one fused JavaScript artifact to preserved ES modules. The
+  public root and stylesheet subpath remain unchanged, while a pure root model import
+  now tree-shakes to 41,495 bytes without React, Lucide, DOM, or chart code;
+- documented the final project hierarchy, presentation, dependency, zoom, ownership,
+  localization, RTL, SSR, and deliberate no-auto-scheduling Community boundary.
+
 **Verification**
 
 - focused playground DOM and SSR/hydration tests
@@ -896,6 +917,23 @@ design surface that implementation follows accidentally.
 - `vp pack` at repository root, then `npm pack`/temporary tarball consumer checks
 - root-facade and packed-declaration inspection
 - `mise run ci`
+
+**Completion evidence**
+
+- focused playground/runtime/SSR/hydration/axe coverage passed 3 files / 34 tests;
+- `mise run build-playground` produced the production HTML, 46.15 kB CSS, and 558.31
+  kB JavaScript artifacts, with only the existing advisory chunk-size warning;
+- repository-root `vp pack` produced 138 preserved-module JS/map/declaration/style
+  artifacts; the public root declaration is 8.60 kB and references internal
+  declarations only through package-private relative paths;
+- a fresh `npm pack` tarball (`gantempo-gantt-0.0.0.tgz`, 348.8 kB, 139 files) installed
+  with React peers into an isolated temporary consumer. Node runtime import without
+  browser globals, stylesheet subpath resolution, TypeScript React consumption, peer
+  metadata, and the 41,495-byte tree-shaken model-only bundle all passed;
+- final `mise run ci` passed 89 test files / 477 tests, 197 formatted files, 186
+  lint/type files, and 138 package artifacts. Mise emitted only the known non-fatal
+  user-cache sandbox warning; jsdom emitted its known canvas capability notice during
+  axe runs.
 
 **Dependencies**
 
@@ -1087,7 +1125,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 9: Add adaptive scales, zoom, and fit-to-project
 - [x] Slice 10: Complete localization and RTL parity
 - [x] Slice 11: Prove selective integration and Community boundary
-- [ ] Slice 12: Add public consumers, SSR examples, and package proof
+- [x] Slice 12: Add public consumers, SSR examples, and package proof
 - [ ] Slice 13: Run final browser, accessibility, package, and milestone gates
 - [ ] Final automated/package/SSR gate
 - [ ] Final browser/accessibility/console/network gate
@@ -1351,8 +1389,9 @@ owns the full shapes and rationale. In summary:
 
 ## Next Slice
 
-Start Slice 12 by adding the accepted public `/project` consumer and deterministic SSR/
-hydration example through package-root imports. Demonstrate the complete deep-tree,
-summary/milestone, dependency, filter/sort, zoom, locale, and RTL workflow, document
-the public Community boundary, and prove a fresh packed tarball consumer can import
-runtime/types/styles without workspace-source or browser-global leakage.
+Start Slice 13 by running the accepted Chrome DevTools `/project` matrix across
+desktop/narrow, controlled/runtime-owned/read-only, English/Serbian/Arabic, LTR/RTL,
+reduced-motion, forced-colors, and supported coarse-pointer cases. Inspect composed
+accessibility, keyboard dependency workflows, focus, announcements, zoom/fit,
+clipping, overflow, console, and network state before recording the final automated,
+production, SSR, package, and browser evidence and marking M5 complete.

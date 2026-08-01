@@ -432,6 +432,45 @@ describe('React runtime adapter', () => {
     runtime.dispose();
   });
 
+  it('accepts a canonical dependency cycle while retaining its graph diagnostic', () => {
+    const base = documentFixture();
+    const cyclic: GanttDocument = {
+      ...base,
+      dependencies: [
+        {
+          fromTaskId: 'task-a',
+          id: 'forward',
+          toTaskId: 'milestone',
+          type: 'finish-to-start',
+        },
+        {
+          fromTaskId: 'milestone',
+          id: 'backward',
+          toTaskId: 'task-a',
+          type: 'finish-to-start',
+        },
+      ],
+      tasks: [
+        ...base.tasks,
+        {
+          id: 'milestone',
+          kind: 'milestone',
+          schedule: { end: START + 3 * DAY, mode: 'instant', start: START + 3 * DAY },
+          segments: [],
+          title: 'Milestone',
+        },
+      ],
+    };
+    const runtime = createGanttReactRuntime({ ...commonProps(), defaultDocument: cyclic });
+    runtime.activate();
+
+    expect(runtime.getHandle().getDocument().dependencies).toHaveLength(2);
+    expect(runtime.getSnapshot().scene.diagnostics).toContainEqual(
+      expect.objectContaining({ code: 'dependency.cycle' }),
+    );
+    runtime.dispose();
+  });
+
   it('keeps controlled props authoritative until exact reconciliation', async () => {
     const base = documentFixture();
     const events: string[] = [];
