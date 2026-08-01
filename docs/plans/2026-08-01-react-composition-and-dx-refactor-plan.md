@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 6 complete
+Status: In progress; Slice 7 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -686,7 +686,7 @@ Verification:
 
 ### Slice 7: Decompose the private React runtime by state-machine ownership
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 Goal: prevent M6 from adding more responsibilities to the 2,669-line runtime factory
 while preserving one runtime instance and facade.
@@ -974,12 +974,38 @@ These are implementation judgments, not reasons to change the public API:
   composition, overlay workflows, and keyboard/menu orchestration rather than raw
   pointer/observer/wheel lifecycle.
 
+### 2026-08-01 — Slice 7 private runtime ownership
+
+- Extracted display input normalization/equality and selector/occurrence derivation
+  into private pure modules. Dependency summary identity retention, occurrence
+  catalog construction, controlled/default input ownership, localization diagnostics,
+  and view equality remain unchanged.
+- Added instance-local range, viewport, pan, pointer gesture, keyboard interaction,
+  and dependency-link controllers with explicit store, range publication, display,
+  and interaction host callbacks. The facade still owns the store, command bus,
+  controlled reconciliation, callback isolation, activation/disposal, snapshot
+  publish order, and public handle composition.
+- Added focused controller coverage for isolated state, dependency-link lifecycle,
+  pan completion/disposal, range reason/anchor publication, RTL motion, and vertical
+  navigation. `runtime.ts` fell from 2,702 lines at the Slice 7 checkout to 2,270
+  lines without a public export or runtime contract change.
+- Focused runtime and DOM verification passed 13 files / 128 tests. The fixed runtime
+  benchmark recorded 261.07 selection/focus updates/s, 140.39 pointer preview
+  updates/s, 438.75 measured scroll queries/s, and 85,553.75 indexed hit tests/s.
+  The fixed scene benchmark recorded 44.351 cold builds/s, 84.7004 label updates/s,
+  88.3905 appearance/progress updates/s, and 6,270.55 vertical queries/s; the fixed
+  project benchmark recorded 9.4293 cold builds/s, 8.4367 collapse queries/s, 8.4693
+  filter queries/s, 9.8547 dependency updates/s, and 10.3056 zooms/s. These are
+  observations for the existing fixture metadata, not performance thresholds.
+- `git diff --check` passed; `mise run ci` passed on 2026-08-01 with 97 test files /
+  501 tests, 242 formatted files, 231 lint/type files, and the 208-artifact package
+  build.
+
 ## Next Slice
 
-Start Slice 7 in `react/runtime.ts` by moving display input normalization/equality and
-selector/occurrence derivation into pure private modules, then split viewport/range/
-pan/fit/zoom, keyboard/link, and pointer gesture ownership into instance-local
-controllers with explicit host callbacks. Keep one runtime instance and facade,
-synchronous transitions, scene cache identity, publish/rebuild order, callback error
-isolation, and controlled acknowledgement semantics. Run the complete runtime and DOM
-suites, runtime and scene benchmarks, and `mise run ci` before marking Slice 7 done.
+Run Slice 8 as the final API, dependency-direction, package, browser, and documentation
+gate. Compare root exports and packed declarations with the locked facade; use fresh
+packed React and browser-free consumers; build the playground; inspect `/`,
+`/interactive`, `/project`, and `/navigation` at representative widths with Chrome
+DevTools; record accessibility, focus, menu/editor, pointer, console, network,
+benchmark, CI, SSR, and dirty-worktree evidence before marking the plan complete.

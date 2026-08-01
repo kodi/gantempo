@@ -127,7 +127,7 @@ Detailed completion evidence is recorded in
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
-| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[-]` | [Slice 6 complete](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
+| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[-]` | [Slice 7 complete](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -176,7 +176,7 @@ foundation step before M6 detailed planning.
 
 ### Post-M5: React composition and DX refactor
 
-**Status:** `[-]` In progress; Slice 6 complete; M5 complete
+**Status:** `[-]` In progress; Slice 7 complete; M5 complete
 
 The
 [React composition and DX refactor plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md)
@@ -187,7 +187,7 @@ the private React runtime by cohesive product and subscription boundaries. The p
 explicitly avoids exporting renderer internals or componentizing individual SVG
 elements merely to reduce line counts.
 
-Slices 1 through 6 now lock the black-box structure/render baseline, move pure
+Slices 1 through 7 now lock the black-box structure/render baseline, move pure
 presentation and editor-command adapters into focused modules, split all seven
 default surfaces into discoverable private files, and compose the chart from private
 task, dependency, lane/grid, accessibility, control, and preview components backed by
@@ -200,7 +200,10 @@ behavior; overlay open/close produces zero static content renders. `Gantt.tsx` i
 2,287 lines without a DOM, accessibility, style, or public API change. Focused hooks
 now own pointer/dependency/pan capture, keyboard translation, focus bridging,
 measurement/observer lifecycle, and native wheel navigation; `Gantt.tsx` is 1,680
-lines. Slice 7 now owns private runtime decomposition.
+lines. Pure runtime input/snapshot derivation and instance-local range, viewport, pan,
+pointer, keyboard, and dependency-link controllers now sit behind the unchanged
+runtime facade; `runtime.ts` is 2,270 lines. Slice 8 owns the final API, package,
+browser, and documentation gate.
 Root exports, props, slots, class hooks, data parts, controlled ownership, command
 behavior, and renderer/kernel boundaries remain unchanged.
 
@@ -787,6 +790,13 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-01: Completed React composition/DX Slice 7. Pure display and selector
+  derivation plus instance-local range, viewport, pan, pointer, keyboard, and
+  dependency-link controllers now sit behind the unchanged runtime facade.
+  `runtime.ts` is 2,270 lines, focused runtime/DOM coverage passed 13 files / 128
+  tests, all three fixed benchmark profiles completed, and `mise run ci` passed 97
+  files / 501 tests with 208 build artifacts.
 
 - 2026-08-01: Completed React composition/DX Slice 6. Focused DOM adapters now own
   pointer geometry and capture, dependency linking, empty-canvas pan, keyboard

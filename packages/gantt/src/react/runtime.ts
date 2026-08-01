@@ -12,53 +12,32 @@ import {
   keyboardCreationIntent,
 } from '../interaction/keyboard';
 import { navigateRuntimeOccurrence } from '../interaction/navigation';
-import {
-  beginViewportPanGesture,
-  endViewportPanGesture,
-  IDLE_VIEWPORT_PAN_GESTURE,
-  moveViewportPanGesture,
-  type ViewportPanAxis,
-  type ViewportPanGestureState,
-} from '../interaction/pan-gesture';
-import {
-  pageTimeRange,
-  pageVerticalViewport,
-  shiftVerticalViewport,
-} from '../interaction/viewport-navigation';
+import type { ViewportPanAxis } from '../interaction/pan-gesture';
+import { pageTimeRange, pageVerticalViewport } from '../interaction/viewport-navigation';
 import type {
   InteractionGestureOptions,
   InteractionGestureState,
   InteractionKeyboardAdjustment,
   InteractionKeyboardMode,
-  InteractionKeyboardState,
   InteractionNavigationDirection,
   InteractionPoint,
   InteractionPointerType,
   InteractionPreviewPrimitive,
 } from '../interaction/types';
 import type { Diagnostic } from '../model/diagnostics';
-import { createGanttLocalization, type GanttLocalization } from '../localization/format';
-import type { GanttDirection } from '../localization/types';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences } from '../model/validate';
-import { resolveTaskPresentations } from '../presentation/resolve-task-presentations';
 import { createChartScenePipeline, type ChartSceneOccurrence } from '../render/scene-pipeline';
-import type { ChartScene, TaskBarPrimitive } from '../render/primitives';
+import type { ChartScene } from '../render/primitives';
 import {
   createGanttCommandBus,
   createGanttCommandCancellationController,
 } from '../runtime/command-bus';
 import { sessionEqual } from '../runtime/session';
 import { createGanttRuntimeStore } from '../runtime/store';
-import { createRangeProposalController } from '../runtime/range-proposals';
 import {
   adjacentTimeScaleLevel,
-  clampTimeScaleLevel,
-  fitTimeRange,
   resolveAdaptiveScaleLevel,
-  timeScaleLevelSpan,
-  zoomRangeToLevel,
-  type GanttTimeScaleDefinition,
   type GanttTimeScaleLevel,
 } from '../time/adaptive-scale';
 import type {
@@ -66,9 +45,7 @@ import type {
   GanttCommandSource,
   GanttDispatchResult,
   GanttInteractionTarget,
-  GanttDependencyTarget,
   GanttRuntimeErrorEvent,
-  GanttRuntimeOccurrence,
   GanttRuntimeSnapshot,
   GanttRuntimeStore,
   GanttSessionState,
@@ -84,9 +61,36 @@ import type {
   GanttScrollOptions,
   GanttSelectorSnapshot,
   GanttSemanticEvent,
-  GanttVisibleOccurrence,
 } from './types';
-import { sameViewDefinition } from '../view/definition-equality';
+import {
+  controlledDocument,
+  displayEqual,
+  displayInputs,
+  initialDocument,
+  initialSession,
+  timeScaleDiagnostics,
+  uniqueDiagnostics,
+} from './runtime/display-inputs';
+import {
+  createSelectorSnapshot,
+  dependencyTarget,
+  laneTarget,
+  occurrences,
+  projectCollapsedTaskIds,
+  projectSessionPart,
+  selectionEqual,
+  targetIdentity,
+  taskTarget,
+  viewportEvent,
+} from './runtime/selector-snapshot';
+import {
+  createDependencyLinkController,
+  createKeyboardInteractionController,
+  createPointerGestureController,
+} from './runtime/interaction-controllers';
+import { createViewportPanController } from './runtime/viewport-pan-controller';
+import { createRuntimeRangeController } from './runtime/range-controller';
+import { createRuntimeViewportController } from './runtime/viewport-controller';
 
 export interface GanttReactRuntimeSnapshot {
   readonly occurrenceCatalog: readonly ChartSceneOccurrence[];
@@ -225,337 +229,6 @@ export interface GanttKeyboardActionInput {
   readonly geometry?: GanttPointerGeometry;
 }
 
-interface DisplayInputs {
-  readonly appearanceVariants: GanttProps['appearanceVariants'];
-  readonly direction: GanttDirection;
-  readonly formatters: GanttProps['formatters'];
-  readonly locale: string;
-  readonly localization: GanttLocalization;
-  readonly messages: GanttProps['messages'];
-  readonly range: TimeRange;
-  readonly taskVariants: GanttProps['taskVariants'];
-  readonly timeScale: GanttTimeScaleDefinition;
-  readonly tickAnchor: number;
-  readonly tickInterval: number;
-  readonly timeZone: string;
-  readonly view: GanttProps['view'];
-}
-
-function controlledDocument(props: GanttProps): GanttDocument | undefined {
-  return props.document;
-}
-
-function initialDocument(props: GanttProps): GanttDocument {
-  return props.document ?? props.defaultDocument;
-}
-
-function initialSession(props: GanttProps) {
-  if (props.session !== undefined) {
-    return { kind: 'controlled' as const, value: props.session };
-  }
-  return props.defaultSession === undefined
-    ? { kind: 'uncontrolled' as const }
-    : { kind: 'uncontrolled' as const, value: props.defaultSession };
-}
-
-function displayInputs(props: GanttProps, rangeOverride?: TimeRange): DisplayInputs {
-  const localization = createGanttLocalization({
-    ...(props.direction === undefined ? {} : { direction: props.direction }),
-    ...(props.formatters === undefined ? {} : { formatters: props.formatters }),
-    ...(props.locale === undefined ? {} : { locale: props.locale }),
-    ...(props.messages === undefined ? {} : { messages: props.messages }),
-    timeZone: props.timeZone,
-  });
-  const timeScale: GanttTimeScaleDefinition = props.timeScale ?? {
-    kind: 'fixed',
-    tickAnchor: props.tickAnchor!,
-    tickInterval: props.tickInterval!,
-  };
-  return Object.freeze({
-    appearanceVariants: props.appearanceVariants,
-    direction: localization.direction,
-    formatters: props.formatters,
-    locale: localization.locale,
-    localization,
-    messages: props.messages,
-    range: Object.freeze({ ...(rangeOverride ?? props.range ?? props.defaultRange) }),
-    taskVariants: props.taskVariants,
-    tickAnchor: timeScale.kind === 'fixed' ? timeScale.tickAnchor : 0,
-    tickInterval: timeScale.kind === 'fixed' ? timeScale.tickInterval : timeScaleLevelSpan('day'),
-    timeScale: Object.freeze({ ...timeScale }),
-    timeZone: localization.timeZone,
-    view: props.view,
-  });
-}
-
-function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
-  return (
-    JSON.stringify(previous.appearanceVariants) === JSON.stringify(next.appearanceVariants) &&
-    previous.direction === next.direction &&
-    previous.formatters === next.formatters &&
-    previous.locale === next.locale &&
-    JSON.stringify(previous.messages) === JSON.stringify(next.messages) &&
-    previous.range.start === next.range.start &&
-    previous.range.end === next.range.end &&
-    previous.tickAnchor === next.tickAnchor &&
-    previous.tickInterval === next.tickInterval &&
-    JSON.stringify(previous.timeScale) === JSON.stringify(next.timeScale) &&
-    previous.timeZone === next.timeZone &&
-    JSON.stringify(previous.taskVariants) === JSON.stringify(next.taskVariants) &&
-    sameViewDefinition(previous.view, next.view)
-  );
-}
-
-function timeScaleDiagnostics(timeScale: GanttTimeScaleDefinition): readonly Diagnostic[] {
-  if (
-    timeScale.kind !== 'adaptive' ||
-    timeScale.minLevel === undefined ||
-    timeScale.maxLevel === undefined ||
-    timeScaleLevelSpan(timeScale.minLevel) <= timeScaleLevelSpan(timeScale.maxLevel)
-  ) {
-    return Object.freeze([]);
-  }
-  return Object.freeze([
-    Object.freeze({
-      code: 'time-scale.invalid-bounds' as const,
-      message: 'Adaptive minimum level exceeds its maximum; the minimum bound is used.',
-      path: '/timeScale',
-      severity: 'warning' as const,
-    }),
-  ]);
-}
-
-function uniqueDiagnostics(diagnostics: readonly Diagnostic[]): readonly Diagnostic[] {
-  const seen = new Set<string>();
-  return Object.freeze(
-    diagnostics.filter((diagnostic) => {
-      const key = `${diagnostic.code}\u0000${diagnostic.path ?? ''}\u0000${diagnostic.message}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }),
-  );
-}
-
-function projectSessionPart(session: GanttSessionState) {
-  return session.project === undefined ? {} : { project: session.project };
-}
-
-function projectCollapsedTaskIds(
-  document: GanttDocument,
-  session: GanttSessionState,
-  taskId: EntityId,
-  expanded?: boolean,
-): readonly EntityId[] | undefined {
-  const parentIds = new Set(
-    document.tasks.flatMap((task) => (task.parentId === undefined ? [] : [task.parentId])),
-  );
-  if (!parentIds.has(taskId)) {
-    return undefined;
-  }
-  const collapsed = new Set(session.project?.collapsedTaskIds ?? []);
-  const currentlyExpanded = !collapsed.has(taskId);
-  const nextExpanded = expanded ?? !currentlyExpanded;
-  if (nextExpanded === currentlyExpanded) {
-    return undefined;
-  }
-  if (nextExpanded) {
-    collapsed.delete(taskId);
-  } else {
-    collapsed.add(taskId);
-  }
-  return Object.freeze(
-    document.tasks
-      .filter((task) => collapsed.has(task.id) && parentIds.has(task.id))
-      .map((task) => task.id),
-  );
-}
-
-function taskTarget(task: TaskBarPrimitive | ChartSceneOccurrence): GanttTaskTarget {
-  return Object.freeze({
-    ...(task.assignmentId === undefined ? {} : { assignmentId: task.assignmentId }),
-    kind: 'task',
-    ...(task.laneId === undefined ? {} : { laneId: task.laneId }),
-    laneViewKey: task.laneViewKey,
-    ...(task.placementId === undefined ? {} : { placementId: task.placementId }),
-    ...(task.resourceId === undefined ? {} : { resourceId: task.resourceId }),
-    ...(task.segmentId === undefined ? {} : { segmentId: task.segmentId }),
-    taskId: task.taskId,
-    viewKey: task.viewKey,
-  });
-}
-
-function laneTarget(
-  lane: ChartScene['lanes'][number],
-): Extract<GanttInteractionTarget, { readonly kind: 'lane' }> {
-  return Object.freeze({
-    kind: 'lane',
-    ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
-    ...(lane.resourceId === undefined ? {} : { resourceId: lane.resourceId }),
-    viewKey: lane.viewKey,
-  });
-}
-
-function dependencyTarget(dependencyId: EntityId): GanttDependencyTarget {
-  return Object.freeze({ dependencyId, kind: 'dependency' });
-}
-
-function occurrences(
-  scene: ChartScene,
-  catalog: readonly ChartSceneOccurrence[],
-  previousDependencies?: GanttSelectorSnapshot['dependencies'],
-): {
-  readonly dependencies: GanttSelectorSnapshot['dependencies'];
-  readonly runtime: readonly GanttRuntimeOccurrence[];
-  readonly visible: readonly GanttVisibleOccurrence[];
-} {
-  const visible = scene.taskBars.map((task) =>
-    Object.freeze({
-      ...(task.presentation.project?.depth === undefined
-        ? {}
-        : { depth: task.presentation.project.depth }),
-      ...(task.presentation.summary === undefined
-        ? {}
-        : { descendantCount: task.presentation.summary.descendantCount }),
-      end: task.end,
-      ...(task.presentation.project?.expanded === undefined
-        ? {}
-        : { expanded: task.presentation.project.expanded }),
-      ...(task.presentation.project?.filterMatch === undefined
-        ? {}
-        : { filterMatch: task.presentation.project.filterMatch }),
-      ...(task.presentation.project?.hasChildren === undefined
-        ? {}
-        : { hasChildren: task.presentation.project.hasChildren }),
-      intervalSource: task.presentation.intervalSource,
-      kind: task.presentation.kind,
-      ...(task.progress === undefined ? {} : { progress: task.progress.value }),
-      ...(task.presentation.summary === undefined
-        ? {}
-        : { resolvedDescendantCount: task.presentation.summary.resolvedDescendantCount }),
-      start: task.start,
-      target: taskTarget(task),
-      ...(task.presentation.summary === undefined
-        ? {}
-        : { unresolvedDescendantCount: task.presentation.summary.unresolvedDescendantCount }),
-    }),
-  );
-  const previousDependencyById = new Map(
-    previousDependencies?.map((summary) => [summary.dependency.id, summary]),
-  );
-  const dependencies = scene.dependencySummaries.map((summary) => {
-    const previous = previousDependencyById.get(summary.dependency.id);
-    const previousLag = previous?.dependency.lag;
-    const nextLag = summary.dependency.lag;
-    if (
-      previous !== undefined &&
-      previous.dependency.fromTaskId === summary.dependency.fromTaskId &&
-      previous.dependency.toTaskId === summary.dependency.toTaskId &&
-      previous.dependency.type === summary.dependency.type &&
-      previousLag?.mode === nextLag?.mode &&
-      previousLag?.unit === nextLag?.unit &&
-      previousLag?.value === nextLag?.value &&
-      (previous.dependency.fields === summary.dependency.fields ||
-        JSON.stringify(previous.dependency.fields) === JSON.stringify(summary.dependency.fields)) &&
-      previous.fromTitle === summary.fromTitle &&
-      previous.hiddenEndpoint === summary.hiddenEndpoint &&
-      previous.status === summary.status &&
-      previous.toTitle === summary.toTitle
-    ) {
-      return previous;
-    }
-    return Object.freeze({
-      dependency: Object.freeze({ ...summary.dependency }),
-      fromTitle: summary.fromTitle,
-      hiddenEndpoint: summary.hiddenEndpoint,
-      status: summary.status,
-      target: dependencyTarget(summary.dependency.id),
-      toTitle: summary.toTitle,
-    });
-  });
-  const stableDependencies =
-    previousDependencies !== undefined &&
-    dependencies.length === previousDependencies.length &&
-    dependencies.every((dependency, index) => dependency === previousDependencies[index])
-      ? previousDependencies
-      : Object.freeze(dependencies);
-  return Object.freeze({
-    dependencies: stableDependencies,
-    runtime: Object.freeze([
-      ...scene.lanes.map((lane, laneIndex) =>
-        Object.freeze({
-          horizontalCenter: 0,
-          laneIndex,
-          target: laneTarget(lane),
-        }),
-      ),
-      ...catalog.map((task) =>
-        Object.freeze({
-          horizontalCenter: task.start + (task.end - task.start) / 2,
-          laneIndex: task.laneIndex,
-          target: taskTarget(task),
-        }),
-      ),
-      ...scene.dependencySummaries.map((dependency) =>
-        Object.freeze({
-          horizontalCenter: 0,
-          laneIndex: 0,
-          target: dependencyTarget(dependency.dependency.id),
-        }),
-      ),
-    ]),
-    visible: Object.freeze(visible),
-  });
-}
-
-function targetIdentity(target: GanttInteractionTarget | undefined): string | undefined {
-  return target === undefined
-    ? undefined
-    : target.kind === 'dependency'
-      ? `${target.kind}\u0000${target.dependencyId}`
-      : `${target.kind}\u0000${target.viewKey}`;
-}
-
-function selectionEqual(
-  previous: readonly GanttInteractionTarget[],
-  next: readonly GanttInteractionTarget[],
-): boolean {
-  return (
-    previous.length === next.length &&
-    previous.every((target, index) => targetIdentity(target) === targetIdentity(next[index]))
-  );
-}
-
-function viewportEvent(snapshot: GanttSelectorSnapshot): import('./types').GanttViewportChange {
-  return Object.freeze({
-    range: snapshot.range,
-    session: snapshot.session.viewport,
-    measured: snapshot.viewport,
-  });
-}
-
-function createSelectorSnapshot(
-  store: GanttRuntimeSnapshot,
-  display: DisplayInputs,
-  dependencies: GanttSelectorSnapshot['dependencies'],
-  visible: readonly GanttVisibleOccurrence[],
-  interaction: GanttInteractionState,
-  scaleLevel: GanttTimeScaleLevel,
-): GanttSelectorSnapshot {
-  return Object.freeze({
-    canRedo: store.history.canRedo,
-    canUndo: store.history.canUndo,
-    document: store.document,
-    dependencies,
-    interaction,
-    occurrences: visible,
-    range: display.range,
-    scaleLevel,
-    session: store.session,
-    viewport: store.viewport,
-  });
-}
-
 function scheduleHostError(error: unknown): void {
   queueMicrotask(() => {
     throw error;
@@ -626,23 +299,12 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let rebuildPending = false;
   let semanticSource: GanttSemanticEvent['source'] = 'runtime';
   let lastDocument: GanttDocument | undefined;
-  let gesture: InteractionGestureState = IDLE_INTERACTION_GESTURE;
-  let panGesture: ViewportPanGestureState = IDLE_VIEWPORT_PAN_GESTURE;
-  let gestureGeometry: GanttPointerGeometry | undefined;
-  let keyboardGesture: InteractionKeyboardState | undefined;
-  let dependencyLink:
-    | {
-        readonly candidate?: GanttTaskTarget;
-        readonly pointerType?: InteractionPointerType;
-        readonly source: GanttTaskTarget;
-      }
-    | undefined;
+  const pointerGesture = createPointerGestureController<GanttPointerGeometry>();
+  const viewportPan = createViewportPanController();
+  const keyboardInteraction = createKeyboardInteractionController();
+  const dependencyLinks = createDependencyLinkController();
   let dependencyFocusRestore: GanttTaskTarget | undefined;
   let pendingRangeAnnouncement = false;
-  let rangeChangeContext: {
-    readonly anchorTime?: number;
-    readonly reason: import('./types').GanttRangeChangeEvent['reason'];
-  } = { reason: 'pan' };
   let interaction: GanttInteractionState = Object.freeze({ status: 'idle' });
   const subscribers = new Set<() => void>();
   const pipeline = createChartScenePipeline();
@@ -666,43 +328,19 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       schedule: scheduleFrame,
     },
   });
-  const rangeProposals = createRangeProposalController({
+  const rangeController = createRuntimeRangeController({
+    adoptUncontrolledRange(range) {
+      display = Object.freeze({ ...display, range: Object.freeze({ ...range }) });
+      rebuild();
+    },
     canPublish: () => !rangeControlled || callbacks.onRangeChange !== undefined,
     initialRange: display.range,
-    publish(range, source) {
-      if (!rangeControlled) {
-        display = Object.freeze({ ...display, range: Object.freeze({ ...range }) });
-        rangeProposals.adopt(range);
-        rebuild();
-      }
-      const event = Object.freeze({
-        ...(rangeChangeContext.anchorTime === undefined
-          ? {}
-          : { anchorTime: rangeChangeContext.anchorTime }),
-        reason: rangeChangeContext.reason,
-        source,
-      });
+    isControlled: rangeControlled,
+    publish(range, event) {
       emitCallback('onRangeChange', () => callbacks.onRangeChange?.(range, event));
     },
     schedule: scheduleFrame,
   });
-
-  function requestRange(
-    range: TimeRange,
-    reason: import('./types').GanttRangeChangeEvent['reason'],
-    source: 'imperative' | 'runtime',
-    anchorTime?: number,
-  ): boolean {
-    rangeChangeContext = Object.freeze({
-      ...(anchorTime === undefined ? {} : { anchorTime }),
-      reason,
-    });
-    return rangeProposals.requestRange(range, source);
-  }
-
-  function canChangeRange(): boolean {
-    return !rangeControlled || callbacks.onRangeChange !== undefined;
-  }
 
   function localizedAction(action: GanttInteractionAction | 'interaction'): string {
     const key =
@@ -815,6 +453,29 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   });
 
   let snapshot!: GanttReactRuntimeSnapshot;
+  const viewportController = createRuntimeViewportController({
+    announceEmpty() {
+      setInteraction(
+        Object.freeze({
+          announcement: display.localization.message('chart.empty'),
+          status: 'idle',
+        }),
+      );
+    },
+    getDirection: () => display.direction,
+    getDocument: () => store.getSnapshot().document,
+    getRange: () => display.range,
+    getSession: () => store.getSnapshot().session,
+    getTimeScale: () => display.timeScale,
+    getTimelineHeight: () => snapshot.scene.bounds.timelineHeight,
+    getTimeZone: () => display.timeZone,
+    getViewport: () => snapshot.selector.viewport,
+    requestRange: (range, reason, source, anchorTime) =>
+      rangeController.request(range, reason, source, anchorTime),
+    shiftRangeByPixels: (delta, width, source, reason) =>
+      rangeController.shiftByPixels(delta, width, source, reason),
+    updateSession,
+  });
 
   function composedInteraction(storeSnapshot = store.getSnapshot()): GanttInteractionState {
     if (storeSnapshot.interaction.status !== 'document-proposal-pending') {
@@ -1172,7 +833,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     diagnostic: Diagnostic,
     target: GanttInteractionTarget | undefined,
   ): void {
-    keyboardGesture = undefined;
+    keyboardInteraction.clear();
     setInteraction(
       Object.freeze({
         announcement: diagnostic.message,
@@ -1188,7 +849,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     target: GanttInteractionTarget | undefined,
     preview?: GanttInteractionPreview,
   ): Promise<void> {
-    keyboardGesture = undefined;
+    keyboardInteraction.clear();
     setInteraction(pendingKeyboardInteraction(action, target, preview));
     const result = await bus.dispatch(command, {
       source: Object.freeze({ kind: 'keyboard' }),
@@ -1211,7 +872,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       readonly target: GanttInteractionTarget;
     },
   ): Promise<GanttDispatchResult> {
-    keyboardGesture = undefined;
+    keyboardInteraction.clear();
     setInteraction(pendingKeyboardInteraction(options.action, options.target, undefined));
     const result = await bus.dispatch(command, {
       source: options.source,
@@ -1233,7 +894,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     action: 'redo' | 'undo',
     target: GanttTaskTarget | undefined,
   ): Promise<void> {
-    keyboardGesture = undefined;
+    keyboardInteraction.clear();
     setInteraction(pendingKeyboardInteraction(action, target, undefined));
     const result = await bus[action](target === undefined ? undefined : { target });
     if (disposed) {
@@ -1296,10 +957,12 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   }
 
   function publishDependencyLink(): void {
-    if (dependencyLink === undefined) return;
-    const sourceTitle = taskTitle(dependencyLink.source);
+    if (dependencyLinks.state === undefined) return;
+    const sourceTitle = taskTitle(dependencyLinks.state.source);
     const candidateTitle =
-      dependencyLink.candidate === undefined ? undefined : taskTitle(dependencyLink.candidate);
+      dependencyLinks.state.candidate === undefined
+        ? undefined
+        : taskTitle(dependencyLinks.state.candidate);
     setInteraction(
       Object.freeze({
         action: 'dependency',
@@ -1316,12 +979,12 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
                 'Link {source} to {target}. Press Enter or release to commit.',
               ),
         mode: 'link',
-        ...(dependencyLink.pointerType === undefined
+        ...(dependencyLinks.state.pointerType === undefined
           ? {}
-          : { pointerType: dependencyLink.pointerType }),
-        preview: dependencyPreview(dependencyLink.source, dependencyLink.candidate),
+          : { pointerType: dependencyLinks.state.pointerType }),
+        preview: dependencyPreview(dependencyLinks.state.source, dependencyLinks.state.candidate),
         status: 'linking',
-        target: dependencyLink.source,
+        target: dependencyLinks.state.source,
       }),
     );
   }
@@ -1338,7 +1001,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   }
 
   async function commitDependencyLink(): Promise<boolean> {
-    const link = dependencyLink;
+    const link = dependencyLinks.state;
     if (link?.candidate === undefined) {
       if (link !== undefined) {
         setInteraction(
@@ -1355,7 +1018,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       return false;
     }
-    dependencyLink = undefined;
+    dependencyLinks.clear();
     const target = dependencyTarget(uniqueDependencyId(link.source.taskId, link.candidate.taskId));
     const preview = dependencyPreview(link.source, link.candidate);
     setInteraction(pendingKeyboardInteraction('dependency', target, preview));
@@ -1413,11 +1076,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         : undefined;
     if (
       (sessionControlled && callbacks.onSessionChange === undefined) ||
-      (horizontalRange !== undefined && !canChangeRange())
+      (horizontalRange !== undefined && !rangeController.canChange())
     ) {
       return false;
     }
-    if (horizontalRange !== undefined && !requestRange(horizontalRange, 'scroll', 'runtime')) {
+    if (
+      horizontalRange !== undefined &&
+      !rangeController.request(horizontalRange, 'scroll', 'runtime')
+    ) {
       return false;
     }
     return updateSession(
@@ -1438,11 +1104,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   ): boolean {
     if (axis === 'horizontal') {
       const range = pageTimeRange(display.range, direction);
-      if (range === undefined || !canChangeRange()) {
+      if (range === undefined || !rangeController.canChange()) {
         return false;
       }
       pendingRangeAnnouncement = true;
-      if (!requestRange(range, 'scroll', 'runtime')) {
+      if (!rangeController.request(range, 'scroll', 'runtime')) {
         pendingRangeAnnouncement = false;
         return false;
       }
@@ -1536,7 +1202,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       }
       return false;
     }
-    keyboardGesture = next;
+    keyboardInteraction.replace(next);
     const action = mode === 'move' ? 'move' : mode === 'progress' ? 'progress' : 'resize';
     setInteraction(
       Object.freeze({
@@ -1570,47 +1236,12 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     );
   }
 
-  function navigateViewport(input: GanttViewportNavigationInput): GanttViewportNavigationResult {
-    const source = input.source ?? 'runtime';
-    rangeChangeContext = Object.freeze({ reason: input.reason ?? 'scroll' });
-    const horizontalDelta =
-      input.horizontalDelta === undefined
-        ? undefined
-        : input.horizontalDelta * (display.direction === 'rtl' ? -1 : 1);
-    const horizontal =
-      horizontalDelta === undefined
-        ? false
-        : rangeProposals.shiftByPixels(horizontalDelta, input.viewportWidth, source);
-    let vertical = false;
-    if (input.verticalDelta !== undefined) {
-      const session = store.getSnapshot().session;
-      const verticalStart = shiftVerticalViewport(
-        session.viewport.verticalStart,
-        input.verticalDelta,
-        snapshot.scene.bounds.timelineHeight,
-        input.viewportHeight,
-      );
-      if (verticalStart !== undefined && verticalStart !== session.viewport.verticalStart) {
-        vertical = updateSession(
-          Object.freeze({
-            ...(session.focused === undefined ? {} : { focused: session.focused }),
-            ...projectSessionPart(session),
-            selection: session.selection,
-            viewport: Object.freeze({ verticalStart }),
-          }),
-          source,
-        );
-      }
-    }
-    return Object.freeze({ horizontal, vertical });
-  }
-
   function panPointerDown(input: GanttPanPointerInput): boolean {
     if (
       disposed ||
-      gesture.status !== 'idle' ||
-      panGesture.status !== 'idle' ||
-      !canChangeRange() ||
+      pointerGesture.state.status !== 'idle' ||
+      !viewportPan.isIdle() ||
+      !rangeController.canChange() ||
       !Number.isFinite(input.geometry.width) ||
       input.geometry.width <= 0 ||
       !Number.isFinite(input.geometry.height) ||
@@ -1618,17 +1249,15 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     ) {
       return false;
     }
-    panGesture = beginViewportPanGesture(input.pointerId, input.point, input.axis);
-    return panGesture.status !== 'idle';
+    return viewportPan.begin(input.pointerId, input.point, input.axis);
   }
 
   function panPointerMove(input: GanttPanPointerMoveInput): GanttPanPointerMoveResult {
-    const moved = moveViewportPanGesture(panGesture, input.pointerId, input.point);
-    panGesture = moved.state;
-    if (!moved.handled || panGesture.status !== 'active') {
+    const moved = viewportPan.move(input.pointerId, input.point);
+    if (!moved.handled || moved.state.status !== 'active') {
       return Object.freeze({ active: false, handled: moved.handled });
     }
-    navigateViewport({
+    viewportController.navigate({
       ...(moved.deltaX === 0 ? {} : { horizontalDelta: moved.deltaX }),
       ...(moved.deltaY === 0 ? {} : { verticalDelta: moved.deltaY }),
       reason: 'pan',
@@ -1639,13 +1268,15 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   }
 
   function panPointerEnd(pointerId: number): GanttPanPointerEndResult {
-    const ended = endViewportPanGesture(panGesture, pointerId);
-    panGesture = ended.state;
+    const ended = viewportPan.end(pointerId);
     return Object.freeze({ active: ended.active, handled: ended.handled });
   }
 
   function autoPan(input: GanttPointerMoveInput, options: InteractionGestureOptions): void {
-    if (gesture.status !== 'active' || gesture.intent.kind === 'progress') {
+    if (
+      pointerGesture.state.status !== 'active' ||
+      pointerGesture.state.intent.kind === 'progress'
+    ) {
       return;
     }
     const edge = Math.min(40, input.geometry.height / 3, input.geometry.width / 3);
@@ -1682,56 +1313,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     if (horizontalDirection !== 0) {
       const shift =
         horizontalDirection * options.snap.step * (display.direction === 'rtl' ? -1 : 1);
-      rangeChangeContext = Object.freeze({ reason: 'scroll' });
-      rangeProposals.shiftByTime(shift, 'runtime');
+      rangeController.shiftByTime(shift, 'runtime');
     }
-  }
-
-  function fitProject(
-    fitOptions: Parameters<GanttHandle['fitToProject']>[0],
-    source: 'imperative' | 'runtime',
-  ): boolean {
-    const presentations = resolveTaskPresentations(
-      store.getSnapshot().document,
-      display.timeZone,
-    ).presentations;
-    const intervals = presentations.flatMap((presentation) =>
-      presentation.interval === undefined ? [] : [presentation.interval],
-    );
-    if (intervals.length === 0) {
-      setInteraction(
-        Object.freeze({
-          announcement: display.localization.message('chart.empty'),
-          status: 'idle',
-        }),
-      );
-      return false;
-    }
-    const bounds = Object.freeze({
-      end: Math.max(...intervals.map((interval) => interval.end)),
-      start: Math.min(...intervals.map((interval) => interval.start)),
-    });
-    const width =
-      snapshot.selector.viewport.status === 'measured'
-        ? snapshot.selector.viewport.clientWidth
-        : 960;
-    const range = fitTimeRange(bounds, width, fitOptions);
-    return range === undefined ? false : requestRange(range, 'fit', source);
-  }
-
-  function zoomLevel(
-    level: GanttTimeScaleLevel,
-    zoomOptions: Parameters<GanttHandle['zoomTo']>[1],
-    source: 'imperative' | 'runtime',
-  ): boolean {
-    const acceptedLevel =
-      display.timeScale.kind === 'adaptive' ? clampTimeScaleLevel(level, display.timeScale) : level;
-    const range = zoomRangeToLevel(display.range, acceptedLevel, zoomOptions);
-    const anchorRatio = zoomOptions?.anchorRatio ?? 0.5;
-    const anchorTime =
-      zoomOptions?.anchorTime ??
-      display.range.start + (display.range.end - display.range.start) * anchorRatio;
-    return range === undefined ? false : requestRange(range, 'zoom', source, anchorTime);
   }
 
   const handleValue: GanttHandle = {
@@ -1753,7 +1336,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         }),
       );
     },
-    fitToProject: (options) => fitProject(options, 'imperative'),
+    fitToProject: (options) => viewportController.fitProject(options, 'imperative'),
     getDocument: () => store.getSnapshot().document,
     getSelection: () => store.getSnapshot().session.selection,
     getSession: () => store.getSnapshot().session,
@@ -1768,14 +1351,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const verticalChanged = verticalStart !== session.viewport.verticalStart;
       const horizontalChanged = task.start < display.range.start || task.end > display.range.end;
       if (
-        (horizontalChanged && !canChangeRange()) ||
+        (horizontalChanged && !rangeController.canChange()) ||
         (verticalChanged && sessionControlled && callbacks.onSessionChange === undefined)
       ) {
         return false;
       }
       if (horizontalChanged) {
         const range = alignedTaskRange(task, options);
-        if (!requestRange(range, 'scroll', 'imperative')) {
+        if (!rangeController.request(range, 'scroll', 'imperative')) {
           return false;
         }
       }
@@ -1800,10 +1383,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const start =
         align === 'start' ? time : align === 'end' ? time - duration : time - duration / 2;
       const range = Object.freeze({ start, end: start + duration });
-      return requestRange(range, 'scroll', 'imperative');
+      return rangeController.request(range, 'scroll', 'imperative');
     },
     undo: () => bus.undo(),
-    zoomTo: (level, options) => zoomLevel(level, options, 'imperative'),
+    zoomTo: (level, options) => viewportController.zoomLevel(level, options, 'imperative'),
   };
   const handle: GanttHandle = Object.freeze(handleValue);
 
@@ -1821,17 +1404,18 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     },
 
     beginDependencyLink(viewKey, pointerType) {
-      if (disposed || dependencyLink !== undefined || composedInteraction().status === 'pending') {
+      if (
+        disposed ||
+        dependencyLinks.state !== undefined ||
+        composedInteraction().status === 'pending'
+      ) {
         return false;
       }
       const source = snapshot.selector.occurrences.find(
         (occurrence) => occurrence.target.viewKey === viewKey,
       )?.target;
       if (source === undefined) return false;
-      dependencyLink = Object.freeze({
-        ...(pointerType === undefined ? {} : { pointerType }),
-        source,
-      });
+      dependencyLinks.begin(source, pointerType);
       const session = store.getSnapshot().session;
       updateSession(
         Object.freeze({
@@ -1847,9 +1431,9 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     },
 
     cancelDependencyLink() {
-      if (dependencyLink === undefined) return false;
-      const source = dependencyLink.source;
-      dependencyLink = undefined;
+      if (dependencyLinks.state === undefined) return false;
+      const source = dependencyLinks.state.source;
+      dependencyLinks.clear();
       setInteraction(
         Object.freeze({
           announcement: display.localization.message(
@@ -1905,17 +1489,17 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return;
       }
       disposed = true;
-      dependencyLink = undefined;
-      panGesture = IDLE_VIEWPORT_PAN_GESTURE;
+      dependencyLinks.clear();
+      viewportPan.reset();
       unsubscribeStore();
       subscribers.clear();
-      rangeProposals.dispose();
+      rangeController.dispose();
       bus.dispose();
     },
 
     dispatchAction,
 
-    fitToProject: (options) => fitProject(options, 'runtime'),
+    fitToProject: (options) => viewportController.fitProject(options, 'runtime'),
 
     getHandle() {
       return handle;
@@ -1928,28 +1512,28 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     keyboardAction(input) {
       if (
         disposed ||
-        gesture.status === 'pressed' ||
-        gesture.status === 'active' ||
+        pointerGesture.state.status === 'pressed' ||
+        pointerGesture.state.status === 'active' ||
         composedInteraction().status === 'pending'
       ) {
         return false;
       }
-      if (input.action.type === 'history' && keyboardGesture === undefined) {
+      if (input.action.type === 'history' && keyboardInteraction.state === undefined) {
         void dispatchKeyboardHistory(input.action.action, focusedKeyboardTarget());
         return true;
       }
-      if (keyboardGesture === undefined && dependencyLink === undefined) {
-        if (input.action.type === 'fit') return fitProject(undefined, 'runtime');
+      if (keyboardInteraction.state === undefined && dependencyLinks.state === undefined) {
+        if (input.action.type === 'fit') return viewportController.fitProject(undefined, 'runtime');
         if (input.action.type === 'zoom') {
           const level = adjacentTimeScaleLevel(
             snapshot.selector.scaleLevel,
             input.action.direction,
             display.timeScale.kind === 'adaptive' ? display.timeScale : { kind: 'adaptive' },
           );
-          return zoomLevel(level, undefined, 'runtime');
+          return viewportController.zoomLevel(level, undefined, 'runtime');
         }
       }
-      if (dependencyLink !== undefined) {
+      if (dependencyLinks.state !== undefined) {
         if (input.action.type === 'cancel') return runtime.cancelDependencyLink();
         if (input.action.type === 'commit') {
           void commitDependencyLink();
@@ -1962,14 +1546,15 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
               : display.direction === 'rtl' && input.action.direction === 'right'
                 ? 'left'
                 : input.action.direction;
-          const current = dependencyLink.candidate ?? dependencyLink.source;
+          const current = dependencyLinks.state.candidate ?? dependencyLinks.state.source;
           const next = navigateRuntimeOccurrence(
             occurrences(snapshot.scene, snapshot.occurrenceCatalog).runtime,
             current,
             direction,
           );
-          if (next?.kind !== 'task' || next.taskId === dependencyLink.source.taskId) return false;
-          dependencyLink = Object.freeze({ ...dependencyLink, candidate: next });
+          if (next?.kind !== 'task' || next.taskId === dependencyLinks.state.source.taskId)
+            return false;
+          dependencyLinks.update(next);
           revealKeyboardTarget(next);
           publishDependencyLink();
           return true;
@@ -1979,13 +1564,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (input.geometry === undefined) {
         return false;
       }
-      if (input.action.type === 'page' && keyboardGesture === undefined) {
+      if (input.action.type === 'page' && keyboardInteraction.state === undefined) {
         return pageKeyboardViewport(input.action.axis, input.action.direction, input.geometry);
       }
       const options = interactionOptions(input.geometry);
-      if (keyboardGesture !== undefined) {
+      if (keyboardInteraction.state !== undefined) {
         if (input.action.type === 'cancel') {
-          keyboardGesture = undefined;
+          keyboardInteraction.clear();
           setInteraction(
             Object.freeze({
               announcement: display.localization.message('interaction.cancelled'),
@@ -1995,7 +1580,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           return true;
         }
         if (input.action.type === 'commit') {
-          return dispatchKeyboardIntent(keyboardGesture.intent, input.geometry);
+          return dispatchKeyboardIntent(keyboardInteraction.state.intent, input.geometry);
         }
         if (input.action.type !== 'adjust') {
           return false;
@@ -2006,13 +1591,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             : display.direction === 'rtl' && input.action.direction === 'right'
               ? 'left'
               : input.action.direction;
-        const next = adjustKeyboardInteraction(keyboardGesture, direction, options, {
+        const next = adjustKeyboardInteraction(keyboardInteraction.state, direction, options, {
           ...(input.action.accelerated === undefined
             ? {}
             : { accelerated: input.action.accelerated }),
           ...(input.action.boundary === undefined ? {} : { boundary: input.action.boundary }),
         });
-        keyboardGesture = next;
+        keyboardInteraction.replace(next);
         const target = next.intent.source;
         const action =
           next.intent.kind === 'resize'
@@ -2258,7 +1843,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       store.scheduleViewportMeasurement(measurement);
     },
 
-    navigateViewport,
+    navigateViewport: (input) => viewportController.navigate(input),
 
     panPointerCancel(pointerId) {
       return panPointerEnd(pointerId).handled;
@@ -2274,18 +1859,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
     pointerCancel(pointerId) {
       if (
-        (gesture.status !== 'pressed' && gesture.status !== 'active') ||
-        gesture.pointerId !== pointerId
+        (pointerGesture.state.status !== 'pressed' && pointerGesture.state.status !== 'active') ||
+        pointerGesture.state.pointerId !== pointerId
       ) {
         return false;
       }
-      gesture = reduceInteractionGesture(
-        gesture,
-        { type: 'cancel' },
-        interactionOptions(gestureGeometry!),
-      );
-      gesture = IDLE_INTERACTION_GESTURE;
-      gestureGeometry = undefined;
+      pointerGesture.transition({ type: 'cancel' }, interactionOptions(pointerGesture.geometry!));
+      pointerGesture.reset();
       setInteraction(
         Object.freeze({
           announcement: 'Interaction cancelled.',
@@ -2298,10 +1878,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     pointerDown(input) {
       if (
         disposed ||
-        keyboardGesture !== undefined ||
-        panGesture.status !== 'idle' ||
-        gesture.status === 'pressed' ||
-        gesture.status === 'active' ||
+        keyboardInteraction.state !== undefined ||
+        !viewportPan.isIdle() ||
+        pointerGesture.state.status === 'pressed' ||
+        pointerGesture.state.status === 'active' ||
         composedInteraction().status === 'pending'
       ) {
         return false;
@@ -2325,8 +1905,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (next.status !== 'pressed') {
         return false;
       }
-      gesture = next;
-      gestureGeometry = input.geometry;
+      pointerGesture.set(next, input.geometry);
       const target = hitTarget(next);
       if (target.kind === 'task') {
         selectPointerTarget(target);
@@ -2344,21 +1923,22 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
     pointerMove(input) {
       if (
-        (gesture.status !== 'pressed' && gesture.status !== 'active') ||
-        gesture.pointerId !== input.pointerId
+        (pointerGesture.state.status !== 'pressed' && pointerGesture.state.status !== 'active') ||
+        pointerGesture.state.pointerId !== input.pointerId
       ) {
         return false;
       }
       const pressedTask =
-        gesture.status === 'pressed' && gesture.hit.kind !== 'timeline-position'
-          ? gesture.hit.task.primitive
+        pointerGesture.state.status === 'pressed' &&
+        pointerGesture.state.hit.kind !== 'timeline-position'
+          ? pointerGesture.state.hit.task.primitive
           : undefined;
       if (pressedTask !== undefined && pressedTask.presentation.kind !== 'task') {
         return false;
       }
       const options = interactionOptions(input.geometry);
       const next = reduceInteractionGesture(
-        gesture,
+        pointerGesture.state,
         {
           ...(input.candidateViewKey === undefined
             ? {}
@@ -2372,8 +1952,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         },
         options,
       );
-      gesture = next;
-      gestureGeometry = input.geometry;
+      pointerGesture.set(next, input.geometry);
       if (next.status !== 'active') {
         return false;
       }
@@ -2402,21 +1981,20 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
 
     async pointerUp(pointerId) {
       if (
-        (gesture.status !== 'pressed' && gesture.status !== 'active') ||
-        gesture.pointerId !== pointerId ||
-        gestureGeometry === undefined
+        (pointerGesture.state.status !== 'pressed' && pointerGesture.state.status !== 'active') ||
+        pointerGesture.state.pointerId !== pointerId ||
+        pointerGesture.geometry === undefined
       ) {
         return;
       }
-      const previous = gesture;
-      const geometry = gestureGeometry;
+      const previous = pointerGesture.state;
+      const geometry = pointerGesture.geometry;
       const released = reduceInteractionGesture(
-        gesture,
+        pointerGesture.state,
         { pointerId, type: 'release' },
         interactionOptions(geometry),
       );
-      gesture = IDLE_INTERACTION_GESTURE;
-      gestureGeometry = undefined;
+      pointerGesture.reset();
       if (previous.status === 'pressed') {
         if (previous.hit.kind === 'task-body' || previous.hit.kind === 'task-edge') {
           const target = previous.hit.task.target;
@@ -2521,7 +2099,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const previousSelector = snapshot.selector;
       const previousVersion = snapshot.version;
       display = nextDisplay;
-      rangeProposals.adopt(display.range);
+      rangeController.adopt(display.range);
       inputDiagnostics = nextInputDiagnostics;
       semanticSource = 'controlled-prop';
       try {
@@ -2535,10 +2113,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           rebuild();
         }
         if (
-          keyboardGesture !== undefined &&
-          visibleTarget(keyboardGesture.intent.source) === undefined
+          keyboardInteraction.state !== undefined &&
+          visibleTarget(keyboardInteraction.state.intent.source) === undefined
         ) {
-          keyboardGesture = undefined;
+          keyboardInteraction.clear();
           setInteraction(
             Object.freeze({
               announcement: display.localization.message(
@@ -2551,10 +2129,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           );
         }
         if (
-          dependencyLink !== undefined &&
-          catalogOccurrence(dependencyLink.source) === undefined
+          dependencyLinks.state !== undefined &&
+          catalogOccurrence(dependencyLinks.state.source) === undefined
         ) {
-          dependencyLink = undefined;
+          dependencyLinks.clear();
           setInteraction(
             Object.freeze({
               announcement: display.localization.message(
@@ -2566,15 +2144,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
             }),
           );
         } else if (
-          dependencyLink?.candidate !== undefined &&
-          catalogOccurrence(dependencyLink.candidate) === undefined
+          dependencyLinks.state?.candidate !== undefined &&
+          catalogOccurrence(dependencyLinks.state.candidate) === undefined
         ) {
-          dependencyLink = Object.freeze({
-            ...(dependencyLink.pointerType === undefined
-              ? {}
-              : { pointerType: dependencyLink.pointerType }),
-            source: dependencyLink.source,
-          });
+          dependencyLinks.update();
           publishDependencyLink();
         }
       } finally {
@@ -2673,20 +2246,15 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     },
 
     updateDependencyLink(viewKey) {
-      if (dependencyLink === undefined) return false;
+      if (dependencyLinks.state === undefined) return false;
       const candidate = snapshot.selector.occurrences.find(
         (occurrence) => occurrence.target.viewKey === viewKey,
       )?.target;
-      if (candidate === undefined || candidate.taskId === dependencyLink.source.taskId) {
-        if (dependencyLink.candidate === undefined) return false;
-        dependencyLink = Object.freeze({
-          ...(dependencyLink.pointerType === undefined
-            ? {}
-            : { pointerType: dependencyLink.pointerType }),
-          source: dependencyLink.source,
-        });
+      if (candidate === undefined || candidate.taskId === dependencyLinks.state.source.taskId) {
+        if (dependencyLinks.state.candidate === undefined) return false;
+        dependencyLinks.update();
       } else {
-        dependencyLink = Object.freeze({ ...dependencyLink, candidate });
+        dependencyLinks.update(candidate);
       }
       publishDependencyLink();
       return true;
@@ -2696,7 +2264,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       callbacks = props;
     },
 
-    zoomTo: (level, options) => zoomLevel(level, options, 'runtime'),
+    zoomTo: (level, options) => viewportController.zoomLevel(level, options, 'runtime'),
   };
   return Object.freeze(runtime);
 }
