@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 2 complete
+Status: In progress; Slice 3 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -472,7 +472,7 @@ Dependencies: Slice 1.
 
 ### Slice 3: Extract stable lane, task, dependency, and accessibility components
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: make the visual chart a composition of meaningful private renderer units while
 preserving exact markup and paint order.
@@ -507,6 +507,20 @@ Verification:
 - `mise run ci`.
 
 Dependencies: Slice 2.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/Gantt*.test.tsx
+  packages/gantt/src/react/surface/*.test.ts` passed 11 files / 97 tests;
+- the fixed `m4-appendix-scene-v1` benchmark reported 44.5118 cold builds/s,
+  86.0766 warm label updates/s, 83.9386 warm appearance/progress updates/s, and
+  5756.74 vertical viewport queries/s for 2,000 tasks across 400 lanes;
+- the fixed `m5-project-v1` benchmark reported 9.3100 cold builds/s, 8.5435
+  collapse updates/s, 8.2482 filter updates/s, 8.5908 dependency updates/s, and
+  10.7357 zoom updates/s for 2,000 tasks, 400 summaries, and 1,599 dependencies;
+- `git diff --check` passed;
+- `mise run ci` passed on 2026-08-01: 93 test files / 490 tests, 224 formatted
+  files, 213 lint/type files, and the 180-artifact package build.
 
 ### Slice 4: Isolate item subscriptions and render fan-out
 
@@ -839,11 +853,26 @@ These are implementation judgments, not reasons to change the public API:
 - `Gantt.tsx` fell from the 4,028-line planning baseline to 3,500 lines without a DOM,
   accessibility, runtime, style, or public API change.
 
+### 2026-08-01 — Slice 3 semantic chart composition
+
+- Added one React-private per-scene surface model for resolved columns, lane widths,
+  task lookup, task DOM IDs grouped by lane, lane summaries, and dependency summaries.
+  This removes repeated visible-task filtering and dependency searches from the render
+  tree without moving React-only indexes into the renderer snapshot.
+- Extracted cohesive task and dependency items/layers, lane/grid cells, time and zoom
+  controls, accessibility mirrors, and interaction/progress previews. DOM/SVG order,
+  keys, IDs, class and slot call sites, accessibility ownership, and public exports
+  remain unchanged.
+- Task and dependency target-state subscriptions now live at their item boundaries;
+  Slice 4 owns the measured parent render isolation and ordinary `memo` decisions.
+- `Gantt.tsx` fell from 3,500 to 2,705 lines. The fixed scene benchmarks retained
+  their expected fixture shapes and completed before the full gate.
+
 ## Next Slice
 
-Start Slice 3 in `packages/gantt/src/react/Gantt.tsx` and the new
-`packages/gantt/src/react/surface/` folder. Build one per-scene `surface-model.ts`
-index first, then extract task, dependency, lane, time/grid/control, accessible, and
-preview components while preserving the Slice 1 structure assertions and exact SVG
-paint order. Run focused DOM/project/customization/localization/keyboard tests, scene
-benchmarks, and `mise run ci` before marking Slice 3 done.
+Start Slice 4 at the new task, dependency, and lane boundaries. Stabilize only the
+inputs that the render probes prove unstable, apply ordinary `memo` where shallow
+props are sufficient, and convert the characterized unrelated Task B and Lane B
+renders to zero-render assertions while retaining immediate custom slot/class
+updates. Run the focused render-isolation and React behavior suites, current runtime
+interaction and scene benchmarks, and `mise run ci` before marking Slice 4 done.

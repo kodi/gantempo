@@ -20,7 +20,6 @@ import {
   type RefAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, EllipsisVertical, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 
 import { createGanttLocalization, type GanttLocalization } from '../localization/format';
 import { adjacentTimeScaleLevel } from '../time/adaptive-scale';
@@ -43,7 +42,6 @@ import {
   DefaultDependencyProperties,
   DefaultItemProperties,
   DefaultLaneHeader,
-  DefaultTaskContent,
   DefaultTaskEditor,
   DefaultTooltip,
 } from './surfaces';
@@ -57,29 +55,33 @@ import {
   validateItemPropertiesValue,
   validateTaskEditorValue,
 } from './surface/editor-commands';
+import { AccessibleDependencies } from './surface/AccessibleDependencies';
+import { AccessibleTreeGrid } from './surface/AccessibleTreeGrid';
+import { DependencyLayer } from './surface/DependencyLayer';
+import { GridLayer } from './surface/GridLayer';
 import {
-  appearanceStyle,
-  branchTriggerStyle,
-  clippedBarGeometry,
+  DependencyPreview,
+  InteractionPreview,
+  ProgressPreviewValue,
+} from './surface/InteractionPreview';
+import { LaneGrid } from './surface/LaneGrid';
+import { LaneTimelineCells } from './surface/LaneTimelineCells';
+import {
   idleClassState,
   inspectionSelectionKey,
   joinClasses,
-  lanePropertiesTriggerStyle,
-  laneStyle,
   laneSummary,
-  percent,
-  progressEndpointX,
   resolveClassName,
-  TASK_BAR_RADIUS,
-  targetStateEqual,
-  targetsInteraction,
-  taskAccessibleName,
   taskSummary,
   taskTarget,
 } from './surface/presentation';
+import { TaskLayer } from './surface/TaskLayer';
+import { TimeHeader } from './surface/TimeHeader';
+import { ZoomControls } from './surface/ZoomControls';
+import { buildGanttSurfaceModel } from './surface/surface-model';
 import type {
-  GanttClassNameState,
   GanttContextMenuItem,
+  GanttDependencySummary,
   GanttDependencyPropertiesValue,
   GanttHandle,
   GanttInteractionState,
@@ -117,8 +119,6 @@ interface EditorOverlay {
 }
 
 type OverlayBoundary = 'root' | 'viewport';
-
-const LANE_PROPERTIES_COLUMN_WIDTH = 44;
 
 const OVERLAY_SAFE_AREA = 8;
 const THEME_PROPERTIES = [
@@ -350,326 +350,6 @@ function keyboardActionForEvent(
   return event.key === 'Delete' || event.key === 'Backspace' ? { type: 'delete' } : undefined;
 }
 
-function GanttTask({
-  classNames,
-  direction,
-  describedBy,
-  disabled,
-  domId,
-  onActivate,
-  onContextMenu,
-  onFocus,
-  onMouseEnter,
-  onMouseLeave,
-  onLinkPointerDown,
-  linkEnabled,
-  localization,
-  slots,
-  task,
-  progressEditable,
-  tabIndex,
-  timelineHeight,
-}: {
-  readonly classNames?: GanttProps['classNames'];
-  readonly direction: 'ltr' | 'rtl';
-  readonly describedBy: string;
-  readonly disabled: boolean;
-  readonly domId: string;
-  readonly onActivate: (task: TaskBarPrimitive) => void;
-  readonly onContextMenu: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
-  readonly onFocus: (event: ReactFocusEvent<SVGGElement>, task: TaskBarPrimitive) => void;
-  readonly onMouseEnter: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
-  readonly onMouseLeave: (event: ReactMouseEvent<SVGGElement>, task: TaskBarPrimitive) => void;
-  readonly onLinkPointerDown: (
-    event: ReactPointerEvent<SVGCircleElement>,
-    task: TaskBarPrimitive,
-  ) => void;
-  readonly linkEnabled: boolean;
-  readonly localization: GanttLocalization;
-  readonly slots?: GanttProps['slots'];
-  readonly task: TaskBarPrimitive;
-  readonly progressEditable: boolean;
-  readonly tabIndex: -1 | 0;
-  readonly timelineHeight: number;
-}): ReactElement {
-  const [selected, focused, pressing, dragging, resizing, progressing, pending, rejected] =
-    useGanttSelector((snapshot) => {
-      const targeted = targetsInteraction(snapshot.interaction, task.viewKey);
-      return [
-        snapshot.session.selection.some(
-          (target) => target.kind === 'task' && target.viewKey === task.viewKey,
-        ),
-        snapshot.session.focused?.kind === 'task' &&
-          snapshot.session.focused.viewKey === task.viewKey,
-        targeted && snapshot.interaction.status === 'pressing',
-        targeted &&
-          (snapshot.interaction.status === 'dragging' ||
-            (snapshot.interaction.status === 'keyboard' && snapshot.interaction.action === 'move')),
-        targeted &&
-          (snapshot.interaction.status === 'resizing' ||
-            (snapshot.interaction.status === 'keyboard' &&
-              snapshot.interaction.action === 'resize')),
-        targeted &&
-          (snapshot.interaction.status === 'progressing' ||
-            (snapshot.interaction.status === 'keyboard' &&
-              snapshot.interaction.action === 'progress')),
-        targeted && snapshot.interaction.status === 'pending',
-        targeted && snapshot.interaction.status === 'rejected',
-      ] as const;
-    }, targetStateEqual);
-  const accessibleName = taskAccessibleName(task, localization);
-  const summary = taskSummary(task);
-  const appearance = task.appearance;
-  const state = Object.freeze({
-    disabled,
-    dragging,
-    focused,
-    invalid: rejected,
-    pending,
-    progressing,
-    resizing,
-    selected,
-    target: summary.target,
-  }) satisfies GanttClassNameState;
-  const TaskContent = slots?.TaskContent ?? DefaultTaskContent;
-  const geometry = task.presentation.geometry;
-  const ordinaryTask = geometry.kind === 'bar';
-  const trackGeometry = clippedBarGeometry(
-    task.x,
-    task.width,
-    direction,
-    ordinaryTask && task.clippedStart,
-    ordinaryTask && task.clippedEnd,
-  );
-  const progressGeometry =
-    task.progress === undefined
-      ? undefined
-      : clippedBarGeometry(
-          task.progress.x,
-          task.progress.width,
-          direction,
-          ordinaryTask && task.clippedStart,
-          ordinaryTask && task.clippedEnd && task.progress.width === task.width,
-        );
-  const progressHandleX = progressEndpointX(task, direction);
-  const trackClass = joinClasses(
-    geometry.kind === 'summary'
-      ? 'gt-gantt__task-summary'
-      : geometry.kind === 'milestone'
-        ? 'gt-gantt__task-milestone'
-        : 'gt-gantt__task-bar',
-    resolveClassName(
-      geometry.kind === 'summary'
-        ? classNames?.summary
-        : geometry.kind === 'milestone'
-          ? classNames?.milestone
-          : undefined,
-      state,
-    ),
-  );
-  return (
-    <g
-      aria-describedby={describedBy}
-      aria-disabled={disabled || undefined}
-      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Space Enter L M P S E N Delete Backspace Control+Z Meta+Z Control+Y Meta+Shift+Z"
-      aria-label={accessibleName}
-      aria-pressed={selected}
-      className={resolveClassName(classNames?.task, state)}
-      data-assignment-id={task.assignmentId}
-      data-clipped-end={task.clippedEnd || undefined}
-      data-clipped-start={task.clippedStart || undefined}
-      data-disabled={disabled || undefined}
-      data-dragging={dragging || undefined}
-      data-focused={focused || undefined}
-      data-pending={pending || undefined}
-      data-progressing={progressing || undefined}
-      data-pressing={pressing || undefined}
-      data-rejected={rejected || undefined}
-      data-resizing={resizing || undefined}
-      data-gt-part="task"
-      data-gt-appearance-resolution={appearance?.resolution}
-      data-gt-appearance-source={appearance?.source}
-      data-gt-variant={appearance?.variant}
-      data-lane-id={task.laneId}
-      data-task-kind={task.presentation.kind}
-      data-lane-view-key={task.laneViewKey}
-      data-placement-id={task.placementId}
-      data-resource-id={task.resourceId}
-      data-segment-id={task.segmentId}
-      data-selected={selected || undefined}
-      data-task-id={task.taskId}
-      data-view-key={task.viewKey}
-      focusable="true"
-      id={domId}
-      onClick={() => onActivate(task)}
-      onContextMenu={(event) => onContextMenu(event, task)}
-      onFocus={(event) => onFocus(event, task)}
-      onMouseEnter={(event) => onMouseEnter(event, task)}
-      onMouseLeave={(event) => onMouseLeave(event, task)}
-      role="button"
-      style={appearanceStyle(appearance)}
-      tabIndex={tabIndex}
-    >
-      {geometry.kind === 'milestone' ? (
-        <rect
-          className={trackClass}
-          data-gt-part="milestone"
-          height={geometry.size}
-          width={geometry.size}
-          x={percent(geometry.centerX)}
-          y={percent((task.y + task.height / 2) / timelineHeight)}
-          style={{
-            transform: `translate(${-geometry.size / 2}px, ${-geometry.size / 2}px) rotate(45deg) scale(0.72)`,
-          }}
-        />
-      ) : (
-        <rect
-          className={trackClass}
-          data-gt-part={geometry.kind === 'summary' ? 'summary' : 'task-track'}
-          height={percent(
-            (geometry.kind === 'summary' ? geometry.capHeight : task.height) / timelineHeight,
-          )}
-          rx={geometry.kind === 'summary' ? undefined : TASK_BAR_RADIUS}
-          width={geometry.kind === 'summary' ? percent(task.width) : trackGeometry.width}
-          x={geometry.kind === 'summary' ? percent(task.x) : trackGeometry.x}
-          y={percent(
-            (geometry.kind === 'summary'
-              ? task.y + (task.height - geometry.capHeight) / 2
-              : task.y) / timelineHeight,
-          )}
-        />
-      )}
-      {task.progress !== undefined && task.progress.width > 0 ? (
-        <rect
-          aria-hidden="true"
-          className="gt-gantt__task-progress"
-          data-gt-part="task-progress"
-          data-progress={task.progress.value}
-          height={percent(
-            (geometry.kind === 'summary' ? geometry.capHeight : task.height) / timelineHeight,
-          )}
-          rx={geometry.kind === 'summary' ? undefined : TASK_BAR_RADIUS}
-          width={
-            geometry.kind === 'summary' ? percent(task.progress.width) : progressGeometry?.width
-          }
-          x={geometry.kind === 'summary' ? percent(task.progress.x) : progressGeometry?.x}
-          y={percent(
-            (geometry.kind === 'summary'
-              ? task.y + (task.height - geometry.capHeight) / 2
-              : task.y) / timelineHeight,
-          )}
-        />
-      ) : null}
-      <foreignObject
-        height={percent(task.height / timelineHeight)}
-        width={geometry.kind === 'milestone' ? '120' : percent(task.width)}
-        x={
-          geometry.kind === 'milestone'
-            ? direction === 'rtl'
-              ? `calc(${percent(geometry.centerX)} - ${geometry.size / 2 + 124}px)`
-              : `calc(${percent(geometry.centerX)} + ${geometry.size / 2 + 4}px)`
-            : percent(task.x)
-        }
-        y={percent(task.y / timelineHeight)}
-      >
-        <div
-          className={joinClasses(
-            'gt-gantt__task-label',
-            resolveClassName(classNames?.taskContent, state),
-          )}
-          data-gt-part="task-content"
-        >
-          <TaskContent {...state} task={summary} />
-        </div>
-      </foreignObject>
-      {linkEnabled ? (
-        <>
-          <circle
-            aria-hidden="true"
-            className="gt-gantt__link-handle-hit"
-            cx={`calc(${percent(
-              geometry.kind === 'milestone'
-                ? geometry.centerX
-                : direction === 'rtl'
-                  ? task.x
-                  : task.x + task.width,
-            )} ${direction === 'rtl' ? '-' : '+'} 10px)`}
-            cy={percent((task.y + task.height / 2) / timelineHeight)}
-            data-gt-part="link-handle-hit-target"
-            onPointerDown={(event) => onLinkPointerDown(event, task)}
-            r="22"
-          />
-          <circle
-            aria-hidden="true"
-            className={joinClasses(
-              'gt-gantt__link-handle',
-              resolveClassName(classNames?.linkHandle, state),
-            )}
-            cx={`calc(${percent(
-              geometry.kind === 'milestone'
-                ? geometry.centerX
-                : direction === 'rtl'
-                  ? task.x
-                  : task.x + task.width,
-            )} ${direction === 'rtl' ? '-' : '+'} 10px)`}
-            cy={percent((task.y + task.height / 2) / timelineHeight)}
-            data-gt-part="link-handle"
-            pointerEvents="none"
-            r="4"
-          />
-        </>
-      ) : null}
-      {ordinaryTask ? (
-        <rect
-          aria-hidden="true"
-          className={resolveClassName(classNames?.resizeHandle, state)}
-          data-edge="start"
-          data-gt-part="resize-handle"
-          height={percent(task.height / timelineHeight)}
-          width="8"
-          x={percent(direction === 'rtl' ? task.x + task.width : task.x)}
-          y={percent(task.y / timelineHeight)}
-        />
-      ) : null}
-      {progressEditable ? (
-        <>
-          <rect
-            aria-hidden="true"
-            data-gt-part="progress-hit-target"
-            data-progress={task.progress?.value ?? 0}
-            height={percent(task.height / timelineHeight)}
-            width="12"
-            x={percent(progressHandleX)}
-            y={percent(task.y / timelineHeight)}
-          />
-          <rect
-            aria-hidden="true"
-            className={resolveClassName(classNames?.progressHandle, state)}
-            data-gt-part="progress-handle"
-            data-progress={task.progress?.value ?? 0}
-            height={percent(task.height / timelineHeight)}
-            width="2"
-            x={percent(progressHandleX)}
-            y={percent(task.y / timelineHeight)}
-          />
-        </>
-      ) : null}
-      {ordinaryTask ? (
-        <rect
-          aria-hidden="true"
-          className={resolveClassName(classNames?.resizeHandle, state)}
-          data-edge="end"
-          data-gt-part="resize-handle"
-          height={percent(task.height / timelineHeight)}
-          width="8"
-          x={percent(direction === 'rtl' ? task.x : task.x + task.width)}
-          y={percent(task.y / timelineHeight)}
-        />
-      ) : null}
-    </g>
-  );
-}
-
 function GanttSurface({
   appearanceVariants,
   bodyRef,
@@ -764,41 +444,25 @@ function GanttSurface({
     () => Object.freeze([...createAppearanceRegistry(appearanceVariants).byId.values()]),
     [appearanceVariants],
   );
-  const resolvedColumns = useMemo<readonly GanttLaneColumn[]>(() => {
-    if (columns !== undefined && columns.length > 0) {
-      return columns;
-    }
-    return Object.freeze([
-      Object.freeze({
-        header: 'Work item',
-        id: 'title',
-        width: scene.bounds.laneColumnWidth,
-      }),
-    ]);
-  }, [columns, scene.bounds.laneColumnWidth]);
-  const columnWidths = useMemo(
+  const {
+    columnTemplate,
+    dependencySummaryById,
+    laneColumnWidth,
+    laneSummaries,
+    resolvedColumns,
+    taskByViewKey,
+    taskDomIds,
+    taskDomIdsByLane,
+  } = useMemo(
     () =>
-      resolvedColumns.map((column) =>
-        Number.isFinite(column.width) && (column.width ?? 0) > 0
-          ? Math.max(72, column.width!)
-          : resolvedColumns.length === 1
-            ? scene.bounds.laneColumnWidth
-            : 120,
-      ),
-    [resolvedColumns, scene.bounds.laneColumnWidth],
-  );
-  const laneColumnWidth =
-    columnWidths.reduce((total, width) => total + width, 0) +
-    (propertiesEnabled ? LANE_PROPERTIES_COLUMN_WIDTH : 0);
-  const columnTemplate = [
-    ...columnWidths,
-    ...(propertiesEnabled ? [LANE_PROPERTIES_COLUMN_WIDTH] : []),
-  ]
-    .map((width) => `${width}px`)
-    .join(' ');
-  const taskByViewKey = useMemo(
-    () => new Map(scene.taskBars.map((task) => [task.viewKey, task])),
-    [scene.taskBars],
+      buildGanttSurfaceModel({
+        accessibilityId,
+        columns,
+        dependencySummaries,
+        propertiesEnabled,
+        scene,
+      }),
+    [accessibilityId, columns, dependencySummaries, propertiesEnabled, scene],
   );
   const progressEditableTaskIds = useMemo(
     () =>
@@ -808,17 +472,6 @@ function GanttSurface({
           : canonicalDocument.tasks.filter((task) => task.kind === 'task').map((task) => task.id),
       ),
     [canonicalDocument.tasks, disabled],
-  );
-  const laneSummaries = useMemo(
-    () => new Map(scene.lanes.map((lane) => [lane.viewKey, laneSummary(lane)])),
-    [scene.lanes],
-  );
-  const taskDomIds = useMemo(
-    () =>
-      new Map(
-        scene.taskBars.map((task, index) => [task.viewKey, `${accessibilityId}-task-${index}`]),
-      ),
-    [accessibilityId, scene.taskBars],
   );
   const focusedViewKey =
     focused?.kind === 'task' && scene.taskBars.some((task) => task.viewKey === focused.viewKey)
@@ -844,9 +497,7 @@ function GanttSurface({
       ? scene.lanes.find((lane) => lane.viewKey === editor.viewKey)
       : undefined;
   const activeEditorDependency =
-    editor?.kind === 'dependency'
-      ? dependencySummaries.find((dependency) => dependency.target.dependencyId === editor.viewKey)
-      : undefined;
+    editor?.kind === 'dependency' ? dependencySummaryById.get(editor.viewKey) : undefined;
   const activeDependencyValue: GanttDependencyPropertiesValue | undefined =
     activeEditorDependency === undefined
       ? undefined
@@ -1409,12 +1060,14 @@ function GanttSurface({
     },
     [propertiesEnabled, runtime, scene.lanes],
   );
+  const onToggleProject = useCallback(
+    (taskId: string, expanded: boolean) => runtime.toggleProjectTask(taskId, expanded),
+    [runtime],
+  );
   const openDependencyProperties = useCallback(
     (dependencyId: string): boolean => {
       if (!propertiesEnabled) return false;
-      const dependency = dependencySummaries.find(
-        (candidate) => candidate.target.dependencyId === dependencyId,
-      );
+      const dependency = dependencySummaryById.get(dependencyId);
       if (dependency === undefined) return false;
       runtime.inspectDependency(dependencyId);
       setTooltip(undefined);
@@ -1428,7 +1081,33 @@ function GanttSurface({
       });
       return true;
     },
-    [dependencySummaries, propertiesEnabled, runtime],
+    [dependencySummaryById, propertiesEnabled, runtime],
+  );
+  const onDependencyActivate = useCallback(
+    (dependencyId: string) => runtime.inspectDependency(dependencyId),
+    [runtime],
+  );
+  const onDependencyDelete = useCallback(
+    (summary: GanttDependencySummary) => {
+      void runtime.dispatchAction(
+        { id: summary.dependency.id, type: 'dependency.delete' },
+        {
+          action: 'delete',
+          source: { kind: 'context-menu' },
+          target: summary.target,
+        },
+      );
+    },
+    [runtime],
+  );
+  const onFit = useCallback(() => {
+    runtime.fitToProject();
+  }, [runtime]);
+  const onZoom = useCallback(
+    (level: Parameters<GanttReactRuntime['zoomTo']>[0]) => {
+      runtime.zoomTo(level);
+    },
+    [runtime],
   );
   const openContextMenu = useCallback(
     (element: Element, task: TaskBarPrimitive, clientX?: number, clientY?: number): boolean => {
@@ -2560,180 +2239,32 @@ function GanttSurface({
           : ''}
       </p>
       {panCapable ? (
-        <div
-          aria-label="Timeline zoom"
-          className="gt-gantt__zoom-controls"
-          data-gt-part="zoom-controls"
-        >
-          <button
-            aria-label={localization.message('zoom.in')}
-            onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'in'))}
-            type="button"
-          >
-            <ZoomIn aria-hidden="true" size={15} />
-          </button>
-          <button
-            aria-label={localization.message('zoom.out')}
-            onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'out'))}
-            type="button"
-          >
-            <ZoomOut aria-hidden="true" size={15} />
-          </button>
-          <button
-            aria-label={localization.message('zoom.fit')}
-            onClick={() => runtime.fitToProject()}
-            type="button"
-          >
-            <Maximize2 aria-hidden="true" size={15} />
-          </button>
-        </div>
+        <ZoomControls
+          localization={localization}
+          onFit={onFit}
+          onZoom={onZoom}
+          scaleLevel={scaleLevel}
+        />
       ) : null}
-      {dependencySummaries.length > 0 ? (
-        <section
-          aria-label={localization.message('dependency.relationships')}
-          className="gt-gantt__sr-only"
-          data-gt-part="dependency-summaries"
-        >
-          <h2>{localization.message('dependency.relationships')}</h2>
-          <ul>
-            {dependencySummaries.map((summary, index) => (
-              <li
-                data-dependency-id={summary.dependency.id}
-                data-hidden-endpoint={summary.hiddenEndpoint || undefined}
-                data-status={summary.status}
-                data-visualized={
-                  scene.dependencyPaths.some(
-                    (dependency) => dependency.dependencyId === summary.dependency.id,
-                  ) || undefined
-                }
-                key={`${summary.dependency.id}:${index}`}
-              >
-                {summary.fromTitle} to {summary.toTitle},{' '}
-                {localization.message(
-                  `dependency.type.${summary.dependency.type}`,
-                  undefined,
-                  summary.dependency.type.replaceAll('-', ' '),
-                )}
-                {summary.hiddenEndpoint
-                  ? `, ${localization.message('dependency.hidden-endpoint')}`
-                  : ''}
-                {summary.status === 'invalid'
-                  ? `, ${localization.message('dependency.invalid')}`
-                  : ''}
-                <button
-                  onClick={() => runtime.inspectDependency(summary.dependency.id)}
-                  type="button"
-                >
-                  {localization.message(
-                    'dependency.edit',
-                    { source: summary.fromTitle, target: summary.toTitle },
-                    'Inspect {source} to {target}',
-                  )}
-                </button>
-                {propertiesEnabled ? (
-                  <button
-                    onClick={() => openDependencyProperties(summary.dependency.id)}
-                    type="button"
-                  >
-                    {localization.message(
-                      disabled ? 'properties.view' : 'dependency.edit',
-                      undefined,
-                      disabled ? 'View dependency' : 'Edit dependency',
-                    )}
-                  </button>
-                ) : null}
-                <button
-                  disabled={disabled}
-                  onClick={() =>
-                    void runtime.dispatchAction(
-                      { id: summary.dependency.id, type: 'dependency.delete' },
-                      {
-                        action: 'delete',
-                        source: { kind: 'context-menu' },
-                        target: summary.target,
-                      },
-                    )
-                  }
-                  type="button"
-                >
-                  {localization.message('dependency.delete')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      <div
-        aria-colcount={resolvedColumns.length + 1}
-        aria-describedby={helpId}
-        aria-label={`${label} task grid`}
-        aria-multiselectable="true"
-        aria-rowcount={scene.emptyState ? 2 : scene.lanes.length + 1}
-        className="gt-gantt__sr-only"
-        role="treegrid"
-      >
-        <div aria-rowindex={1} role="row">
-          {resolvedColumns.map((column, index) => (
-            <span aria-colindex={index + 1} key={column.id} role="columnheader">
-              {column.header}
-            </span>
-          ))}
-          <span aria-colindex={resolvedColumns.length + 1} role="columnheader">
-            Timeline
-          </span>
-        </div>
-        <div role="rowgroup">
-          {scene.emptyState ? (
-            <div aria-rowindex={2} role="row">
-              {resolvedColumns.map((column, index) => (
-                <span
-                  aria-colindex={index + 1}
-                  key={column.id}
-                  role={index === 0 ? 'rowheader' : 'gridcell'}
-                >
-                  {index === 0 ? scene.emptyState?.title : null}
-                </span>
-              ))}
-              <span aria-colindex={resolvedColumns.length + 1} role="gridcell">
-                {scene.emptyState.description}
-              </span>
-            </div>
-          ) : (
-            scene.lanes.map((lane, laneIndex) => (
-              <div
-                aria-expanded={lane.project?.hasChildren ? lane.project.expanded : undefined}
-                aria-level={(lane.project?.depth ?? 0) + 1}
-                aria-rowindex={laneIndex + 2}
-                id={`${accessibilityId}-row-${laneIndex}`}
-                key={lane.viewKey}
-                role="row"
-              >
-                {resolvedColumns.map((column, columnIndex) => (
-                  <span
-                    aria-colindex={columnIndex + 1}
-                    key={column.id}
-                    role={columnIndex === 0 ? 'rowheader' : 'gridcell'}
-                  >
-                    {renderLaneColumn(column, lane.viewKey)}
-                  </span>
-                ))}
-                <span
-                  aria-colindex={resolvedColumns.length + 1}
-                  aria-label={`${lane.title} timeline`}
-                  aria-owns={
-                    scene.taskBars
-                      .filter((task) => task.laneViewKey === lane.viewKey)
-                      .map((task) => taskDomIds.get(task.viewKey))
-                      .filter((id): id is string => id !== undefined)
-                      .join(' ') || undefined
-                  }
-                  role="gridcell"
-                />
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      <AccessibleDependencies
+        dependencies={dependencySummaries}
+        disabled={disabled}
+        localization={localization}
+        onDelete={onDependencyDelete}
+        onInspect={onDependencyActivate}
+        onOpenProperties={openDependencyProperties}
+        propertiesEnabled={propertiesEnabled}
+        scene={scene}
+      />
+      <AccessibleTreeGrid
+        accessibilityId={accessibilityId}
+        helpId={helpId}
+        label={label}
+        renderLaneColumn={renderLaneColumn}
+        resolvedColumns={resolvedColumns}
+        scene={scene}
+        taskDomIdsByLane={taskDomIdsByLane}
+      />
       <div
         className={joinClasses(
           'gt-gantt__table',
@@ -2761,29 +2292,13 @@ function GanttSurface({
             />
           ) : null}
         </div>
-        <div
-          aria-hidden="true"
-          className="gt-gantt__time-header"
-          data-gt-part="time-header"
-          onLostPointerCapture={onHeaderPointerCancel}
+        <TimeHeader
           onPointerCancel={onHeaderPointerCancel}
           onPointerDown={onHeaderPointerDown}
           onPointerMove={onHeaderPointerMove}
           onPointerUp={onHeaderPointerUp}
-        >
-          {scene.ticks
-            .filter((tick) => tick.kind !== 'minor')
-            .map((tick) => (
-              <span
-                data-edge={tick.x < 0.05 ? 'start' : tick.x > 0.95 ? 'end' : undefined}
-                key={tick.time}
-                style={{ left: percent(tick.x) }}
-              >
-                {tick.label}
-              </span>
-            ))}
-        </div>
-
+          scene={scene}
+        />
         {scene.emptyState ? (
           <div aria-hidden="true" className="gt-gantt__empty" data-gt-part="empty-state">
             <strong>{scene.emptyState.title}</strong>
@@ -2792,115 +2307,20 @@ function GanttSurface({
         ) : (
           <div className="gt-gantt__body-scroll" data-gt-part="viewport" ref={bodyRef}>
             <div className="gt-gantt__body" style={{ height: scene.bounds.timelineHeight }}>
-              <div className="gt-gantt__lanes" data-gt-part="lane-list">
-                {scene.lanes.map((lane) => (
-                  <div
-                    aria-hidden="true"
-                    className={joinClasses(
-                      'gt-gantt__lane',
-                      resolveClassName(
-                        classNames?.lane,
-                        idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
-                      ),
-                    )}
-                    data-lane-id={lane.laneId}
-                    data-gt-appearance-resolution={lane.appearance?.resolution}
-                    data-gt-appearance-source={lane.appearance?.source}
-                    data-gt-part="lane"
-                    data-gt-variant={lane.appearance?.variant}
-                    data-resource-id={lane.resourceId}
-                    data-view-key={lane.viewKey}
-                    key={lane.viewKey}
-                    style={{
-                      ...laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight),
-                      ...appearanceStyle(lane.appearance),
-                      gridTemplateColumns: columnTemplate,
-                    }}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="gt-gantt__lane-accent"
-                      data-gt-part="lane-accent"
-                    />
-                    {resolvedColumns.map((column) => (
-                      <div
-                        className={joinClasses(
-                          'gt-gantt__lane-header',
-                          resolveClassName(
-                            classNames?.laneHeader,
-                            idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
-                          ),
-                        )}
-                        data-column-id={column.id}
-                        data-gt-part="lane-header"
-                        key={column.id}
-                        style={
-                          column.id === resolvedColumns[0]?.id && lane.project !== undefined
-                            ? { paddingInlineStart: 38 + lane.project.depth * 16 }
-                            : undefined
-                        }
-                      >
-                        {renderLaneColumn(column, lane.viewKey)}
-                      </div>
-                    ))}
-                    {propertiesEnabled ? (
-                      <div
-                        className="gt-gantt__lane-properties-cell"
-                        data-gt-part="lane-properties-cell"
-                      />
-                    ) : null}
-                  </div>
-                ))}
-                {scene.lanes.map((lane, laneIndex) =>
-                  lane.project?.hasChildren ? (
-                    <button
-                      aria-controls={`${accessibilityId}-row-${laneIndex}`}
-                      aria-expanded={lane.project.expanded}
-                      aria-label={localization.message(
-                        lane.project.expanded ? 'tree.collapse' : 'tree.expand',
-                        { title: lane.title },
-                      )}
-                      className={joinClasses(
-                        'gt-gantt__branch-toggle',
-                        resolveClassName(
-                          classNames?.branchToggle,
-                          idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
-                        ),
-                      )}
-                      data-gt-part="branch-toggle"
-                      data-view-key={lane.viewKey}
-                      key={`${lane.viewKey}:branch`}
-                      onClick={() => {
-                        if (lane.source.kind === 'project-task') {
-                          runtime.toggleProjectTask(lane.source.taskId, !lane.project?.expanded);
-                        }
-                      }}
-                      style={branchTriggerStyle(lane.y, lane.height, lane.project.depth)}
-                      type="button"
-                    >
-                      <ChevronRight aria-hidden="true" />
-                    </button>
-                  ) : null,
-                )}
-                {propertiesEnabled
-                  ? scene.lanes.map((lane) =>
-                      lane.laneId === undefined ? null : (
-                        <button
-                          aria-label={`${lane.title} properties`}
-                          className="gt-gantt__lane-properties-trigger"
-                          data-gt-part="lane-properties-trigger"
-                          data-view-key={lane.viewKey}
-                          key={`${lane.viewKey}:properties`}
-                          onClick={() => openLaneProperties(lane.viewKey)}
-                          style={lanePropertiesTriggerStyle(lane.y, lane.height)}
-                          type="button"
-                        >
-                          <EllipsisVertical aria-hidden="true" />
-                        </button>
-                      ),
-                    )
-                  : null}
-              </div>
+              <LaneGrid
+                accessibilityId={accessibilityId}
+                classNames={classNames}
+                columnTemplate={columnTemplate}
+                disabled={disabled}
+                laneSummaries={laneSummaries}
+                localization={localization}
+                onOpenProperties={openLaneProperties}
+                onToggleProject={onToggleProject}
+                propertiesEnabled={propertiesEnabled}
+                renderLaneColumn={renderLaneColumn}
+                resolvedColumns={resolvedColumns}
+                scene={scene}
+              />
 
               <div
                 className="gt-gantt__timeline"
@@ -2916,26 +2336,12 @@ function GanttSurface({
                 onPointerUp={onPointerUp}
                 ref={timelineRef}
               >
-                <div aria-hidden="true" className="gt-gantt__timeline-cells">
-                  {scene.lanes.map((lane) => (
-                    <div
-                      className={resolveClassName(
-                        classNames?.timelineCell,
-                        idleClassState(disabled, laneSummaries.get(lane.viewKey)!.target),
-                      )}
-                      data-gt-part="timeline-cell"
-                      data-gt-appearance-resolution={lane.appearance?.resolution}
-                      data-gt-appearance-source={lane.appearance?.source}
-                      data-gt-variant={lane.appearance?.variant}
-                      data-view-key={lane.viewKey}
-                      key={lane.viewKey}
-                      style={{
-                        ...laneStyle(lane.y, lane.height, scene.bounds.defaultLaneHeight),
-                        ...appearanceStyle(lane.appearance),
-                      }}
-                    />
-                  ))}
-                </div>
+                <LaneTimelineCells
+                  classNames={classNames}
+                  disabled={disabled}
+                  laneSummaries={laneSummaries}
+                  scene={scene}
+                />
                 <svg role="presentation">
                   <defs>
                     <marker
@@ -2957,252 +2363,51 @@ function GanttSurface({
                       />
                     </marker>
                   </defs>
-                  <g aria-hidden="true" data-gt-part="grid">
-                    {scene.gridLines.map((line) => (
-                      <line
-                        data-tick-kind={line.kind}
-                        key={line.time}
-                        x1={percent(line.x)}
-                        x2={percent(line.x)}
-                        y1="0"
-                        y2="100%"
-                      />
-                    ))}
-                    {scene.lanes.map((lane) => (
-                      <line
-                        className="gt-gantt__row-separator"
-                        key={lane.viewKey}
-                        x1="0"
-                        x2="100%"
-                        y1={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
-                        y2={percent((lane.y + lane.height) / scene.bounds.timelineHeight)}
-                      />
-                    ))}
-                  </g>
+                  <GridLayer scene={scene} />
 
-                  <g data-gt-part="dependencies">
-                    {scene.dependencyPaths.map((dependency) => {
-                      const summary = dependencySummaries.find(
-                        (candidate) => candidate.target.dependencyId === dependency.dependencyId,
-                      );
-                      const target = summary?.target ?? {
-                        dependencyId: dependency.dependencyId,
-                        kind: 'dependency' as const,
-                      };
-                      const selected = selection.some(
-                        (candidate) =>
-                          candidate.kind === 'dependency' &&
-                          candidate.dependencyId === dependency.dependencyId,
-                      );
-                      const dependencyFocused =
-                        focused?.kind === 'dependency' &&
-                        focused.dependencyId === dependency.dependencyId;
-                      const pending =
-                        interaction.status === 'pending' &&
-                        interaction.target?.kind === 'dependency' &&
-                        interaction.target.dependencyId === dependency.dependencyId;
-                      const state = Object.freeze({
-                        ...idleClassState(disabled, target),
-                        focused: dependencyFocused,
-                        invalid: dependency.status === 'invalid',
-                        pending,
-                        selected,
-                      });
-                      return (
-                        <g
-                          aria-disabled={disabled || undefined}
-                          aria-keyshortcuts="Enter Delete Backspace Space"
-                          aria-label={
-                            summary === undefined
-                              ? `Dependency ${dependency.dependencyId}`
-                              : `${summary.fromTitle} to ${summary.toTitle}, ${localization.message(
-                                  `dependency.type.${summary.dependency.type}`,
-                                  undefined,
-                                  summary.dependency.type.replaceAll('-', ' '),
-                                )}`
-                          }
-                          aria-pressed={selected}
-                          className="gt-gantt__dependency"
-                          data-clipped-end={dependency.clippedEnd || undefined}
-                          data-clipped-start={dependency.clippedStart || undefined}
-                          data-dependency-id={dependency.dependencyId}
-                          data-from-task-id={dependency.fromTaskId}
-                          data-from-view-key={dependency.fromViewKey}
-                          data-gt-part="dependency"
-                          data-hidden-endpoint={dependency.hiddenEndpoint || undefined}
-                          data-focused={dependencyFocused || undefined}
-                          data-pending={pending || undefined}
-                          data-selected={selected || undefined}
-                          data-status={dependency.status}
-                          data-to-task-id={dependency.toTaskId}
-                          data-to-view-key={dependency.toViewKey}
-                          data-type={dependency.type}
-                          key={dependency.dependencyId}
-                          onClick={() => runtime.inspectDependency(dependency.dependencyId)}
-                          onDoubleClick={() => openDependencyProperties(dependency.dependencyId)}
-                          role="button"
-                          tabIndex={dependencyFocused ? 0 : -1}
-                        >
-                          {dependency.points.slice(1).map((to, index) => {
-                            const from = dependency.points[index]!;
-                            const markerEnd =
-                              index === dependency.points.length - 2 && !dependency.clippedEnd
-                                ? `url(#${dependencyMarkerId})`
-                                : undefined;
-                            return (
-                              <g key={`${dependency.dependencyId}:${index}`}>
-                                <line
-                                  aria-hidden="true"
-                                  className={joinClasses(
-                                    'gt-gantt__dependency-path',
-                                    resolveClassName(classNames?.dependencyPath, state),
-                                  )}
-                                  markerEnd={markerEnd}
-                                  x1={percent(from.x)}
-                                  x2={percent(to.x)}
-                                  y1={percent(from.y / scene.bounds.timelineHeight)}
-                                  y2={percent(to.y / scene.bounds.timelineHeight)}
-                                />
-                                <line
-                                  aria-hidden="true"
-                                  className="gt-gantt__dependency-hit"
-                                  data-gt-part="dependency-hit-target"
-                                  x1={percent(from.x)}
-                                  x2={percent(to.x)}
-                                  y1={percent(from.y / scene.bounds.timelineHeight)}
-                                  y2={percent(to.y / scene.bounds.timelineHeight)}
-                                />
-                              </g>
-                            );
-                          })}
-                          {dependency.clippedStart ? (
-                            <circle
-                              aria-hidden="true"
-                              className="gt-gantt__dependency-continuation"
-                              cx={percent(dependency.points[0]!.x)}
-                              cy={percent(dependency.points[0]!.y / scene.bounds.timelineHeight)}
-                              data-edge="start"
-                              data-gt-part="dependency-continuation"
-                              r="3"
-                            />
-                          ) : null}
-                          {dependency.clippedEnd ? (
-                            <circle
-                              aria-hidden="true"
-                              className="gt-gantt__dependency-continuation"
-                              cx={percent(dependency.points.at(-1)!.x)}
-                              cy={percent(
-                                dependency.points.at(-1)!.y / scene.bounds.timelineHeight,
-                              )}
-                              data-edge="end"
-                              data-gt-part="dependency-continuation"
-                              r="3"
-                            />
-                          ) : null}
-                        </g>
-                      );
-                    })}
-                  </g>
-
-                  {dependencyPreviewSource === undefined ? null : (
-                    <line
-                      aria-hidden="true"
-                      className="gt-gantt__dependency-preview"
-                      data-gt-part="dependency-preview"
-                      markerEnd={`url(#${dependencyMarkerId})`}
-                      x1={percent(
-                        dependencyPreviewSource.presentation.geometry.kind === 'milestone'
-                          ? dependencyPreviewSource.presentation.geometry.centerX
-                          : localization.direction === 'rtl'
-                            ? dependencyPreviewSource.x
-                            : dependencyPreviewSource.x + dependencyPreviewSource.width,
-                      )}
-                      x2={percent(
-                        dependencyPreviewTarget === undefined
-                          ? localization.direction === 'rtl'
-                            ? Math.max(0, dependencyPreviewSource.x - 0.06)
-                            : Math.min(
-                                1,
-                                dependencyPreviewSource.x + dependencyPreviewSource.width + 0.06,
-                              )
-                          : dependencyPreviewTarget.presentation.geometry.kind === 'milestone'
-                            ? dependencyPreviewTarget.presentation.geometry.centerX
-                            : localization.direction === 'rtl'
-                              ? dependencyPreviewTarget.x + dependencyPreviewTarget.width
-                              : dependencyPreviewTarget.x,
-                      )}
-                      y1={percent(
-                        (dependencyPreviewSource.y + dependencyPreviewSource.height / 2) /
-                          scene.bounds.timelineHeight,
-                      )}
-                      y2={percent(
-                        ((dependencyPreviewTarget ?? dependencyPreviewSource).y +
-                          (dependencyPreviewTarget ?? dependencyPreviewSource).height / 2) /
-                          scene.bounds.timelineHeight,
-                      )}
-                    />
-                  )}
-
-                  {scene.taskBars.map((task) => (
-                    <GanttTask
-                      classNames={classNames}
-                      direction={localization.direction}
-                      describedBy={joinClasses(
-                        helpId,
-                        tooltip?.viewKey === task.viewKey ? tooltipId : undefined,
-                      )!}
-                      disabled={disabled}
-                      domId={taskDomIds.get(task.viewKey)!}
-                      key={task.viewKey}
-                      linkEnabled={!disabled && interaction.status !== 'pending'}
-                      localization={localization}
-                      onActivate={onTaskActivate}
-                      onContextMenu={onTaskContextMenu}
-                      onFocus={onTaskFocus}
-                      onMouseEnter={onTaskMouseEnter}
-                      onMouseLeave={onTaskMouseLeave}
-                      onLinkPointerDown={onLinkPointerDown}
-                      progressEditable={progressEditableTaskIds.has(task.taskId)}
-                      slots={slots}
-                      task={task}
-                      tabIndex={task.viewKey === rovingViewKey ? 0 : -1}
-                      timelineHeight={scene.bounds.timelineHeight}
-                    />
-                  ))}
-                </svg>
-                {'preview' in interaction &&
-                interaction.preview !== undefined &&
-                interaction.preview.kind !== 'dependency' ? (
-                  <div
-                    aria-hidden="true"
-                    className="gt-gantt__interaction-preview"
-                    data-gt-part="interaction-preview"
-                    data-preview-kind={interaction.preview.kind}
-                    data-preview-progress={interaction.preview.progress}
-                    style={{
-                      height: interaction.preview.height,
-                      left: interaction.preview.x,
-                      top: interaction.preview.y,
-                      width: interaction.preview.width,
-                    }}
+                  <DependencyLayer
+                    classNames={classNames}
+                    dependencySummaryById={dependencySummaryById}
+                    disabled={disabled}
+                    localization={localization}
+                    markerId={dependencyMarkerId}
+                    onActivate={onDependencyActivate}
+                    onOpenProperties={openDependencyProperties}
+                    scene={scene}
                   />
-                ) : null}
+
+                  <DependencyPreview
+                    direction={localization.direction}
+                    markerId={dependencyMarkerId}
+                    source={dependencyPreviewSource}
+                    target={dependencyPreviewTarget}
+                    timelineHeight={scene.bounds.timelineHeight}
+                  />
+
+                  <TaskLayer
+                    classNames={classNames}
+                    disabled={disabled}
+                    helpId={helpId}
+                    linkEnabled={!disabled && interaction.status !== 'pending'}
+                    localization={localization}
+                    onActivate={onTaskActivate}
+                    onContextMenu={onTaskContextMenu}
+                    onFocus={onTaskFocus}
+                    onLinkPointerDown={onLinkPointerDown}
+                    onMouseEnter={onTaskMouseEnter}
+                    onMouseLeave={onTaskMouseLeave}
+                    progressEditableTaskIds={progressEditableTaskIds}
+                    rovingViewKey={rovingViewKey}
+                    scene={scene}
+                    slots={slots}
+                    taskDomIds={taskDomIds}
+                    tooltipId={tooltipId}
+                    tooltipViewKey={tooltip?.viewKey}
+                  />
+                </svg>
+                <InteractionPreview interaction={interaction} />
               </div>
-              {'preview' in interaction &&
-              interaction.status === 'progressing' &&
-              interaction.preview.kind === 'progress' &&
-              interaction.preview.progress !== undefined ? (
-                <span
-                  aria-hidden="true"
-                  data-gt-part="progress-preview-value"
-                  style={{
-                    left: `clamp(20px, calc(var(--gt-lane-column-width) + ${interaction.preview.x + interaction.preview.width}px), calc(100% - 20px))`,
-                    top: interaction.preview.y + interaction.preview.height / 2,
-                  }}
-                >
-                  {Math.round(interaction.preview.progress * 100)}%
-                </span>
-              ) : null}
+              <ProgressPreviewValue interaction={interaction} />
             </div>
           </div>
         )}
