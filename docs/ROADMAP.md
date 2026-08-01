@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first nine slices are complete.
+first ten slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-9 complete, Slice 10 next
+**Status:** `[-]` In progress; Slices 1-10 complete, Slice 11 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -244,7 +244,13 @@ zoom, all-presentation fit, handle orchestration, accessible controls and keys, 
 pointer-anchored Alt/Option-wheel without intercepting browser zoom or ordinary page
 scrolling. Full `mise run ci` passes 82 test files / 454 tests, 182 formatted files,
 171 lint/type files, and four artifacts; the packed declaration is 52.35 kB. Slice 10
-localization and RTL parity is next.
+now adds the accepted typed message/formatter surface, deterministic locale and time-
+zone fallbacks with diagnostics, localized hierarchy/dependency/zoom/properties and
+interaction surfaces, explicit instance direction, mirrored pure geometry and input,
+logical CSS, portaled-overlay direction, opposite-direction isolation, and Arabic RTL
+SSR/hydration evidence. Full `mise run ci` passes 85 test files / 464 tests, 188
+formatted files, 177 lint/type files, and four artifacts; the packed declaration is
+54.96 kB. Slice 11 selective integration and Community-boundary proof is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 

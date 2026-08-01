@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom';
 import { ChevronRight, EllipsisVertical } from 'lucide-react';
 
 import type { GanttCommand } from '../commands/types';
+import { createGanttLocalization, type GanttLocalization } from '../localization/format';
 import { adjacentTimeScaleLevel } from '../time/adaptive-scale';
 import {
   normalizeNavigationDelta,
@@ -33,12 +34,9 @@ import {
   type EffectiveAppearancePrimitive,
   type GanttAppearanceToken,
 } from '../render/appearance';
-import type {
-  DependencyPathPrimitive,
-  LaneRowPrimitive,
-  TaskBarPrimitive,
-} from '../render/primitives';
+import type { LaneRowPrimitive, TaskBarPrimitive } from '../render/primitives';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
+import { GanttLocalizationProvider } from './localization-context';
 import {
   createGanttReactRuntime,
   type GanttKeyboardAction,
@@ -77,10 +75,6 @@ interface GanttRootStyle extends CSSProperties {
   readonly '--gt-lane-column-width': string;
   readonly '--gt-timeline-height': string;
   readonly '--gt-timeline-height-ratio': number;
-}
-
-function dependencyTypeLabel(type: DependencyPathPrimitive['type']): string {
-  return type.replaceAll('-', ' ');
 }
 
 interface TaskOverlayPosition {
@@ -701,12 +695,12 @@ function elapsedDuration(value: GanttItemPropertiesValue): string | undefined {
   );
 }
 
-function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeFormat): string {
+function taskAccessibleName(task: TaskBarPrimitive, localization: GanttLocalization): string {
   const kind = task.presentation.kind;
   const schedule =
     kind === 'milestone'
-      ? `${formatter.format(task.start)}`
-      : `${formatter.format(task.start)} to ${formatter.format(task.end)}`;
+      ? localization.dateTime(task.start, 'task-start')
+      : `${localization.dateTime(task.start, 'task-start')} to ${localization.dateTime(task.end, 'task-end')}`;
   const project = task.presentation.project;
   const hierarchy =
     project === undefined
@@ -720,8 +714,14 @@ function taskAccessibleName(task: TaskBarPrimitive, formatter: Intl.DateTimeForm
       ? ''
       : `, ${counts.resolvedDescendantCount} of ${counts.descendantCount} descendants scheduled`;
   const progress =
-    task.progress === undefined ? '' : `, ${Math.round(task.progress.value * 100)}% complete`;
-  return `${task.title}, ${schedule}${kind === 'task' ? '' : `, ${kind}`}${hierarchy}${detail}${progress}`;
+    task.progress === undefined
+      ? ''
+      : `, ${localization.message('task.progress', {
+          progress: `${localization.number(Math.round(task.progress.value * 100), 'progress')}%`,
+        })}`;
+  return `${task.title}, ${schedule}${
+    kind === 'task' ? '' : `, ${localization.message(`task.kind.${kind}`)}`
+  }${hierarchy}${detail}${progress}`;
 }
 
 function targetStateEqual(
@@ -850,7 +850,7 @@ function keyboardActionForEvent(
 
 function GanttTask({
   classNames,
-  dateFormatter,
+  direction,
   describedBy,
   disabled,
   domId,
@@ -861,6 +861,7 @@ function GanttTask({
   onMouseLeave,
   onLinkPointerDown,
   linkEnabled,
+  localization,
   slots,
   task,
   progressEditable,
@@ -868,7 +869,7 @@ function GanttTask({
   timelineHeight,
 }: {
   readonly classNames?: GanttProps['classNames'];
-  readonly dateFormatter: Intl.DateTimeFormat;
+  readonly direction: 'ltr' | 'rtl';
   readonly describedBy: string;
   readonly disabled: boolean;
   readonly domId: string;
@@ -882,6 +883,7 @@ function GanttTask({
     task: TaskBarPrimitive,
   ) => void;
   readonly linkEnabled: boolean;
+  readonly localization: GanttLocalization;
   readonly slots?: GanttProps['slots'];
   readonly task: TaskBarPrimitive;
   readonly progressEditable: boolean;
@@ -913,7 +915,7 @@ function GanttTask({
         targeted && snapshot.interaction.status === 'rejected',
       ] as const;
     }, targetStateEqual);
-  const accessibleName = taskAccessibleName(task, dateFormatter);
+  const accessibleName = taskAccessibleName(task, localization);
   const summary = taskSummary(task);
   const appearance = task.appearance;
   const state = Object.freeze({
@@ -1041,7 +1043,9 @@ function GanttTask({
         width={geometry.kind === 'milestone' ? '120' : percent(task.width)}
         x={
           geometry.kind === 'milestone'
-            ? `calc(${percent(geometry.centerX)} + ${geometry.size / 2 + 4}px)`
+            ? direction === 'rtl'
+              ? `calc(${percent(geometry.centerX)} - ${geometry.size / 2 + 124}px)`
+              : `calc(${percent(geometry.centerX)} + ${geometry.size / 2 + 4}px)`
             : percent(task.x)
         }
         y={percent(task.y / timelineHeight)}
@@ -1062,8 +1066,12 @@ function GanttTask({
             aria-hidden="true"
             className="gt-gantt__link-handle-hit"
             cx={`calc(${percent(
-              geometry.kind === 'milestone' ? geometry.centerX : task.x + task.width,
-            )} + 10px)`}
+              geometry.kind === 'milestone'
+                ? geometry.centerX
+                : direction === 'rtl'
+                  ? task.x
+                  : task.x + task.width,
+            )} ${direction === 'rtl' ? '-' : '+'} 10px)`}
             cy={percent((task.y + task.height / 2) / timelineHeight)}
             data-gt-part="link-handle-hit-target"
             onPointerDown={(event) => onLinkPointerDown(event, task)}
@@ -1076,8 +1084,12 @@ function GanttTask({
               resolveClassName(classNames?.linkHandle, state),
             )}
             cx={`calc(${percent(
-              geometry.kind === 'milestone' ? geometry.centerX : task.x + task.width,
-            )} + 10px)`}
+              geometry.kind === 'milestone'
+                ? geometry.centerX
+                : direction === 'rtl'
+                  ? task.x
+                  : task.x + task.width,
+            )} ${direction === 'rtl' ? '-' : '+'} 10px)`}
             cy={percent((task.y + task.height / 2) / timelineHeight)}
             data-gt-part="link-handle"
             pointerEvents="none"
@@ -1093,7 +1105,7 @@ function GanttTask({
           data-gt-part="resize-handle"
           height={percent(task.height / timelineHeight)}
           width="8"
-          x={percent(task.x)}
+          x={percent(direction === 'rtl' ? task.x + task.width : task.x)}
           y={percent(task.y / timelineHeight)}
         />
       ) : null}
@@ -1105,7 +1117,13 @@ function GanttTask({
             data-progress={task.progress?.value ?? 0}
             height={percent(task.height / timelineHeight)}
             width="12"
-            x={percent(task.x + task.width * (task.progress?.value ?? 0))}
+            x={percent(
+              task.x +
+                task.width *
+                  (direction === 'rtl'
+                    ? 1 - (task.progress?.value ?? 0)
+                    : (task.progress?.value ?? 0)),
+            )}
             y={percent(task.y / timelineHeight)}
           />
           <rect
@@ -1115,7 +1133,13 @@ function GanttTask({
             data-progress={task.progress?.value ?? 0}
             height={percent(task.height / timelineHeight)}
             width="2"
-            x={percent(task.x + task.width * (task.progress?.value ?? 0))}
+            x={percent(
+              task.x +
+                task.width *
+                  (direction === 'rtl'
+                    ? 1 - (task.progress?.value ?? 0)
+                    : (task.progress?.value ?? 0)),
+            )}
             y={percent(task.y / timelineHeight)}
           />
         </>
@@ -1128,7 +1152,7 @@ function GanttTask({
           data-gt-part="resize-handle"
           height={percent(task.height / timelineHeight)}
           width="8"
-          x={percent(task.x + task.width)}
+          x={percent(direction === 'rtl' ? task.x : task.x + task.width)}
           y={percent(task.y / timelineHeight)}
         />
       ) : null}
@@ -1144,11 +1168,11 @@ function GanttSurface({
   classNames,
   columns,
   contextMenuItems,
-  dateFormatter,
   disabled,
   features,
   interactionMappers,
   label,
+  localization,
   onTaskEditRequest,
   overlayContainer,
   panCapable,
@@ -1164,11 +1188,11 @@ function GanttSurface({
   readonly classNames?: GanttProps['classNames'];
   readonly columns?: GanttProps['columns'];
   readonly contextMenuItems?: GanttProps['contextMenuItems'];
-  readonly dateFormatter: Intl.DateTimeFormat;
   readonly disabled: boolean;
   readonly features?: GanttProps['features'];
   readonly interactionMappers?: GanttProps['interactionMappers'];
   readonly label: string;
+  readonly localization: GanttLocalization;
   readonly onTaskEditRequest?: GanttProps['onTaskEditRequest'];
   readonly overlayContainer?: GanttProps['overlayContainer'];
   readonly panCapable: boolean;
@@ -2792,6 +2816,7 @@ function GanttSurface({
       'gt-gantt__editor',
       resolveClassName(classNames?.editor, editorClassState),
     ),
+    dir: localization.direction,
     id: editorId,
     onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => {
       event.stopPropagation();
@@ -2820,6 +2845,7 @@ function GanttSurface({
                     'gt-gantt__tooltip',
                     resolveClassName(classNames?.tooltip, overlayClassState(activeTooltipTask!)),
                   ),
+                  dir: localization.direction,
                   id: tooltipId,
                   ref: (element) => {
                     tooltipSurfaceRef.current = element;
@@ -2838,6 +2864,7 @@ function GanttSurface({
                     'gt-gantt__context-menu',
                     resolveClassName(classNames?.contextMenu, overlayClassState(activeMenuTask!)),
                   ),
+                  dir: localization.direction,
                   id: menuId,
                   onKeyDown: (event) => {
                     event.stopPropagation();
@@ -2999,6 +3026,7 @@ function GanttSurface({
       data-pan-state={panState === 'idle' ? undefined : panState}
       data-pending={interaction.status === 'pending' || undefined}
       data-rejected={interaction.status === 'rejected' || undefined}
+      dir={localization.direction}
       onFocusCapture={onFocusCapture}
       onKeyDown={onKeyDown}
       ref={rootRef}
@@ -3028,31 +3056,35 @@ function GanttSurface({
           data-gt-part="zoom-controls"
         >
           <button
-            aria-label="Zoom in"
+            aria-label={localization.message('zoom.in')}
             onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'in'))}
             type="button"
           >
             +
           </button>
           <button
-            aria-label="Zoom out"
+            aria-label={localization.message('zoom.out')}
             onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'out'))}
             type="button"
           >
             −
           </button>
-          <button aria-label="Fit project" onClick={() => runtime.fitToProject()} type="button">
+          <button
+            aria-label={localization.message('zoom.fit')}
+            onClick={() => runtime.fitToProject()}
+            type="button"
+          >
             0
           </button>
         </div>
       ) : null}
       {dependencySummaries.length > 0 ? (
         <section
-          aria-label="Dependencies"
+          aria-label={localization.message('dependency.relationships')}
           className="gt-gantt__sr-only"
           data-gt-part="dependency-summaries"
         >
-          <h2>Dependencies</h2>
+          <h2>{localization.message('dependency.relationships')}</h2>
           <ul>
             {dependencySummaries.map((summary, index) => (
               <li
@@ -3067,21 +3099,37 @@ function GanttSurface({
                 key={`${summary.dependency.id}:${index}`}
               >
                 {summary.fromTitle} to {summary.toTitle},{' '}
-                {dependencyTypeLabel(summary.dependency.type)}
-                {summary.hiddenEndpoint ? ', one or more endpoints hidden' : ''}
-                {summary.status === 'invalid' ? ', invalid relationship' : ''}
+                {localization.message(
+                  `dependency.type.${summary.dependency.type}`,
+                  undefined,
+                  summary.dependency.type.replaceAll('-', ' '),
+                )}
+                {summary.hiddenEndpoint
+                  ? `, ${localization.message('dependency.hidden-endpoint')}`
+                  : ''}
+                {summary.status === 'invalid'
+                  ? `, ${localization.message('dependency.invalid')}`
+                  : ''}
                 <button
                   onClick={() => runtime.inspectDependency(summary.dependency.id)}
                   type="button"
                 >
-                  Inspect {summary.fromTitle} to {summary.toTitle}
+                  {localization.message(
+                    'dependency.edit',
+                    { source: summary.fromTitle, target: summary.toTitle },
+                    'Inspect {source} to {target}',
+                  )}
                 </button>
                 {propertiesEnabled ? (
                   <button
                     onClick={() => openDependencyProperties(summary.dependency.id)}
                     type="button"
                   >
-                    {disabled ? 'View' : 'Edit'} dependency
+                    {localization.message(
+                      disabled ? 'properties.view' : 'dependency.edit',
+                      undefined,
+                      disabled ? 'View dependency' : 'Edit dependency',
+                    )}
                   </button>
                 ) : null}
                 <button
@@ -3098,7 +3146,7 @@ function GanttSurface({
                   }
                   type="button"
                 >
-                  Remove dependency
+                  {localization.message('dependency.delete')}
                 </button>
               </li>
             ))}
@@ -3298,7 +3346,10 @@ function GanttSurface({
                     <button
                       aria-controls={`${accessibilityId}-row-${laneIndex}`}
                       aria-expanded={lane.project.expanded}
-                      aria-label={`${lane.project.expanded ? 'Collapse' : 'Expand'} ${lane.title}`}
+                      aria-label={localization.message(
+                        lane.project.expanded ? 'tree.collapse' : 'tree.expand',
+                        { title: lane.title },
+                      )}
                       className={joinClasses(
                         'gt-gantt__branch-toggle',
                         resolveClassName(
@@ -3454,7 +3505,11 @@ function GanttSurface({
                           aria-label={
                             summary === undefined
                               ? `Dependency ${dependency.dependencyId}`
-                              : `${summary.fromTitle} to ${summary.toTitle}, ${dependencyTypeLabel(summary.dependency.type)}`
+                              : `${summary.fromTitle} to ${summary.toTitle}, ${localization.message(
+                                  `dependency.type.${summary.dependency.type}`,
+                                  undefined,
+                                  summary.dependency.type.replaceAll('-', ' '),
+                                )}`
                           }
                           aria-pressed={selected}
                           className="gt-gantt__dependency"
@@ -3548,17 +3603,23 @@ function GanttSurface({
                       x1={percent(
                         dependencyPreviewSource.presentation.geometry.kind === 'milestone'
                           ? dependencyPreviewSource.presentation.geometry.centerX
-                          : dependencyPreviewSource.x + dependencyPreviewSource.width,
+                          : localization.direction === 'rtl'
+                            ? dependencyPreviewSource.x
+                            : dependencyPreviewSource.x + dependencyPreviewSource.width,
                       )}
                       x2={percent(
                         dependencyPreviewTarget === undefined
-                          ? Math.min(
-                              1,
-                              dependencyPreviewSource.x + dependencyPreviewSource.width + 0.06,
-                            )
+                          ? localization.direction === 'rtl'
+                            ? Math.max(0, dependencyPreviewSource.x - 0.06)
+                            : Math.min(
+                                1,
+                                dependencyPreviewSource.x + dependencyPreviewSource.width + 0.06,
+                              )
                           : dependencyPreviewTarget.presentation.geometry.kind === 'milestone'
                             ? dependencyPreviewTarget.presentation.geometry.centerX
-                            : dependencyPreviewTarget.x,
+                            : localization.direction === 'rtl'
+                              ? dependencyPreviewTarget.x + dependencyPreviewTarget.width
+                              : dependencyPreviewTarget.x,
                       )}
                       y1={percent(
                         (dependencyPreviewSource.y + dependencyPreviewSource.height / 2) /
@@ -3575,7 +3636,7 @@ function GanttSurface({
                   {scene.taskBars.map((task) => (
                     <GanttTask
                       classNames={classNames}
-                      dateFormatter={dateFormatter}
+                      direction={localization.direction}
                       describedBy={joinClasses(
                         helpId,
                         tooltip?.viewKey === task.viewKey ? tooltipId : undefined,
@@ -3584,6 +3645,7 @@ function GanttSurface({
                       domId={taskDomIds.get(task.viewKey)!}
                       key={task.viewKey}
                       linkEnabled={!disabled && interaction.status !== 'pending'}
+                      localization={localization}
                       onActivate={onTaskActivate}
                       onContextMenu={onTaskContextMenu}
                       onFocus={onTaskFocus}
@@ -3693,13 +3755,24 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     contextMenuItems,
     features,
     interactionMappers,
-    label = 'Gantt chart',
-    locale = 'en-US',
+    label: suppliedLabel,
     onDiagnostics,
     onTaskEditRequest,
     overlayContainer,
     slots,
   } = props;
+  const localization = useMemo(
+    () =>
+      createGanttLocalization({
+        ...(props.direction === undefined ? {} : { direction: props.direction }),
+        ...(props.formatters === undefined ? {} : { formatters: props.formatters }),
+        ...(props.locale === undefined ? {} : { locale: props.locale }),
+        ...(props.messages === undefined ? {} : { messages: props.messages }),
+        timeZone: props.timeZone,
+      }),
+    [props.direction, props.formatters, props.locale, props.messages, props.timeZone],
+  );
+  const label = suppliedLabel ?? localization.message('chart.label');
   const appearanceRegistrySignature = useMemo(
     () => createAppearanceRegistry(props.appearanceVariants).signature,
     [props.appearanceVariants],
@@ -3708,15 +3781,6 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     readonly signature: string;
     readonly variants: Set<string>;
   }>({ signature: appearanceRegistrySignature, variants: new Set() });
-  const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: props.timeZone,
-      }),
-    [locale, props.timeZone],
-  );
   const disabled = props.document !== undefined && props.onDocumentChange === undefined;
 
   useImperativeHandle(ref, () => runtime.getHandle(), [runtime]);
@@ -3738,7 +3802,13 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
       };
     }
     const delivered = deliveredAppearanceDiagnostics.current.variants;
-    const diagnostics = scene.diagnostics.filter((diagnostic) => {
+    const seenDiagnostics = new Set<string>();
+    const diagnostics = [...scene.diagnostics, ...localization.diagnostics].filter((diagnostic) => {
+      const diagnosticKey = `${diagnostic.code}\u0000${diagnostic.path ?? ''}\u0000${diagnostic.message}`;
+      if (seenDiagnostics.has(diagnosticKey)) {
+        return false;
+      }
+      seenDiagnostics.add(diagnosticKey);
       if (diagnostic.code !== 'appearance.variant.unresolved') {
         return true;
       }
@@ -3750,10 +3820,13 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
       delivered.add(key);
       return true;
     });
-    if (diagnostics.length > 0 || scene.diagnostics.length === 0) {
+    if (
+      diagnostics.length > 0 ||
+      scene.diagnostics.length + localization.diagnostics.length === 0
+    ) {
       onDiagnostics(diagnostics);
     }
-  }, [appearanceRegistrySignature, onDiagnostics, scene.diagnostics]);
+  }, [appearanceRegistrySignature, localization, onDiagnostics, scene.diagnostics]);
   useEffect(() => {
     const body = bodyRef.current;
     const timeline = timelineRef.current;
@@ -3833,7 +3906,11 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
         if (direction === undefined || level === current.scaleLevel) return;
         const bounds = timeline.getBoundingClientRect();
         if (bounds.width <= 0) return;
-        const anchorRatio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+        const physicalRatio = Math.max(
+          0,
+          Math.min(1, (event.clientX - bounds.left) / bounds.width),
+        );
+        const anchorRatio = localization.direction === 'rtl' ? 1 - physicalRatio : physicalRatio;
         const anchorTime =
           current.range.start + (current.range.end - current.range.start) * anchorRatio;
         if (!runtime.zoomTo(level, { anchorRatio, anchorTime })) return;
@@ -3879,31 +3956,33 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     };
     chart.addEventListener('wheel', onWheel, { passive: false });
     return () => chart.removeEventListener('wheel', onWheel);
-  }, [runtime, scene.emptyState]);
+  }, [localization.direction, runtime, scene.emptyState]);
 
   return (
     <GanttRuntimeProvider runtime={runtime}>
-      <GanttSurface
-        appearanceVariants={props.appearanceVariants}
-        bodyRef={bodyRef}
-        chartRef={chartRef}
-        className={className}
-        classNames={classNames}
-        columns={columns}
-        contextMenuItems={contextMenuItems}
-        dateFormatter={dateFormatter}
-        disabled={disabled}
-        features={features}
-        interactionMappers={interactionMappers}
-        label={label}
-        onTaskEditRequest={onTaskEditRequest}
-        overlayContainer={overlayContainer}
-        panCapable={props.defaultRange !== undefined || props.onRangeChange !== undefined}
-        runtime={runtime}
-        scene={scene}
-        slots={slots}
-        timelineRef={timelineRef}
-      />
+      <GanttLocalizationProvider value={localization}>
+        <GanttSurface
+          appearanceVariants={props.appearanceVariants}
+          bodyRef={bodyRef}
+          chartRef={chartRef}
+          className={className}
+          classNames={classNames}
+          columns={columns}
+          contextMenuItems={contextMenuItems}
+          disabled={disabled}
+          features={features}
+          interactionMappers={interactionMappers}
+          label={label}
+          localization={localization}
+          onTaskEditRequest={onTaskEditRequest}
+          overlayContainer={overlayContainer}
+          panCapable={props.defaultRange !== undefined || props.onRangeChange !== undefined}
+          runtime={runtime}
+          scene={scene}
+          slots={slots}
+          timelineRef={timelineRef}
+        />
+      </GanttLocalizationProvider>
     </GanttRuntimeProvider>
   );
 });

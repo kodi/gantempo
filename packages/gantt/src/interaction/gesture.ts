@@ -84,8 +84,13 @@ export function createInteractionPreview(
     });
   }
   const timeline = options.index.timeline;
-  const startX = timeToCoordinate(timeline, options.index.range, intent.start);
-  const endX = timeToCoordinate(timeline, options.index.range, intent.end);
+  const startX = timeToCoordinate(
+    timeline,
+    options.index.range,
+    intent.start,
+    options.index.direction,
+  );
+  const endX = timeToCoordinate(timeline, options.index.range, intent.end, options.index.direction);
   const lane = options.index.lanes.find(
     (candidate) => candidate.target.viewKey === intent.destination.viewKey,
   );
@@ -115,8 +120,10 @@ export function createInteractionPreview(
 function progressIntent(
   origin: Extract<InteractionHit, { readonly kind: 'task-progress' }>,
   current: InteractionHit,
+  options: InteractionGestureOptions,
 ): InteractionProgressIntent {
-  const ratio = (current.point.x - origin.task.rect.x) / origin.task.rect.width;
+  const physicalRatio = (current.point.x - origin.task.rect.x) / origin.task.rect.width;
+  const ratio = options.index.direction === 'rtl' ? 1 - physicalRatio : physicalRatio;
   const value = Math.round(Math.min(1, Math.max(0, ratio)) * 20) / 20;
   return Object.freeze({
     destination: origin.lane.target,
@@ -202,7 +209,7 @@ function intentFromHit(
     return resizeIntent(origin, current, options);
   }
   if (origin.kind === 'task-progress') {
-    return progressIntent(origin, current);
+    return progressIntent(origin, current, options);
   }
   return createIntent(current, options);
 }
@@ -315,7 +322,13 @@ export function interactionTimeAtPoint(
   point: InteractionPoint,
 ): number {
   return snapInteractionTime(
-    coordinateToTime(options.index.timeline, options.index.range, point.x),
+    coordinateToTime(
+      options.index.timeline,
+      options.index.range,
+      point.x,
+      true,
+      options.index.direction,
+    ),
     options.snap,
   );
 }

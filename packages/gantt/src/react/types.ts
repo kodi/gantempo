@@ -21,6 +21,7 @@ import type {
   InteractionSnapPolicy,
 } from '../interaction/types';
 import type { GanttViewDefinition } from '../view/types';
+import type { GanttDirection, GanttFormatters, GanttMessages } from '../localization/types';
 import type { GanttAppearanceVariantOption } from '../render/appearance';
 import type {
   GanttFitToProjectOptions,
@@ -57,6 +58,17 @@ export type {
   GanttTimeScaleLevel,
   GanttZoomOptions,
 } from '../time/adaptive-scale';
+export type {
+  GanttDirection,
+  GanttFormatContext,
+  GanttFormatters,
+  GanttFormatUse,
+  GanttMessageDescriptor,
+  GanttMessageKey,
+  GanttMessages,
+  GanttMessageValue,
+  GanttMessageValues,
+} from '../localization/types';
 
 export interface GanttTaskEditRequest {
   readonly source: 'context-menu';
@@ -446,7 +458,9 @@ interface GanttBaseProps {
   readonly classNames?: GanttClassNames;
   readonly columns?: readonly GanttLaneColumn[];
   readonly contextMenuItems?: GanttContextMenuItems;
+  readonly direction?: GanttDirection;
   readonly features?: GanttFeatures;
+  readonly formatters?: GanttFormatters;
   readonly historyCapacity?: number;
   readonly interceptors?: readonly GanttCommandInterceptor[];
   readonly interactionCreationDuration?: number;
@@ -454,6 +468,7 @@ interface GanttBaseProps {
   readonly interactionSnap?: GanttInteractionSnapPolicy;
   readonly label?: string;
   readonly locale?: string;
+  readonly messages?: GanttMessages;
   readonly onCommandCommitted?: (event: GanttCommandCommittedEvent) => void;
   readonly onCommandRejected?: (event: GanttCommandRejectedEvent) => void;
   readonly onDiagnostics?: (diagnostics: readonly Diagnostic[]) => void;

@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-9 complete, Slice 10 next
+Status: In progress; Slices 1-10 complete, Slice 11 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -774,7 +774,7 @@ locale direction until the following slice.
 
 ### Slice 10: Complete localization and RTL parity
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1084,8 +1084,8 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 6: Add the Community dependency graph and cycle diagnostics
 - [x] Slice 7: Route and render dependency paths
 - [x] Slice 8: Add dependency selection and editing workflows
-- [ ] Slice 9: Add adaptive scales, zoom, and fit-to-project
-- [ ] Slice 10: Complete localization and RTL parity
+- [x] Slice 9: Add adaptive scales, zoom, and fit-to-project
+- [x] Slice 10: Complete localization and RTL parity
 - [ ] Slice 11: Prove selective integration and Community boundary
 - [ ] Slice 12: Add public consumers, SSR examples, and package proof
 - [ ] Slice 13: Run final browser, accessibility, package, and milestone gates
@@ -1294,12 +1294,34 @@ owns the full shapes and rationale. In summary:
   passed 82 test files / 454 tests, 182 formatted files, 171 lint/type files, and four
   artifacts. The declaration is 52.35 kB with only the known non-fatal Mise cache
   warning.
+- 2026-07-31: Slice 10 adds the accepted closed message catalog and bounded date,
+  date-time, number, and message formatter callbacks. Locale omission is deterministic
+  `en-US`; invalid locales diagnose and fall back to `en-US`, while invalid time zones
+  diagnose and fall back to `UTC`. Empty or throwing formatter results preserve the
+  built-in presentation and emit one stable `format.*` warning. Runtime announcements,
+  hierarchy/dependency/zoom labels, properties fields/actions, tooltips, task names,
+  ticks, progress, and lag now consume the instance localization boundary without
+  reading browser or process defaults.
+- 2026-07-31: Direction is an explicit per-instance `ltr`/`rtl` input. Pure scene and
+  interaction kernels mirror ticks, bars, summary/milestone points, progress,
+  dependency routes, coordinate/time conversion, and semantic resize edges. React
+  mirrors handles, previews, zoom anchors, horizontal navigation, branch keys, and
+  logical CSS while publishing `dir` on the root and every portaled overlay. Two
+  opposite-direction charts remain isolated, and Arabic RTL markup hydrates without
+  recoverable errors under the deterministic pre-measurement width.
+- 2026-07-31: Focused formatter/scene/pipeline/hit-test/runtime/React/properties/
+  keyboard/wheel/SSR/hydration/axe coverage passed 13 files / 126 tests before the
+  final fixes. The first full gate exposed and fixed an ambiguous overlapping-edge
+  assertion plus compact tooltip-date compatibility. Final `mise run ci` passed 85
+  test files / 464 tests, 188 formatted files, 177 lint/type files, and four package
+  artifacts; the packed declaration is 54.96 kB. Mise reported only the known
+  non-fatal user-cache sandbox warning. Live `/project` responsive and accessibility
+  matrices remain deliberately owned by Slices 12 and 13.
 
 ## Next Slice
 
-Start Slice 10 with the accepted built-in message catalog and bounded formatter
-override contract. Route every hierarchy, dependency, zoom, properties, diagnostic,
-and interaction message through it, then add instance-scoped direction to pure
-coordinate conversion before mirroring SVG, pointer, keyboard, overlay, and column
-behavior. Verify explicit locale/time-zone SSR and opposite-direction instance
-isolation before changing playground consumers.
+Start Slice 11 by mapping hierarchy, dependency, query/session, scale, locale, and
+direction inputs to the narrowest safe pipeline invalidation stages. Prove cold/cached
+parity, simultaneous focus/selection/history reconciliation, the accepted root-facade
+boundary, React/browser-free pure kernels, and fixed-seed structural work counters
+without adding Pro scheduling behavior or timing thresholds.

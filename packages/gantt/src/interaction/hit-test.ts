@@ -1,4 +1,5 @@
 import type { EpochMilliseconds, TimeRange } from '../model/types';
+import type { GanttDirection } from '../localization/types';
 import type { ChartScene, LaneRowPrimitive, TaskBarPrimitive } from '../render/primitives';
 import type { GanttLaneTarget, GanttTaskTarget } from '../runtime/types';
 import type {
@@ -107,6 +108,7 @@ export function coordinateToTime(
   range: TimeRange,
   coordinate: number,
   clamp = true,
+  direction: GanttDirection = 'ltr',
 ): EpochMilliseconds {
   positive(timeline.width, 'Timeline width');
   finite(timeline.x, 'Timeline x');
@@ -115,7 +117,8 @@ export function coordinateToTime(
     throw new RangeError('Interaction range must have finite increasing boundaries.');
   }
   const ratio = (coordinate - timeline.x) / timeline.width;
-  const normalized = clamp ? Math.min(1, Math.max(0, ratio)) : ratio;
+  const bounded = clamp ? Math.min(1, Math.max(0, ratio)) : ratio;
+  const normalized = direction === 'rtl' ? 1 - bounded : bounded;
   const time = range.start + normalized * (range.end - range.start);
   if (!Number.isFinite(time)) {
     throw new RangeError('Coordinate conversion must produce a finite time.');
@@ -127,13 +130,15 @@ export function timeToCoordinate(
   timeline: Pick<InteractionTimelineBounds, 'width' | 'x'>,
   range: TimeRange,
   time: EpochMilliseconds,
+  direction: GanttDirection = 'ltr',
 ): number {
   positive(timeline.width, 'Timeline width');
   finite(time, 'Interaction time');
   if (!Number.isFinite(range.start) || !Number.isFinite(range.end) || range.end <= range.start) {
     throw new RangeError('Interaction range must have finite increasing boundaries.');
   }
-  return timeline.x + ((time - range.start) / (range.end - range.start)) * timeline.width;
+  const ratio = (time - range.start) / (range.end - range.start);
+  return timeline.x + (direction === 'rtl' ? 1 - ratio : ratio) * timeline.width;
 }
 
 export function snapInteractionTime(
@@ -216,6 +221,7 @@ export function createInteractionHitTestIndex(
     Object.freeze(tasks.filter((task) => task.lane === lane)),
   );
   return Object.freeze({
+    direction: scene.direction ?? 'ltr',
     lanes: Object.freeze(lanes),
     range: Object.freeze({ ...scene.range }),
     tasks: Object.freeze(tasks),
@@ -242,7 +248,7 @@ export function hitTestInteraction(
   if (!contains(index.timeline, point)) {
     return undefined;
   }
-  const time = coordinateToTime(index.timeline, index.range, point.x);
+  const time = coordinateToTime(index.timeline, index.range, point.x, true, index.direction);
   const edgeRadius = pointerEdgeRadius(pointerType);
   const progressRadius = pointerProgressRadius(pointerType);
   const minimumHeight = pointerMinimumHeight(pointerType);
@@ -262,7 +268,8 @@ export function hitTestInteraction(
     .flatMap((task) => {
       const verticalRect = expandedVerticalRect(task.rect, minimumHeight);
       const value = task.primitive.progress?.value ?? 0;
-      const distance = Math.abs(point.x - (task.rect.x + task.rect.width * value));
+      const progressRatio = index.direction === 'rtl' ? 1 - value : value;
+      const distance = Math.abs(point.x - (task.rect.x + task.rect.width * progressRatio));
       return distance <= progressRadius &&
         point.y >= verticalRect.y &&
         point.y < verticalRect.y + verticalRect.height
@@ -302,7 +309,8 @@ export function hitTestInteraction(
         readonly task: InteractionTaskNode;
       }[] = [];
       if (!task.primitive.clippedStart) {
-        const distance = Math.abs(point.x - task.rect.x);
+        const startX = index.direction === 'rtl' ? task.rect.x + task.rect.width : task.rect.x;
+        const distance = Math.abs(point.x - startX);
         if (
           distance <= edgeRadius &&
           point.y >= verticalRect.y &&
@@ -317,7 +325,8 @@ export function hitTestInteraction(
         }
       }
       if (!task.primitive.clippedEnd) {
-        const distance = Math.abs(point.x - (task.rect.x + task.rect.width));
+        const endX = index.direction === 'rtl' ? task.rect.x : task.rect.x + task.rect.width;
+        const distance = Math.abs(point.x - endX);
         if (
           distance <= edgeRadius &&
           point.y >= verticalRect.y &&

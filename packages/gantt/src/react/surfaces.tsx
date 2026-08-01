@@ -24,6 +24,7 @@ import type {
   GanttTaskEditorProps,
   GanttTooltipProps,
 } from './types';
+import { useGanttLocalization } from './localization-context';
 
 interface DefaultItemPropertiesProps extends GanttItemPropertiesProps {
   readonly appearanceVariants: readonly GanttAppearanceVariantOption[];
@@ -41,41 +42,59 @@ interface DefaultItemPropertiesProps extends GanttItemPropertiesProps {
   readonly resourceId?: string;
 }
 
-const TOOLTIP_MONTH_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-});
-const TOOLTIP_FULL_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-  year: 'numeric',
-});
-const TOOLTIP_DURATION_FORMATTER = new Intl.NumberFormat('en-US', {
-  maximumFractionDigits: 1,
-});
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-function formatTooltipDateRange(start: number, end: number): string {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (
-    startDate.getUTCFullYear() === endDate.getUTCFullYear() &&
-    startDate.getUTCMonth() === endDate.getUTCMonth() &&
-    startDate.getUTCDate() === endDate.getUTCDate()
-  ) {
-    return TOOLTIP_FULL_DATE_FORMATTER.format(startDate);
-  }
-  if (startDate.getUTCFullYear() === endDate.getUTCFullYear()) {
-    return `${TOOLTIP_MONTH_DAY_FORMATTER.format(startDate)} – ${TOOLTIP_MONTH_DAY_FORMATTER.format(endDate)}, ${endDate.getUTCFullYear()}`;
-  }
-  return `${TOOLTIP_FULL_DATE_FORMATTER.format(startDate)} – ${TOOLTIP_FULL_DATE_FORMATTER.format(endDate)}`;
+function localDateString(epoch: number, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(epoch);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
-function formatTooltipDuration(start: number, end: number): string {
+function formatTooltipDateRange(
+  start: number,
+  end: number,
+  localization: ReturnType<typeof useGanttLocalization>,
+): string {
+  if (localization.customDate) {
+    const first = localization.date(localDateString(start, localization.timeZone), 'task-start');
+    const last = localization.date(localDateString(end, localization.timeZone), 'task-end');
+    return first === last ? first : `${first} – ${last}`;
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const monthDay = new Intl.DateTimeFormat(localization.locale, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: localization.timeZone,
+  });
+  const fullDate = new Intl.DateTimeFormat(localization.locale, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: localization.timeZone,
+    year: 'numeric',
+  });
+  const startKey = localDateString(start, localization.timeZone);
+  const endKey = localDateString(end, localization.timeZone);
+  if (startKey === endKey) return fullDate.format(startDate);
+  if (startKey.slice(0, 4) === endKey.slice(0, 4)) {
+    return `${monthDay.format(startDate)} – ${monthDay.format(endDate)}, ${endKey.slice(0, 4)}`;
+  }
+  return `${fullDate.format(startDate)} – ${fullDate.format(endDate)}`;
+}
+
+function formatTooltipDuration(
+  start: number,
+  end: number,
+  localization: ReturnType<typeof useGanttLocalization>,
+): string {
   const duration = Math.max(0, end - start);
   if (duration === 0) {
     return 'Instant';
@@ -89,7 +108,7 @@ function formatTooltipDuration(start: number, end: number): string {
       : duration >= HOUR
         ? ([duration / HOUR, 'hr'] as const)
         : ([duration / MINUTE, 'min'] as const);
-  const formatted = TOOLTIP_DURATION_FORMATTER.format(value);
+  const formatted = localization.number(Math.round(value * 10) / 10, 'dependency-lag');
   return `${formatted} ${unit}${unit === 'day' && formatted !== '1' ? 's' : ''}`;
 }
 
@@ -109,23 +128,24 @@ export function DefaultLaneHeader({ lane }: GanttLaneHeaderProps): ReactElement 
 }
 
 export function DefaultTooltip({ bindings, task }: GanttTooltipProps): ReactElement {
+  const localization = useGanttLocalization();
   return (
     <div {...bindings}>
       <strong>{task.title}</strong>
       <span data-gt-part="tooltip-kind">
-        {task.kind === 'task'
-          ? 'Task'
-          : task.kind === 'summary'
-            ? `Summary${
-                task.descendantCount === undefined ? '' : ` · ${task.descendantCount} descendants`
-              }`
-            : 'Milestone'}
+        {task.kind === 'summary'
+          ? `${localization.message('task.kind.summary')}${
+              task.descendantCount === undefined ? '' : ` · ${task.descendantCount} descendants`
+            }`
+          : localization.message(`task.kind.${task.kind}`)}
       </span>
       <div className="gt-gantt__tooltip-schedule" data-gt-part="tooltip-schedule">
         <CalendarClock aria-hidden="true" />
-        <span data-gt-part="tooltip-range">{formatTooltipDateRange(task.start, task.end)}</span>
+        <span data-gt-part="tooltip-range">
+          {formatTooltipDateRange(task.start, task.end, localization)}
+        </span>
         <span className="gt-gantt__tooltip-duration" data-gt-part="tooltip-duration">
-          {formatTooltipDuration(task.start, task.end)}
+          {formatTooltipDuration(task.start, task.end, localization)}
         </span>
       </div>
     </div>
@@ -203,6 +223,7 @@ export function DefaultTaskEditor({
   onSubmit,
   pending,
 }: GanttTaskEditorProps): ReactElement {
+  const localization = useGanttLocalization();
   const [title, setTitle] = useState(initialValue.title);
   const [start, setStart] = useState(() => editorDate(initialValue.start));
   const [end, setEnd] = useState(() => editorDate(initialValue.end));
@@ -224,7 +245,7 @@ export function DefaultTaskEditor({
               <SquarePen focusable="false" strokeWidth={1.8} />
             </span>
             <div>
-              <strong>Edit task</strong>
+              <strong>{localization.message('properties.edit')} task</strong>
               <span>Update the task details and schedule.</span>
             </div>
           </div>
@@ -241,7 +262,7 @@ export function DefaultTaskEditor({
         <div className="gt-gantt__editor-content">
           <label>
             <span className="gt-gantt__editor-label">
-              <span>Title</span>
+              <span>{localization.message('field.title')}</span>
               <small>Required</small>
             </span>
             <input
@@ -258,7 +279,7 @@ export function DefaultTaskEditor({
           <div className="gt-gantt__editor-schedule">
             <label>
               <span className="gt-gantt__editor-label">
-                <span>Start</span>
+                <span>{localization.message('field.start')}</span>
                 <small>Local time</small>
               </span>
               <span className="gt-gantt__editor-input-shell">
@@ -278,7 +299,7 @@ export function DefaultTaskEditor({
             </label>
             <label>
               <span className="gt-gantt__editor-label">
-                <span>End</span>
+                <span>{localization.message('field.end')}</span>
                 <small>Local time</small>
               </span>
               <span className="gt-gantt__editor-input-shell">
@@ -311,7 +332,7 @@ export function DefaultTaskEditor({
             onClick={onCancel}
             type="button"
           >
-            Cancel
+            {localization.message('common.cancel')}
           </button>
           <button
             className="gt-gantt__editor-button gt-gantt__editor-button--primary"
@@ -328,7 +349,7 @@ export function DefaultTaskEditor({
             ) : (
               <Save aria-hidden="true" focusable="false" strokeWidth={2} />
             )}
-            {pending ? 'Saving…' : 'Save task'}
+            {pending ? 'Saving…' : localization.message('common.save', { kind: 'task' })}
           </button>
         </div>
       </form>
@@ -353,6 +374,7 @@ export function DefaultItemProperties({
   readOnly,
   resourceId,
 }: DefaultItemPropertiesProps): ReactElement {
+  const localization = useGanttLocalization();
   const taskValue = initialValue.kind === 'task' ? initialValue : undefined;
   const [title, setTitle] = useState(initialValue.title);
   const [description, setDescription] = useState(taskValue?.description ?? '');
@@ -416,7 +438,10 @@ export function DefaultItemProperties({
             </span>
             <div>
               <strong>
-                {readOnly ? 'View' : 'Edit'} {initialValue.kind} properties
+                {localization.message(readOnly ? 'properties.view' : 'properties.edit')}{' '}
+                {localization.message(
+                  `task.kind.${initialValue.kind === 'lane' ? 'task' : initialValue.taskKind}`,
+                )}
               </strong>
               <span>
                 {readOnly
@@ -464,7 +489,7 @@ export function DefaultItemProperties({
 
           <label>
             <span className="gt-gantt__editor-label">
-              <span>Title</span>
+              <span>{localization.message('field.title')}</span>
               <small>Required</small>
             </span>
             <input
@@ -481,7 +506,7 @@ export function DefaultItemProperties({
           {initialValue.kind === 'task' ? (
             <label>
               <span className="gt-gantt__editor-label">
-                <span>Description</span>
+                <span>{localization.message('field.description')}</span>
                 <small>Optional</small>
               </span>
               <textarea
@@ -500,7 +525,7 @@ export function DefaultItemProperties({
             <div className="gt-gantt__editor-schedule">
               <label>
                 <span className="gt-gantt__editor-label">
-                  <span>Kind</span>
+                  <span>{localization.message('field.kind')}</span>
                   <small>Canonical task type</small>
                 </span>
                 <select
@@ -510,14 +535,14 @@ export function DefaultItemProperties({
                   onChange={(event) => setTaskKind(event.currentTarget.value as typeof taskKind)}
                   value={taskKind}
                 >
-                  <option value="task">Task</option>
-                  <option value="summary">Summary</option>
-                  <option value="milestone">Milestone</option>
+                  <option value="task">{localization.message('task.kind.task')}</option>
+                  <option value="summary">{localization.message('task.kind.summary')}</option>
+                  <option value="milestone">{localization.message('task.kind.milestone')}</option>
                 </select>
               </label>
               <label>
                 <span className="gt-gantt__editor-label">
-                  <span>Parent</span>
+                  <span>{localization.message('field.parent')}</span>
                   <small>Summary task</small>
                 </span>
                 <select
@@ -539,7 +564,7 @@ export function DefaultItemProperties({
               </label>
               <label>
                 <span className="gt-gantt__editor-label">
-                  <span>Order</span>
+                  <span>{localization.message('field.order')}</span>
                   <small>Sibling order</small>
                 </span>
                 <input
@@ -560,7 +585,7 @@ export function DefaultItemProperties({
             <div className="gt-gantt__editor-schedule">
               <label>
                 <span className="gt-gantt__editor-label">
-                  <span>Start</span>
+                  <span>{localization.message('field.start')}</span>
                   <small>Local time</small>
                 </span>
                 <span className="gt-gantt__editor-input-shell">
@@ -580,7 +605,7 @@ export function DefaultItemProperties({
               {taskKind === 'milestone' ? null : (
                 <label>
                   <span className="gt-gantt__editor-label">
-                    <span>End</span>
+                    <span>{localization.message('field.end')}</span>
                     <small>Local time</small>
                   </span>
                   <span className="gt-gantt__editor-input-shell">
@@ -604,7 +629,7 @@ export function DefaultItemProperties({
           {initialValue.kind === 'task' && taskKind === 'task' ? (
             <label>
               <span className="gt-gantt__editor-label">
-                <span>Progress</span>
+                <span>{localization.message('field.progress')}</span>
                 <small>0–100%</small>
               </span>
               <input
@@ -625,7 +650,7 @@ export function DefaultItemProperties({
 
           <label>
             <span className="gt-gantt__editor-label">
-              <span>Appearance</span>
+              <span>{localization.message('field.appearance')}</span>
               <small>{initialValue.kind === 'task' ? 'Inherit lane' : 'Theme default'}</small>
             </span>
             <select
@@ -653,7 +678,7 @@ export function DefaultItemProperties({
           {initialValue.kind === 'task' && initialValue.placementId !== undefined ? (
             <label>
               <span className="gt-gantt__editor-label">
-                <span>Current lane</span>
+                <span>{localization.message('field.lane')}</span>
                 <small>{laneMoveDisabledReason ?? 'Persisted placement'}</small>
               </span>
               <select
@@ -694,7 +719,7 @@ export function DefaultItemProperties({
               type="button"
             >
               <Trash2 aria-hidden="true" focusable="false" strokeWidth={2} />
-              Delete task
+              {localization.message('common.delete', { kind: 'task' })}
             </button>
           ) : null}
           <button
@@ -703,7 +728,7 @@ export function DefaultItemProperties({
             onClick={onCancel}
             type="button"
           >
-            {readOnly ? 'Close' : 'Cancel'}
+            {readOnly ? 'Close' : localization.message('common.cancel')}
           </button>
           {readOnly ? null : (
             <button
@@ -721,7 +746,9 @@ export function DefaultItemProperties({
               ) : (
                 <Save aria-hidden="true" focusable="false" strokeWidth={2} />
               )}
-              {pending ? 'Saving…' : `Save ${initialValue.kind}`}
+              {pending
+                ? 'Saving…'
+                : localization.message('common.save', { kind: initialValue.kind })}
             </button>
           )}
         </div>
@@ -741,6 +768,7 @@ export function DefaultDependencyProperties({
   pending,
   readOnly,
 }: GanttDependencyPropertiesProps): ReactElement {
+  const localization = useGanttLocalization();
   const [type, setType] = useState(initialValue.type);
   const [lagValue, setLagValue] = useState(
     initialValue.lag === undefined ? '' : String(initialValue.lag.value),
@@ -776,14 +804,24 @@ export function DefaultDependencyProperties({
               <CircleDot focusable="false" strokeWidth={1.8} />
             </span>
             <div>
-              <strong>{readOnly ? 'View' : 'Edit'} dependency properties</strong>
+              <strong>
+                {localization.message(
+                  readOnly ? 'properties.view' : 'dependency.edit',
+                  undefined,
+                  readOnly ? 'View dependency' : 'Edit dependency',
+                )}
+              </strong>
               <span>
                 {initialValue.fromTitle} to {initialValue.toTitle}
               </span>
             </div>
           </div>
           <button
-            aria-label="Close dependency properties"
+            aria-label={localization.message(
+              'common.cancel',
+              undefined,
+              'Close dependency properties',
+            )}
             className="gt-gantt__editor-close"
             disabled={pending}
             onClick={onCancel}
@@ -806,22 +844,30 @@ export function DefaultDependencyProperties({
             </div>
           </dl>
           <label>
-            <span className="gt-gantt__editor-label">Type</span>
+            <span className="gt-gantt__editor-label">{localization.message('field.kind')}</span>
             <select
               aria-label="Dependency type"
               disabled={disabled}
               onChange={(event) => setType(event.currentTarget.value as typeof type)}
               value={type}
             >
-              <option value="finish-to-start">Finish to start</option>
-              <option value="start-to-start">Start to start</option>
-              <option value="finish-to-finish">Finish to finish</option>
-              <option value="start-to-finish">Start to finish</option>
+              <option value="finish-to-start">
+                {localization.message('dependency.type.finish-to-start')}
+              </option>
+              <option value="start-to-start">
+                {localization.message('dependency.type.start-to-start')}
+              </option>
+              <option value="finish-to-finish">
+                {localization.message('dependency.type.finish-to-finish')}
+              </option>
+              <option value="start-to-finish">
+                {localization.message('dependency.type.start-to-finish')}
+              </option>
             </select>
           </label>
           <div className="gt-gantt__editor-schedule">
             <label>
-              <span className="gt-gantt__editor-label">Elapsed lag</span>
+              <span className="gt-gantt__editor-label">{localization.message('field.lag')}</span>
               <input
                 aria-label="Lag value"
                 disabled={disabled}
@@ -863,7 +909,7 @@ export function DefaultDependencyProperties({
             type="button"
           >
             <Trash2 aria-hidden="true" focusable="false" strokeWidth={2} />
-            Delete dependency
+            {localization.message('dependency.delete')}
           </button>
           <button
             className="gt-gantt__editor-button gt-gantt__editor-button--secondary"
@@ -871,7 +917,7 @@ export function DefaultDependencyProperties({
             onClick={onCancel}
             type="button"
           >
-            Cancel
+            {localization.message('common.cancel')}
           </button>
           <button
             className="gt-gantt__editor-button gt-gantt__editor-button--primary"
@@ -879,7 +925,7 @@ export function DefaultDependencyProperties({
             type="submit"
           >
             <Save aria-hidden="true" focusable="false" strokeWidth={2} />
-            {pending ? 'Saving…' : 'Save dependency'}
+            {pending ? 'Saving…' : localization.message('common.save', { kind: 'dependency' })}
           </button>
         </div>
       </form>

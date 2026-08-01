@@ -14,7 +14,7 @@ const DAY = 24 * 60 * 60 * 1_000;
 const START = Date.UTC(2026, 6, 29);
 const RANGE = { start: START, end: START + 10 * DAY };
 
-function sceneFixture(): ChartScene {
+function sceneFixture(direction: 'ltr' | 'rtl' = 'ltr'): ChartScene {
   const document: GanttDocument = {
     schemaVersion: 1,
     tasks: [
@@ -63,6 +63,7 @@ function sceneFixture(): ChartScene {
     dependencies: [],
   };
   return buildChartScene({
+    direction,
     document,
     range: RANGE,
     tickAnchor: START,
@@ -159,6 +160,24 @@ describe('interaction hit testing', () => {
       kind: 'timeline-position',
       lane: { target: { kind: 'lane', laneId: 'lane-b' } },
     });
+  });
+
+  it('keeps semantic start and end edge hits correct after RTL mirroring', () => {
+    const index = indexFor(sceneFixture('rtl'));
+    const task = index.tasks.find((node) => node.target.taskId === 'task-a')!;
+    const y = task.rect.y + task.rect.height / 2;
+
+    expect(
+      hitTestInteraction(
+        index,
+        { x: task.rect.x + task.rect.width, y },
+        'mouse',
+        task.target.viewKey,
+      ),
+    ).toMatchObject({ edge: 'start', kind: 'task-edge' });
+    expect(
+      hitTestInteraction(index, { x: task.rect.x, y }, 'mouse', task.target.viewKey),
+    ).toMatchObject({ edge: 'end', kind: 'task-edge' });
   });
 
   it('expands touch edges without making clipped boundaries resizable', () => {
@@ -310,6 +329,13 @@ describe('interaction hit testing', () => {
 
   it('maps coordinates and snap ties without locale, time-zone, or sign ambiguity', () => {
     expect(coordinateToTime({ x: 100, width: 1_000 }, RANGE, 600)).toBe(START + 5 * DAY);
+    expect(coordinateToTime({ x: 100, width: 1_000 }, RANGE, 600, true, 'rtl')).toBe(
+      START + 5 * DAY,
+    );
+    expect(coordinateToTime({ x: 100, width: 1_000 }, RANGE, 100, true, 'rtl')).toBe(
+      START + 10 * DAY,
+    );
+    expect(coordinateToTime({ x: 100, width: 1_000 }, RANGE, 1_100, true, 'rtl')).toBe(START);
     expect(coordinateToTime({ x: 100, width: 1_000 }, RANGE, -500)).toBe(START);
     expect(snapInteractionTime(START + DAY / 2, { anchor: START, step: DAY })).toBe(START + DAY);
     expect(snapInteractionTime(START - DAY / 2, { anchor: START, step: DAY })).toBe(START);

@@ -37,6 +37,8 @@ import type {
   InteractionPreviewPrimitive,
 } from '../interaction/types';
 import type { Diagnostic } from '../model/diagnostics';
+import { createGanttLocalization, type GanttLocalization } from '../localization/format';
+import type { GanttDirection } from '../localization/types';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import { validateDocumentReferences } from '../model/validate';
 import { resolveTaskPresentations } from '../presentation/resolve-task-presentations';
@@ -225,7 +227,11 @@ export interface GanttKeyboardActionInput {
 
 interface DisplayInputs {
   readonly appearanceVariants: GanttProps['appearanceVariants'];
+  readonly direction: GanttDirection;
+  readonly formatters: GanttProps['formatters'];
   readonly locale: string;
+  readonly localization: GanttLocalization;
+  readonly messages: GanttProps['messages'];
   readonly range: TimeRange;
   readonly taskVariants: GanttProps['taskVariants'];
   readonly timeScale: GanttTimeScaleDefinition;
@@ -253,6 +259,13 @@ function initialSession(props: GanttProps) {
 }
 
 function displayInputs(props: GanttProps, rangeOverride?: TimeRange): DisplayInputs {
+  const localization = createGanttLocalization({
+    ...(props.direction === undefined ? {} : { direction: props.direction }),
+    ...(props.formatters === undefined ? {} : { formatters: props.formatters }),
+    ...(props.locale === undefined ? {} : { locale: props.locale }),
+    ...(props.messages === undefined ? {} : { messages: props.messages }),
+    timeZone: props.timeZone,
+  });
   const timeScale: GanttTimeScaleDefinition = props.timeScale ?? {
     kind: 'fixed',
     tickAnchor: props.tickAnchor!,
@@ -260,13 +273,17 @@ function displayInputs(props: GanttProps, rangeOverride?: TimeRange): DisplayInp
   };
   return Object.freeze({
     appearanceVariants: props.appearanceVariants,
-    locale: props.locale ?? 'en-US',
+    direction: localization.direction,
+    formatters: props.formatters,
+    locale: localization.locale,
+    localization,
+    messages: props.messages,
     range: Object.freeze({ ...(rangeOverride ?? props.range ?? props.defaultRange) }),
     taskVariants: props.taskVariants,
     tickAnchor: timeScale.kind === 'fixed' ? timeScale.tickAnchor : 0,
     tickInterval: timeScale.kind === 'fixed' ? timeScale.tickInterval : timeScaleLevelSpan('day'),
     timeScale: Object.freeze({ ...timeScale }),
-    timeZone: props.timeZone,
+    timeZone: localization.timeZone,
     view: props.view,
   });
 }
@@ -274,7 +291,10 @@ function displayInputs(props: GanttProps, rangeOverride?: TimeRange): DisplayInp
 function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
   return (
     JSON.stringify(previous.appearanceVariants) === JSON.stringify(next.appearanceVariants) &&
+    previous.direction === next.direction &&
+    previous.formatters === next.formatters &&
     previous.locale === next.locale &&
+    JSON.stringify(previous.messages) === JSON.stringify(next.messages) &&
     previous.range.start === next.range.start &&
     previous.range.end === next.range.end &&
     previous.tickAnchor === next.tickAnchor &&
@@ -303,6 +323,18 @@ function timeScaleDiagnostics(timeScale: GanttTimeScaleDefinition): readonly Dia
       severity: 'warning' as const,
     }),
   ]);
+}
+
+function uniqueDiagnostics(diagnostics: readonly Diagnostic[]): readonly Diagnostic[] {
+  const seen = new Set<string>();
+  return Object.freeze(
+    diagnostics.filter((diagnostic) => {
+      const key = `${diagnostic.code}\u0000${diagnostic.path ?? ''}\u0000${diagnostic.message}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
 }
 
 function projectSessionPart(session: GanttSessionState) {
@@ -552,6 +584,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   let display = displayInputs(initialProps);
   let inputDiagnostics = Object.freeze([
     ...initialValidation.diagnostics,
+    ...display.localization.diagnostics,
     ...timeScaleDiagnostics(display.timeScale),
   ]);
   const documentControlled = controlledDocument(initialProps) !== undefined;
@@ -642,6 +675,22 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     return !rangeControlled || callbacks.onRangeChange !== undefined;
   }
 
+  function localizedAction(action: GanttInteractionAction | 'interaction'): string {
+    const key =
+      action === 'create'
+        ? 'interaction.create'
+        : action === 'dependency'
+          ? 'interaction.link'
+          : action === 'move'
+            ? 'interaction.move'
+            : action === 'progress'
+              ? 'interaction.progress'
+              : action === 'resize'
+                ? 'interaction.resize'
+                : undefined;
+    return key === undefined ? interactionActionLabel(action) : display.localization.message(key);
+  }
+
   const bus: GanttCommandBus = createGanttCommandBus({
     canProposeControlledDocument: () => callbacks.onDocumentChange !== undefined,
     ...(initialProps.interceptors === undefined ? {} : { interceptors: initialProps.interceptors }),
@@ -661,7 +710,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
               : 'preview' in interaction
                 ? interaction.preview?.kind
                 : undefined;
-        const label = interactionActionLabel(action ?? 'interaction');
+        const label = localizedAction(action ?? 'interaction');
         const interactionTarget = 'target' in interaction ? interaction.target : undefined;
         if (
           interactionTarget?.kind === 'dependency' &&
@@ -699,7 +748,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         dependencyFocusRestore = undefined;
         setInteraction(
           Object.freeze({
-            announcement: `${label} committed.`,
+            announcement: display.localization.message('interaction.committed', { action: label }),
             status: 'idle',
           }),
         );
@@ -717,7 +766,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         const target = 'target' in interaction ? interaction.target : undefined;
         setInteraction(
           Object.freeze({
-            announcement: event.diagnostics[0]?.message ?? 'Interaction rejected.',
+            announcement:
+              event.diagnostics[0]?.message ?? display.localization.message('interaction.rejected'),
             ...(target === undefined ? {} : { target }),
             status: 'rejected',
           }),
@@ -873,6 +923,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           ? {}
           : { appearanceVariants: display.appearanceVariants }),
         document: storeSnapshot.document,
+        direction: display.direction,
+        ...(display.formatters === undefined ? {} : { formatters: display.formatters }),
         range: display.range,
         tickAnchor: display.tickAnchor,
         tickInterval: display.tickInterval,
@@ -890,12 +942,19 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       invalidation,
     );
     const derivedScene = derived.scene;
+    const currentInputDiagnostics = uniqueDiagnostics([
+      ...inputDiagnostics,
+      ...display.localization.diagnostics,
+    ]);
     const scene =
-      inputDiagnostics.length === 0
+      currentInputDiagnostics.length === 0
         ? derivedScene
         : Object.freeze({
             ...derivedScene,
-            diagnostics: Object.freeze([...inputDiagnostics, ...derivedScene.diagnostics]),
+            diagnostics: uniqueDiagnostics([
+              ...currentInputDiagnostics,
+              ...derivedScene.diagnostics,
+            ]),
           });
     lastDocument = storeSnapshot.document;
     const sceneOccurrences = occurrences(scene, derived.occurrences);
@@ -1213,8 +1272,16 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         action: 'dependency',
         announcement:
           candidateTitle === undefined
-            ? `Linking from ${sourceTitle}. Choose a target.`
-            : `Link ${sourceTitle} to ${candidateTitle}. Press Enter or release to commit.`,
+            ? display.localization.message(
+                'dependency.create',
+                { source: sourceTitle },
+                'Linking from {source}. Choose a target.',
+              )
+            : display.localization.message(
+                'interaction.link',
+                { source: sourceTitle, target: candidateTitle },
+                'Link {source} to {target}. Press Enter or release to commit.',
+              ),
         mode: 'link',
         ...(dependencyLink.pointerType === undefined
           ? {}
@@ -1243,7 +1310,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       if (link !== undefined) {
         setInteraction(
           Object.freeze({
-            announcement: 'Choose a different task as the dependency target.',
+            announcement: display.localization.message(
+              'dependency.invalid',
+              undefined,
+              'Choose a different task as the dependency target.',
+            ),
             status: 'rejected',
             target: link.source,
           }),
@@ -1395,7 +1466,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     ) {
       setInteraction(
         Object.freeze({
-          announcement: `${taskTitle(target)} ${selected ? 'deselected' : 'selected'}.`,
+          announcement: display.localization.message('interaction.selection', {
+            state: selected ? 'deselected' : 'selected',
+            title: taskTitle(target),
+          }),
           status: 'idle',
         }),
       );
@@ -1466,10 +1540,14 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
   function navigateViewport(input: GanttViewportNavigationInput): GanttViewportNavigationResult {
     const source = input.source ?? 'runtime';
     rangeChangeContext = Object.freeze({ reason: input.reason ?? 'scroll' });
-    const horizontal =
+    const horizontalDelta =
       input.horizontalDelta === undefined
+        ? undefined
+        : input.horizontalDelta * (display.direction === 'rtl' ? -1 : 1);
+    const horizontal =
+      horizontalDelta === undefined
         ? false
-        : rangeProposals.shiftByPixels(input.horizontalDelta, input.viewportWidth, source);
+        : rangeProposals.shiftByPixels(horizontalDelta, input.viewportWidth, source);
     let vertical = false;
     if (input.verticalDelta !== undefined) {
       const session = store.getSnapshot().session;
@@ -1569,7 +1647,8 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     const horizontalDirection =
       relativeX < edge ? -1 : relativeX > input.geometry.width - edge ? 1 : 0;
     if (horizontalDirection !== 0) {
-      const shift = horizontalDirection * options.snap.step;
+      const shift =
+        horizontalDirection * options.snap.step * (display.direction === 'rtl' ? -1 : 1);
       rangeChangeContext = Object.freeze({ reason: 'scroll' });
       rangeProposals.shiftByTime(shift, 'runtime');
     }
@@ -1588,7 +1667,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
     );
     if (intervals.length === 0) {
       setInteraction(
-        Object.freeze({ announcement: 'No scheduled project items to fit.', status: 'idle' }),
+        Object.freeze({
+          announcement: display.localization.message('chart.empty'),
+          status: 'idle',
+        }),
       );
       return false;
     }
@@ -1737,7 +1819,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       dependencyLink = undefined;
       setInteraction(
         Object.freeze({
-          announcement: `Linking from ${taskTitle(source)} cancelled.`,
+          announcement: display.localization.message(
+            'interaction.cancelled',
+            { source: taskTitle(source) },
+            'Linking from {source} cancelled.',
+          ),
           status: 'idle',
         }),
       );
@@ -1837,11 +1923,17 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           return true;
         }
         if (input.action.type === 'navigate') {
+          const direction =
+            display.direction === 'rtl' && input.action.direction === 'left'
+              ? 'right'
+              : display.direction === 'rtl' && input.action.direction === 'right'
+                ? 'left'
+                : input.action.direction;
           const current = dependencyLink.candidate ?? dependencyLink.source;
           const next = navigateRuntimeOccurrence(
             occurrences(snapshot.scene, snapshot.occurrenceCatalog).runtime,
             current,
-            input.action.direction,
+            direction,
           );
           if (next?.kind !== 'task' || next.taskId === dependencyLink.source.taskId) return false;
           dependencyLink = Object.freeze({ ...dependencyLink, candidate: next });
@@ -1863,7 +1955,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           keyboardGesture = undefined;
           setInteraction(
             Object.freeze({
-              announcement: 'Keyboard interaction cancelled.',
+              announcement: display.localization.message('interaction.cancelled'),
               status: 'idle',
             }),
           );
@@ -1875,7 +1967,13 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         if (input.action.type !== 'adjust') {
           return false;
         }
-        const next = adjustKeyboardInteraction(keyboardGesture, input.action.direction, options, {
+        const direction =
+          display.direction === 'rtl' && input.action.direction === 'left'
+            ? 'right'
+            : display.direction === 'rtl' && input.action.direction === 'right'
+              ? 'left'
+              : input.action.direction;
+        const next = adjustKeyboardInteraction(keyboardGesture, direction, options, {
           ...(input.action.accelerated === undefined
             ? {}
             : { accelerated: input.action.accelerated }),
@@ -1926,7 +2024,16 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           return true;
         }
         if (input.action.type === 'activate') {
-          setInteraction(Object.freeze({ announcement: 'Dependency activated.', status: 'idle' }));
+          setInteraction(
+            Object.freeze({
+              announcement: display.localization.message(
+                'dependency.edit',
+                undefined,
+                'Dependency activated.',
+              ),
+              status: 'idle',
+            }),
+          );
           return true;
         }
         return false;
@@ -1936,17 +2043,20 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         return false;
       }
       if (input.action.type === 'navigate') {
+        const direction =
+          display.direction === 'rtl' && input.action.direction === 'left'
+            ? 'right'
+            : display.direction === 'rtl' && input.action.direction === 'right'
+              ? 'left'
+              : input.action.direction;
         const currentLane = snapshot.scene.lanes.find(
           (lane) => lane.viewKey === target.laneViewKey,
         );
-        if (
-          currentLane?.project !== undefined &&
-          (input.action.direction === 'left' || input.action.direction === 'right')
-        ) {
+        if (currentLane?.project !== undefined && (direction === 'left' || direction === 'right')) {
           const record = store
             .getSnapshot()
             .document.tasks.find((task) => task.id === target.taskId);
-          if (input.action.direction === 'left') {
+          if (direction === 'left') {
             if (currentLane.project.hasChildren && currentLane.project.expanded) {
               return runtime.toggleProjectTask(target.taskId, false);
             }
@@ -1971,7 +2081,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         const next = navigateRuntimeOccurrence(
           occurrences(snapshot.scene, snapshot.occurrenceCatalog).runtime,
           target,
-          input.action.direction,
+          direction,
         );
         if (next === undefined) {
           return false;
@@ -2370,6 +2480,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       );
       const nextInputDiagnostics = Object.freeze([
         ...validation.diagnostics,
+        ...nextDisplay.localization.diagnostics,
         ...timeScaleDiagnostics(nextDisplay.timeScale),
       ]);
       const changedDiagnostics =
@@ -2397,7 +2508,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           keyboardGesture = undefined;
           setInteraction(
             Object.freeze({
-              announcement: 'Keyboard interaction cancelled because its task is no longer visible.',
+              announcement: display.localization.message(
+                'tree.hidden-focus',
+                undefined,
+                'Keyboard interaction cancelled because its task is no longer visible.',
+              ),
               status: 'idle',
             }),
           );
@@ -2409,8 +2524,11 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
           dependencyLink = undefined;
           setInteraction(
             Object.freeze({
-              announcement:
+              announcement: display.localization.message(
+                'interaction.cancelled',
+                undefined,
                 'Dependency linking cancelled because its source is no longer available.',
+              ),
               status: 'idle',
             }),
           );
@@ -2511,7 +2629,10 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
       const title = document.tasks.find((task) => task.id === taskId)?.title ?? taskId;
       setInteraction(
         Object.freeze({
-          announcement: `${title} ${collapsing ? 'collapsed' : 'expanded'}.`,
+          announcement: display.localization.message('interaction.selection', {
+            state: collapsing ? 'collapsed' : 'expanded',
+            title,
+          }),
           status: 'idle',
         }),
       );

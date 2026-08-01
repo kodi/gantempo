@@ -17,6 +17,7 @@ import type {
 } from '../view/types';
 import type { ResolveProjectViewQuery } from '../view/types';
 import type { GanttTimeScaleLevel } from '../time/adaptive-scale';
+import type { GanttDirection, GanttFormatters } from '../localization/types';
 import type { EffectiveAppearancePrimitive, GanttAppearanceVariantOption } from './appearance';
 
 export interface ChartLayoutMetrics {
@@ -151,6 +152,7 @@ export interface EmptyStatePrimitive {
 }
 
 export interface ChartScene {
+  readonly direction?: GanttDirection;
   readonly range: TimeRange;
   readonly bounds: ChartBoundsPrimitive;
   readonly ticks: readonly TimeTickPrimitive[];
@@ -165,7 +167,9 @@ export interface ChartScene {
 
 export interface BuildChartSceneOptions {
   readonly appearanceVariants?: readonly GanttAppearanceVariantOption[];
+  readonly direction?: GanttDirection;
   readonly document: GanttDocument;
+  readonly formatters?: GanttFormatters;
   readonly view?: GanttViewDefinition;
   readonly range: TimeRange;
   readonly viewport?: {

@@ -161,6 +161,7 @@ interface PipelineCache {
   readonly options: BuildChartSceneOptions;
   readonly scene: ChartScene;
   readonly taskPrimitiveByKey: ReadonlyMap<string, TaskBarPrimitive>;
+  readonly tickDiagnostics: readonly Diagnostic[];
   readonly ticks: readonly TimeTickPrimitive[];
   readonly topology: ResolveViewResult;
   readonly validation: ValidateDocumentResult;
@@ -237,7 +238,12 @@ function tickSignature(options: BuildChartSceneOptions): string {
     options.locale,
     options.timeScaleLevel,
     options.timeScaleWidth,
+    options.direction,
   ]);
+}
+
+function directionalX(x: number, direction: BuildChartSceneOptions['direction']): number {
+  return direction === 'rtl' ? 1 - x : x;
 }
 
 function projectQuerySignature(options: BuildChartSceneOptions): string {
@@ -734,9 +740,9 @@ function buildDependencyPrimitives(
     const direct = occurrenceByTaskId.get(taskId);
     if (direct !== undefined) {
       return Object.freeze({
-        endX: scale.timeToX(direct.end),
+        endX: directionalX(scale.timeToX(direct.end), options.direction),
         hidden: false,
-        startX: scale.timeToX(direct.start),
+        startX: directionalX(scale.timeToX(direct.start), options.direction),
         taskId,
         viewKey: direct.viewKey,
         y: direct.y + direct.height / 2,
@@ -751,9 +757,9 @@ function buildDependencyPrimitives(
         const project = laneByKey.get(ancestor.laneViewKey)?.project;
         if (project?.expanded === false || project?.filterMatch === 'ancestor') {
           return Object.freeze({
-            endX: scale.timeToX(ancestor.end),
+            endX: directionalX(scale.timeToX(ancestor.end), options.direction),
             hidden: true,
-            startX: scale.timeToX(ancestor.start),
+            startX: directionalX(scale.timeToX(ancestor.start), options.direction),
             taskId,
             viewKey: ancestor.viewKey,
             y: ancestor.y + ancestor.height / 2,
@@ -778,7 +784,14 @@ function buildDependencyPrimitives(
       const to = endpoint(dependency.toTaskId);
       if (from === undefined || to === undefined || from.viewKey === to.viewKey) return;
       const route = routeDependency(
-        { dependencyId: dependency.id, from, rank, to, type: dependency.type },
+        {
+          dependencyId: dependency.id,
+          direction: options.direction ?? 'ltr',
+          from,
+          rank,
+          to,
+          type: dependency.type,
+        },
         { bottom, top },
       );
       if (route === undefined) return;
@@ -824,6 +837,7 @@ function progressPrimitive(
   placement: ResolvedIntervalPlacement,
   range: TimeRange,
   scale: ReturnType<typeof createLinearTimeScale>,
+  direction: BuildChartSceneOptions['direction'],
 ): TaskBarPrimitive['progress'] {
   const progress = task.progress;
   if (
@@ -843,11 +857,12 @@ function progressPrimitive(
     placement.end,
     range.end,
   );
-  const x = scale.timeToX(visibleStart);
+  const startX = scale.timeToX(visibleStart);
+  const endX = scale.timeToX(visibleCompletedEnd);
   return Object.freeze({
     value: progress,
-    width: Math.max(0, scale.timeToX(visibleCompletedEnd) - x),
-    x,
+    width: Math.max(0, endX - startX),
+    x: direction === 'rtl' ? 1 - endX : startX,
   });
 }
 
@@ -916,6 +931,7 @@ function rejectedScene(
   diagnostics: readonly Diagnostic[],
 ): ChartScene {
   return Object.freeze({
+    direction: options.direction ?? 'ltr',
     range: Object.freeze({ ...options.range }),
     bounds: Object.freeze({
       headerHeight: metrics.headerHeight,
@@ -1033,32 +1049,73 @@ export function createChartScenePipeline(): ChartScenePipeline {
       const dependencies =
         topology === cache?.topology ? cache.dependencies : buildDependencies(topology);
 
-      const ticks: readonly TimeTickPrimitive[] =
-        !forceAll && cache !== undefined && tickSignature(cache.options) === tickSignature(options)
-          ? cache.ticks
-          : Object.freeze(
-              (options.timeScaleLevel === undefined
-                ? generateFixedIntervalTicks({
-                    range: options.range,
-                    anchor: options.tickAnchor,
-                    interval: options.tickInterval,
+      const reuseTicks =
+        !forceAll &&
+        cache !== undefined &&
+        cache.options.formatters === options.formatters &&
+        tickSignature(cache.options) === tickSignature(options);
+      const tickDiagnostics: Diagnostic[] = reuseTicks ? [...cache!.tickDiagnostics] : [];
+      const ticks: readonly TimeTickPrimitive[] = reuseTicks
+        ? cache!.ticks
+        : Object.freeze(
+            (options.timeScaleLevel === undefined
+              ? generateFixedIntervalTicks({
+                  range: options.range,
+                  anchor: options.tickAnchor,
+                  interval: options.tickInterval,
+                  timeZone: options.timeZone,
+                  ...(options.locale === undefined ? {} : { locale: options.locale }),
+                })
+              : generateAdaptiveTimeTicks(
+                  options.range,
+                  options.timeScaleLevel,
+                  options.locale ?? 'en-US',
+                  options.timeZone,
+                  options.timeScaleWidth,
+                )
+            ).map((tick) => {
+              const kind = ('kind' in tick ? tick.kind : 'major') as 'major' | 'minor';
+              let label = tick.label;
+              if (options.formatters?.dateTime !== undefined) {
+                try {
+                  const formatted = options.formatters.dateTime(tick.time, {
+                    direction: options.direction ?? 'ltr',
+                    locale: options.locale ?? 'en-US',
                     timeZone: options.timeZone,
-                    ...(options.locale === undefined ? {} : { locale: options.locale }),
-                  })
-                : generateAdaptiveTimeTicks(
-                    options.range,
-                    options.timeScaleLevel,
-                    options.locale ?? 'en-US',
-                    options.timeZone,
-                    options.timeScaleWidth,
-                  )
-              ).map((tick) =>
-                Object.freeze({
-                  ...tick,
-                  x: createLinearTimeScale(options.range, { start: 0, end: 1 }).timeToX(tick.time),
-                }),
-              ),
-            );
+                    use: kind === 'minor' ? 'tick-minor' : 'tick-major',
+                  });
+                  label = formatted.trim().length > 0 ? formatted : tick.label;
+                  if (formatted.trim().length === 0) {
+                    throw new Error('empty formatter output');
+                  }
+                } catch {
+                  label = tick.label;
+                  if (
+                    !tickDiagnostics.some((diagnostic) => diagnostic.code === 'format.date-time')
+                  ) {
+                    tickDiagnostics.push(
+                      Object.freeze({
+                        code: 'format.date-time',
+                        message:
+                          'The dateTime formatter returned no usable output; the built-in formatter is used.',
+                        path: '/formatters/dateTime',
+                        severity: 'warning',
+                      }),
+                    );
+                  }
+                }
+              }
+              return Object.freeze({
+                ...('kind' in tick ? { kind } : {}),
+                label,
+                x: directionalX(
+                  createLinearTimeScale(options.range, { start: 0, end: 1 }).timeToX(tick.time),
+                  options.direction,
+                ),
+                time: tick.time,
+              }) satisfies TimeTickPrimitive;
+            }),
+          );
       if (ticks !== cache?.ticks) {
         work.tickBuilds += 1;
       }
@@ -1068,6 +1125,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         const scene = rejectedScene(options, metrics, ticks, [
           ...validation.diagnostics,
           ...topology.diagnostics,
+          ...tickDiagnostics,
         ]);
         cache = {
           appearanceRegistry,
@@ -1083,6 +1141,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
           options,
           scene,
           taskPrimitiveByKey: new Map(),
+          tickDiagnostics: Object.freeze(tickDiagnostics),
           ticks,
           topology,
           validation,
@@ -1171,17 +1230,28 @@ export function createChartScenePipeline(): ChartScenePipeline {
         }
         const visibleStart = Math.max(placement.start, options.range.start);
         const visibleEnd = Math.min(placement.end, options.range.end);
-        const x = scale.timeToX(visibleStart);
-        const xEnd = scale.timeToX(visibleEnd);
+        const startX = scale.timeToX(visibleStart);
+        const endX = scale.timeToX(visibleEnd);
+        const x = options.direction === 'rtl' ? 1 - endX : startX;
         const laneVariant =
           lane.laneId === undefined
             ? undefined
             : indexes.lanesById.get(lane.laneId)?.appearance?.variant;
         const legacyTaskVariant = options.taskVariants?.[task.id];
-        const progress = progressPrimitive(task, placement, options.range, scale);
+        const progress = progressPrimitive(
+          task,
+          placement,
+          options.range,
+          scale,
+          options.direction,
+        );
         const geometry =
           placement.kind === 'milestone'
-            ? Object.freeze({ centerX: x, kind: 'milestone' as const, size: placement.height })
+            ? Object.freeze({
+                centerX: directionalX(startX, options.direction),
+                kind: 'milestone' as const,
+                size: placement.height,
+              })
             : placement.kind === 'summary'
               ? Object.freeze({
                   capHeight: Math.max(2, placement.height / 3),
@@ -1203,7 +1273,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
           start: placement.start,
           end: placement.end,
           x,
-          width: xEnd - x,
+          width: endX - startX,
           y: placement.y,
           height: placement.height,
           ...(progress === undefined ? {} : { progress }),
@@ -1253,6 +1323,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         ...topology.diagnostics,
         ...intervals.diagnostics,
         ...appearanceDiagnostics,
+        ...tickDiagnostics,
       ]);
       const dependencyPrimitives = buildDependencyPrimitives(
         options,
@@ -1273,6 +1344,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         ),
       );
       const scene: ChartScene = Object.freeze({
+        direction: options.direction ?? 'ltr',
         range: Object.freeze({ ...options.range }),
         bounds: Object.freeze({
           headerHeight: metrics.headerHeight,
@@ -1308,6 +1380,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         options,
         scene,
         taskPrimitiveByKey,
+        tickDiagnostics: Object.freeze(tickDiagnostics),
         ticks,
         topology,
         validation,

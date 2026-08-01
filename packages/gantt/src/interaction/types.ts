@@ -1,5 +1,6 @@
 import type { GanttCommand } from '../commands/types';
 import type { Diagnostic } from '../model/diagnostics';
+import type { GanttDirection } from '../localization/types';
 import type { EntityId, EpochMilliseconds, GanttDocument, TimeRange } from '../model/types';
 import type { ChartScene } from '../render/primitives';
 import type { GanttInteractionTarget, GanttLaneTarget, GanttTaskTarget } from '../runtime/types';
@@ -46,6 +47,7 @@ export interface InteractionHitTestOptions {
 }
 
 export interface InteractionHitTestIndex {
+  readonly direction: GanttDirection;
   readonly lanes: readonly InteractionLaneNode[];
   readonly range: TimeRange;
   readonly tasks: readonly InteractionTaskNode[];

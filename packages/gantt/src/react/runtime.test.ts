@@ -278,6 +278,35 @@ describe('React runtime adapter', () => {
     expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'child' });
     runtime.dispose();
   });
+
+  it('mirrors branch-aware keyboard directions for an RTL instance', () => {
+    const runtime = createGanttReactRuntime({
+      ...commonProps(),
+      defaultDocument: projectDocumentFixture(),
+      direction: 'rtl',
+      view: { kind: 'project' },
+    });
+    runtime.activate();
+    const geometry = { height: 174, verticalStart: 0, width: 700, x: 160, y: 0 };
+    const summary = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'summary')!.target;
+    runtime.getHandle().focusTask(summary);
+
+    expect(
+      runtime.keyboardAction({ action: { direction: 'right', type: 'navigate' }, geometry }),
+    ).toBe(true);
+    expect(runtime.getSnapshot().scene.lanes).toHaveLength(1);
+    expect(
+      runtime.keyboardAction({ action: { direction: 'left', type: 'navigate' }, geometry }),
+    ).toBe(true);
+    expect(runtime.getSnapshot().scene.lanes).toHaveLength(3);
+    expect(
+      runtime.keyboardAction({ action: { direction: 'left', type: 'navigate' }, geometry }),
+    ).toBe(true);
+    expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'child' });
+    runtime.dispose();
+  });
   it('adopts uncontrolled commands before immutable change and commit callbacks', async () => {
     const order: string[] = [];
     let runtime!: ReturnType<typeof createGanttReactRuntime>;
