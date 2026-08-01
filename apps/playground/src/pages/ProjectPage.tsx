@@ -240,7 +240,12 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
         <div className="page-intro__meta">
           <span>{document.tasks.length} items</span>
           <span>{document.dependencies.length} links</span>
-          <span>{diagnostics.length} diagnostics</span>
+          <span
+            data-testid="project-diagnostics"
+            title={diagnostics.map((diagnostic) => diagnostic.code).join(', ') || 'No diagnostics'}
+          >
+            {diagnostics.length} diagnostics
+          </span>
         </div>
       </header>
 
@@ -260,6 +265,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
           <span>Locale</span>
           <select
             aria-label="Project locale"
+            name="project-locale"
             onChange={(event) =>
               window.location.assign(
                 optionHref({
@@ -278,6 +284,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
           <span>Direction</span>
           <select
             aria-label="Project direction"
+            name="project-direction"
             onChange={(event) =>
               window.location.assign(
                 optionHref({ direction: event.currentTarget.value as GanttDirection }),
@@ -293,6 +300,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
           <span>Filter</span>
           <input
             aria-label="Filter project tasks"
+            name="project-filter"
             onChange={(event) => setFilter(event.currentTarget.value)}
             placeholder="Title contains…"
             type="search"
@@ -303,6 +311,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
           <span>Sort siblings</span>
           <select
             aria-label="Sort project siblings"
+            name="project-sort"
             onChange={(event) => setSort(event.currentTarget.value as typeof sort)}
             value={sort}
           >

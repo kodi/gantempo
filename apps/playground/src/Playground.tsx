@@ -26,7 +26,7 @@ const links: readonly PlaygroundLink[] = [
 function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
   return (
     <header className="playground-header">
-      <a aria-label="Gantempo playground home" className="brand" href="/">
+      <a aria-label="Gantempo Playground" className="brand" href="/">
         <span aria-hidden="true" className="brand__mark">
           G
         </span>

@@ -80,7 +80,7 @@ button {
 }
 
 .brand small {
-  color: #6f7784;
+  color: #59616d;
   font-size: 11px;
 }
 
@@ -139,7 +139,7 @@ button {
 .page-intro > div:first-child > p:last-child {
   max-width: 650px;
   margin-top: 10px;
-  color: #6c7480;
+  color: #59616d;
   font-size: 15px;
   line-height: 1.6;
 }

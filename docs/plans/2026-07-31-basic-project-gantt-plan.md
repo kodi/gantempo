@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-12 complete, Slice 13 final evidence next
+Status: Complete; all 13 slices verified
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -941,7 +941,7 @@ design surface that implementation follows accidentally.
 
 ### Slice 13: Run final browser, accessibility, package, and milestone gates
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 **Goal**
 
@@ -974,6 +974,36 @@ surface, not only focused unit tests.
 - synchronized plan/roadmap/architecture/decision state;
 - actionable M6 planning handoff.
 
+**Completed in this slice**
+
+- ran the accepted Chrome DevTools matrix at controlled English LTR 1440x1000,
+  runtime-owned Serbian Latin LTR 500x844, read-only Arabic RTL 500x844, controlled
+  Arabic RTL 1440x1000, and the controlled English cycle fixture at 1440x1000;
+- verified the 12-row four-level treegrid, summary and milestone labels, four logical
+  and visual dependency relationships, controlled acknowledgement, runtime-owned
+  commit/undo, read-only mutation suppression, keyboard-only dependency creation and
+  deletion, live announcements, source-focus restoration, focused-descendant
+  promotion on collapse, ancestor-preserving filtering, zoom/fit, and expected
+  unscheduled/cycle diagnostics;
+- proved exact LTR/RTL dependency mirroring, localized Arabic/Serbian dates and built-in
+  controls, contained narrow/desktop layout, no page or timeline overflow, and clean
+  console and network state across the matrix;
+- emulated a 500x844 DPR-2 mobile touch viewport. Chrome exposed coarse-pointer media,
+  one touch point, 44x44 link targets, and no page overflow. The host reduced-motion
+  preference was active and inspected task, branch, and dependency animation and
+  transition durations were all `0s`;
+- fixed issues discovered by live inspection: added stable form names, exposed
+  diagnostic codes on the consumer status metadata, raised playground copy contrast,
+  kept the responsive brand link named, and replaced literal zoom glyph text with
+  decorative icons so visible and accessible labels do not conflict;
+- reran desktop and mobile Lighthouse snapshots after the fixes; both reported 100
+  accessibility and 100 best-practices scores. Forced-colors emulation was not
+  available in the installed Chrome DevTools MCP schema, so that case remains covered
+  by the automated forced-colors/style suites without a live-browser claim;
+- reran the production build, preserved-module package build, fresh tarball consumer,
+  stylesheet/type/runtime/no-browser-global/peer checks, and model-only tree-shaking
+  proof before closing the milestone.
+
 **Verification**
 
 - focused final regression suites for issues discovered during browser inspection
@@ -982,6 +1012,24 @@ surface, not only focused unit tests.
 - repository-root `vp pack` plus fresh tarball-consumer proof
 - `git diff --check`
 - recorded Chrome DevTools MCP browser/accessibility/console/network matrix
+
+**Completion evidence**
+
+- focused browser-fix regression coverage passed 3 files / 14 tests;
+- `mise run build-playground` produced 46.15 kB CSS and 559.24 kB JavaScript with only
+  the existing advisory chunk-size warning;
+- repository-root `vp pack` produced 138 preserved-module package artifacts and the
+  8.60 kB public root declaration;
+- a fresh 348.9 kB/139-file tarball installed into an isolated consumer. Node runtime
+  import, stylesheet subpath resolution, React TypeScript consumption, peer metadata,
+  and no-browser-global checks passed; the minified model-only root bundle was 42,172
+  bytes and contained no React, Lucide, DOM-creation, or chart strings;
+- final `mise run ci` passed 89 test files / 477 tests, 197 formatted files, 186
+  lint/type files, and 138 package artifacts. Mise emitted only the known non-fatal
+  user-cache warning; jsdom emitted its known canvas capability notices during axe
+  runs;
+- `git diff --check` passed. No durable architecture or contract deviation was found,
+  so the accepted architecture and M5 decision require no closure amendment.
 
 **Dependencies**
 
@@ -1386,12 +1434,25 @@ owns the full shapes and rationale. In summary:
   or release claims. Final `mise run ci` passed 87 test files / 470 tests, 191 formatted
   files, 180 lint/type files, and four package artifacts; the declaration remains
   54.96 kB with only the known non-fatal Mise cache warning.
+- 2026-07-31: Slice 13 completed the accepted Chrome DevTools route matrix across
+  desktop/narrow, controlled/runtime-owned/read-only, English/Serbian/Arabic, LTR/RTL,
+  cycle, touch/coarse-pointer, and host reduced-motion cases. Keyboard dependency
+  create/delete, focus retention, announcements, filter context, zoom/fit, exact RTL
+  route mirroring, overflow, diagnostics, screenshots, accessibility trees, console,
+  and network state passed. Live inspection found and fixed form metadata, two
+  contrast values, a responsive brand name, and zoom visible-label mismatches;
+  desktop and mobile Lighthouse accessibility then reached 100. Chrome DevTools MCP
+  did not expose forced-colors emulation, which remains an explicitly recorded
+  automated-only gate rather than a live claim.
+- 2026-07-31: The final production build emitted 46.15 kB CSS and 559.24 kB JavaScript.
+  Root `vp pack` emitted 138 artifacts, and a fresh 348.9 kB/139-file tarball consumer
+  passed runtime, type, stylesheet, peer, no-browser-global, and 42,172-byte minified
+  model-only bundle checks. Final `mise run ci` passed 89 files / 477 tests, 197
+  formatted files, 186 lint/type files, and 138 artifacts. M5 has no unresolved
+  implementation slice or durable deviation.
 
 ## Next Slice
 
-Start Slice 13 by running the accepted Chrome DevTools `/project` matrix across
-desktop/narrow, controlled/runtime-owned/read-only, English/Serbian/Arabic, LTR/RTL,
-reduced-motion, forced-colors, and supported coarse-pointer cases. Inspect composed
-accessibility, keyboard dependency workflows, focus, announcements, zoom/fit,
-clipping, overflow, console, and network state before recording the final automated,
-production, SSR, package, and browser evidence and marking M5 complete.
+M5 is complete. Create the M6 advanced-scheduling-and-resources detailed plan before
+implementation, preserving the verified Community manual/diagnostic boundary and the
+accepted additive Pro capability, package, worker-parity, and licensing decisions.

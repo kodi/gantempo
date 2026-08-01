@@ -69,6 +69,18 @@ describe('project playground public consumer', () => {
     expect(screen.getByLabelText('Dependencies').querySelectorAll('li')).toHaveLength(4);
     expect(screen.getByRole('button', { name: 'Fit project' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Zoom in' })).not.toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Project locale' }).getAttribute('name')).toBe(
+      'project-locale',
+    );
+    expect(screen.getByRole('combobox', { name: 'Project direction' }).getAttribute('name')).toBe(
+      'project-direction',
+    );
+    expect(
+      screen.getByRole('searchbox', { name: 'Filter project tasks' }).getAttribute('name'),
+    ).toBe('project-filter');
+    expect(
+      screen.getByRole('combobox', { name: 'Sort project siblings' }).getAttribute('name'),
+    ).toBe('project-sort');
     expect((await axe.run(mounted.container)).violations).toEqual([]);
   });
 
@@ -85,6 +97,13 @@ describe('project playground public consumer', () => {
     expect(mounted.container.querySelector('[data-task-id="project"]')).not.toBeNull();
     expect(mounted.container.querySelector('[data-task-id="delivery"]')).not.toBeNull();
     expect(mounted.container.querySelector('[data-task-id="build"]')).not.toBeNull();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter project tasks' }), {
+      target: { value: '' },
+    });
+    expect(screen.getByRole('treegrid').querySelectorAll('[role="row"][aria-level]')).toHaveLength(
+      12,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename API' }));
     await waitFor(() =>

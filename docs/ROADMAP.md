@@ -126,7 +126,7 @@ Detailed completion evidence is recorded in
 | M3: View, layout, and viewport kernel | Remainder of Slice 2 | Resolved views, overlap stacking, variable lane heights, and two-dimensional viewport queries feed render primitives | `[x]` | [Completed plan](plans/2026-07-30-view-layout-viewport-kernel-plan.md) |
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
-| M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[-]` | [Active plan](plans/2026-07-31-basic-project-gantt-plan.md) |
+| M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -151,7 +151,7 @@ M4 interaction runtime [done]
 M4 item-properties appendix [done]
   |
   v
-M5 basic project Gantt
+M5 basic project Gantt [done]
   |
   v
 M6 advanced scheduling/resources
@@ -164,22 +164,23 @@ The completed M0 vertical slice proves the renderer direction, M1 and M2 complet
 architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
-semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first twelve slices are complete.
+semantic-color, and progress appendix are complete. M5 is complete with all thirteen
+slices verified; M6 detailed planning is next.
 
 ## Current Focus
 
-### M5: Basic project Gantt
+### M6: Advanced scheduling and resources
 
-**Status:** `[-]` In progress; Slices 1-12 complete, Slice 13 final evidence next
+**Status:** `[ ]` Detailed planning next; M5 complete
 
 The
-[active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
+[completed M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
 splits architecture Slice 4 into 13 ordered implementation slices: contract freeze;
 hierarchy integrity; project-tree projection; summary/milestone semantics; accessible
 React integration; dependency graph analysis; dependency geometry; dependency editing;
 adaptive zoom; localization and RTL; selective Community integration; public/SSR
-consumers; and final milestone evidence.
+consumers; and final milestone evidence. Every slice and milestone exit gate is now
+verified. The next action is to create the M6 detailed plan before implementation.
 
 Planning preserves the completed M1–M4 model, command, view, runtime, interaction,
 customization, persistence, package, and SSR boundaries. Community M5 remains manual
@@ -265,17 +266,24 @@ type, stylesheet, peer, no-browser-global, and tree-shaking checks. Preserved-mo
 packaging reduced the model-only root consumer bundle to 41,495 bytes without React
 or chart code while keeping the same public root. Full `mise run ci` passes 89 test
 files / 477 tests, 197 formatted files, 186 lint/type files, and 138 package artifacts.
-Slice 13 final Chrome DevTools and milestone evidence is next.
+Slice 13 completed the Chrome DevTools desktop/narrow, ownership, locale, LTR/RTL,
+cycle, coarse-pointer, and reduced-motion matrix with clean console/network state,
+exact mirrored dependency geometry, contained overflow, keyboard dependency and focus
+workflows, and 100 desktop/mobile Lighthouse accessibility after live fixes. Forced-
+colors remains an automated-only gate because the installed Chrome MCP exposes no
+emulation control. A fresh 348.9 kB/139-file tarball and 42,172-byte minified
+model-only bundle passed the final consumer proof. M6 detailed planning is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
-**Status:** `[x]` Complete; M5 is active
+**Status:** `[x]` Complete; M5 is complete and M6 planning is next
 
 The bounded
 [progress-drag feedback follow-up](plans/2026-07-31-progress-drag-feedback-plan.md)
 is complete. It keeps the completed appendix boundary intact while making direct
 progress adjustment snap to five-point increments and visibly report the immutable
-preview percentage during the gesture. The active M5 plan now owns the next action.
+preview percentage during the gesture. The completed M5 plan now hands off to M6
+detailed planning.
 
 The
 [active appendix plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
@@ -401,7 +409,7 @@ inspection, 44x24 px coarse progress targeting, reduced-motion behavior, forced-
 rule coverage, zero overflow, a clean console, and 74 successful requests. Final
 `mise run ci` passes 158 formatted files, 147 lint/type files, 67 test files / 346
 tests, and four package artifacts. The accepted architecture and decision boundaries
-remain unchanged; M5 now owns active execution.
+remain unchanged; M5 is now complete and M6 planning owns the next action.
 
 ### Post-M4 Interactive Custom consumer integration
 
@@ -664,7 +672,7 @@ across 49 files.
 
 ### M4 appendix: Item properties, semantic color, and progress
 
-**Status:** `[x]` Complete; M5 is active
+**Status:** `[x]` Complete; M5 is complete and M6 planning is next
 
 **Target outcome**
 
@@ -682,8 +690,8 @@ command, event, accessibility, customization, and package boundaries.
 
 **Next action**
 
-Continue the
-[active M5 basic-project-Gantt plan](plans/2026-07-31-basic-project-gantt-plan.md).
+Start M6 detailed planning after the
+[completed M5 basic-project-Gantt plan](plans/2026-07-31-basic-project-gantt-plan.md).
 The completed
 [item properties, semantic color, and progress plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md)
 contains the appendix implementation and final evidence.
@@ -762,6 +770,19 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 13 and the M5 milestone. Chrome DevTools verified
+  controlled English LTR and Arabic RTL desktop cases, runtime-owned Serbian and
+  read-only Arabic RTL narrow cases, cycle diagnostics, touch/coarse-pointer targets,
+  reduced-motion behavior, exact RTL dependency mirroring, keyboard link create/delete,
+  focus retention, zoom/fit, filtering context, accessibility trees, overflow,
+  screenshots, console, and network state. Live issues in form metadata, playground
+  contrast, the responsive brand name, and zoom visible labels were fixed; desktop and
+  mobile Lighthouse accessibility then scored 100. Forced-colors remains covered by
+  automation because Chrome MCP offered no live emulation control. The production
+  build, 138-artifact package, fresh 348.9 kB/139-file tarball, 42,172-byte minified
+  model-only bundle, and final 89-file/477-test CI gate passed. M6 detailed planning is
+  next.
 
 - 2026-07-31: Completed M5 Slice 12. The deterministic `/project` route now composes
   the complete public Community project Gantt through package-root imports with

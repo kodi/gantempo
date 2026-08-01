@@ -20,7 +20,7 @@ import {
   type RefAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, EllipsisVertical } from 'lucide-react';
+import { ChevronRight, EllipsisVertical, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 
 import type { GanttCommand } from '../commands/types';
 import { createGanttLocalization, type GanttLocalization } from '../localization/format';
@@ -3060,21 +3060,21 @@ function GanttSurface({
             onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'in'))}
             type="button"
           >
-            +
+            <ZoomIn aria-hidden="true" size={15} />
           </button>
           <button
             aria-label={localization.message('zoom.out')}
             onClick={() => runtime.zoomTo(adjacentTimeScaleLevel(scaleLevel, 'out'))}
             type="button"
           >
-            −
+            <ZoomOut aria-hidden="true" size={15} />
           </button>
           <button
             aria-label={localization.message('zoom.fit')}
             onClick={() => runtime.fitToProject()}
             type="button"
           >
-            0
+            <Maximize2 aria-hidden="true" size={15} />
           </button>
         </div>
       ) : null}
