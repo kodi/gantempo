@@ -65,6 +65,7 @@ export type ChartSceneInvalidation =
 export interface ChartScenePipelineWork {
   readonly appearanceRegistryBuilds: number;
   readonly affectedLaneKeys: readonly string[];
+  readonly dependencyPrimitiveBuilds: number;
   readonly indexBuilds: number;
   readonly intervalBuilds: number;
   readonly lanePositionBuilds: number;
@@ -122,6 +123,7 @@ export interface ChartScenePipeline {
 interface MutableWork {
   appearanceRegistryBuilds: number;
   affectedLaneKeys: string[];
+  dependencyPrimitiveBuilds: number;
   indexBuilds: number;
   intervalBuilds: number;
   lanePositionBuilds: number;
@@ -172,6 +174,7 @@ function createWork(mode: MutableWork['mode']): MutableWork {
   return {
     appearanceRegistryBuilds: 0,
     affectedLaneKeys: [],
+    dependencyPrimitiveBuilds: 0,
     indexBuilds: 0,
     intervalBuilds: 0,
     lanePositionBuilds: 0,
@@ -994,6 +997,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         !rangeChanged &&
         !appearanceRegistryChanged &&
         !legacyTaskVariantsChanged &&
+        cache.options.formatters === options.formatters &&
         tickSignature(cache.options) === tickSignature(options) &&
         viewportSignature(cache.options, cache.layout?.totalHeight ?? 0) ===
           viewportSignature(options, cache.layout?.totalHeight ?? 0)
@@ -1325,14 +1329,31 @@ export function createChartScenePipeline(): ChartScenePipeline {
         ...appearanceDiagnostics,
         ...tickDiagnostics,
       ]);
-      const dependencyPrimitives = buildDependencyPrimitives(
-        options,
-        indexes,
-        layoutStage.layout,
-        occurrences,
-        diagnostics,
-        cache,
-      );
+      const shouldBuildDependencyPrimitives =
+        forceAll ||
+        cache === undefined ||
+        indexes !== cache.indexes ||
+        layoutStage.layout !== cache.layout ||
+        occurrences !== cache.occurrences ||
+        rangeChanged ||
+        options.direction !== cache.options.direction ||
+        viewportKey !== viewportSignature(cache.options, layoutStage.layout.totalHeight);
+      const dependencyPrimitives = shouldBuildDependencyPrimitives
+        ? buildDependencyPrimitives(
+            options,
+            indexes,
+            layoutStage.layout,
+            occurrences,
+            diagnostics,
+            cache,
+          )
+        : Object.freeze({
+            paths: cache!.dependencyPaths,
+            summaries: cache!.dependencySummaries,
+          });
+      if (shouldBuildDependencyPrimitives) {
+        work.dependencyPrimitiveBuilds += 1;
+      }
       const gridLines: readonly GridLinePrimitive[] = Object.freeze(
         ticks.map(
           (tick): GridLinePrimitive =>

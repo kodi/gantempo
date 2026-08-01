@@ -7,11 +7,17 @@ import {
   type GanttClassNames,
   type GanttContextMenuItem,
   type GanttDocument,
+  type GanttDirection,
+  type GanttFormatContext,
+  type GanttFormatters,
   type GanttHandle,
   type GanttInteractionAction,
   type GanttInteractionCommandMappers,
   type GanttInteractionState,
   type GanttLaneColumn,
+  type GanttMessageDescriptor,
+  type GanttMessageKey,
+  type GanttMessages,
   type GanttOverlayContainer,
   type GanttProps,
   type GanttSelectorSnapshot,
@@ -77,6 +83,32 @@ describe('public React runtime facade', () => {
       defaultRange: { end: 14, start: 0 },
       timeScale: { kind: 'adaptive', maxLevel: 'month', minLevel: 'hour' },
       timeZone: 'UTC',
+    } satisfies GanttProps;
+    const direction: GanttDirection = 'rtl';
+    const messageKey: GanttMessageKey = 'dependency.type.finish-to-start';
+    const messages = {
+      'chart.label': 'Plan projekta',
+      [messageKey]: 'Kraj na početak',
+    } satisfies GanttMessages;
+    const formatContext: GanttFormatContext = {
+      direction,
+      locale: 'sr-Latn-RS',
+      timeZone: 'Europe/Belgrade',
+      use: 'tick-major',
+    };
+    const formatters = {
+      dateTime: (value, context) => `${context.use}:${value}`,
+      message: (descriptor: GanttMessageDescriptor) => descriptor.defaultMessage,
+      number: (value, context) => `${context.direction}:${value}`,
+    } satisfies GanttFormatters;
+    const localized = {
+      ...common,
+      defaultDocument: document,
+      direction,
+      formatters,
+      locale: formatContext.locale,
+      messages,
+      timeZone: formatContext.timeZone,
     } satisfies GanttProps;
     const selector = (snapshot: GanttSelectorSnapshot) => snapshot.occurrences;
     const interaction: GanttInteractionState = { status: 'idle' };
@@ -144,6 +176,7 @@ describe('public React runtime facade', () => {
     const controlledElement = <Gantt {...controlled} ref={ref} />;
     const uncontrolledElement = <Gantt {...uncontrolled} />;
     const adaptiveElement = <Gantt {...adaptive} />;
+    const localizedElement = <Gantt {...localized} />;
 
     expect(selector).toBeTypeOf('function');
     expect(interaction.status).toBe('idle');
@@ -157,6 +190,7 @@ describe('public React runtime facade', () => {
     expect(controlledElement.type).toBe(Gantt);
     expect(uncontrolledElement.type).toBe(Gantt);
     expect(adaptiveElement.type).toBe(Gantt);
+    expect(localizedElement.type).toBe(Gantt);
   });
 
   it('rejects ambiguous or missing document ownership at compile time', () => {
@@ -176,10 +210,22 @@ describe('public React runtime facade', () => {
       defaultDocument: document,
       timeScale: { kind: 'adaptive' },
     };
+    const invalidDirection: GanttProps = {
+      ...common,
+      defaultDocument: document,
+      // @ts-expect-error Direction is explicit and does not accept host-dependent auto mode.
+      direction: 'auto',
+    };
+    const invalidMessages = {
+      // @ts-expect-error The built-in message catalog is a closed key union.
+      'consumer.private-message': 'Private',
+    } satisfies GanttMessages;
 
     expect(ambiguous).toBeDefined();
     expect(missing).toBeDefined();
     expect(ambiguousRange).toBeDefined();
     expect(ambiguousScale).toBeDefined();
+    expect(invalidDirection).toBeDefined();
+    expect(invalidMessages).toBeDefined();
   });
 });

@@ -165,13 +165,13 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. The M5 plan is active, and its
-first ten slices are complete.
+first eleven slices are complete.
 
 ## Current Focus
 
 ### M5: Basic project Gantt
 
-**Status:** `[-]` In progress; Slices 1-10 complete, Slice 11 next
+**Status:** `[-]` In progress; Slices 1-11 complete, Slice 12 next
 
 The
 [active M5 plan](plans/2026-07-31-basic-project-gantt-plan.md)
@@ -250,7 +250,14 @@ interaction surfaces, explicit instance direction, mirrored pure geometry and in
 logical CSS, portaled-overlay direction, opposite-direction isolation, and Arabic RTL
 SSR/hydration evidence. Full `mise run ci` passes 85 test files / 464 tests, 188
 formatted files, 177 lint/type files, and four artifacts; the packed declaration is
-54.96 kB. Slice 11 selective integration and Community-boundary proof is next.
+54.96 kB. Slice 11 now proves cached/cold parity and narrow structural work across
+hierarchy, dependency, filter/sort, locale, direction, and zoom inputs; reconciles a
+pending command across simultaneous project/session/range changes; locks the accepted
+root facade; and verifies React/browser-free Community kernels with no Pro scheduling
+or licensing path. The fixed-seed 2,000-task/400-summary/1,599-dependency benchmark
+records observations without thresholds. Full `mise run ci` passes 87 test files / 470
+tests, 191 formatted files, 180 lint/type files, and four artifacts. Slice 12 public
+consumer, SSR, and packed-package proof is next.
 
 ### M4 appendix: item properties, semantic appearance, and progress
 
@@ -747,6 +754,23 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-07-31: Completed M5 Slice 11. Scene caching now treats formatter identity as a
+  tick input and exposes dependency-primitive work, with cached/cold parity across
+  hierarchy, graph, filter/sort, locale, direction, and zoom changes. Fixed-seed
+  property, pending-command reconciliation, root-facade, pure-kernel, Community-
+  boundary, and 2,000-task/1,599-dependency benchmark evidence passed without adding
+  a timing threshold or Pro behavior. Full `mise run ci` passed 87 test files / 470
+  tests, 191 formatted files, 180 lint/type files, and four artifacts. Slice 12 public
+  consumers, SSR, and package proof is next.
+
+- 2026-07-31: Completed M5 Slice 10. The public typed message/formatter contract,
+  deterministic locale/time-zone fallback diagnostics, localized built-in M5
+  surfaces, explicit per-instance direction, mirrored pure/React geometry and input,
+  logical CSS, portaled-overlay direction, opposite-direction isolation, and Arabic
+  RTL SSR/hydration are verified. Full `mise run ci` passed 85 test files / 464 tests,
+  188 formatted files, 177 lint/type files, and four artifacts; the declaration is
+  54.96 kB. Slice 11 selective integration was next.
 
 - 2026-07-31: Completed M5 Slice 9. Public props now require exactly one controlled or
   default range and exactly one legacy fixed or explicit fixed/adaptive scale policy.

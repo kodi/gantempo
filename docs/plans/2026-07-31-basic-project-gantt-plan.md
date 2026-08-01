@@ -1,6 +1,6 @@
 # M5 Basic Project Gantt Implementation Plan
 
-Status: In progress; Slices 1-10 complete, Slice 11 next
+Status: In progress; Slices 1-11 complete, Slice 12 next
 Milestone: M5
 Architecture mapping: Slice 4 — Project Gantt capabilities
 Last updated: 2026-07-31
@@ -817,7 +817,7 @@ and geometry rather than retrofit incomplete surfaces multiple times.
 
 ### Slice 11: Prove selective integration and Community boundary
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 **Goal**
 
@@ -1086,7 +1086,7 @@ owns the full shapes and rationale. In summary:
 - [x] Slice 8: Add dependency selection and editing workflows
 - [x] Slice 9: Add adaptive scales, zoom, and fit-to-project
 - [x] Slice 10: Complete localization and RTL parity
-- [ ] Slice 11: Prove selective integration and Community boundary
+- [x] Slice 11: Prove selective integration and Community boundary
 - [ ] Slice 12: Add public consumers, SSR examples, and package proof
 - [ ] Slice 13: Run final browser, accessibility, package, and milestone gates
 - [ ] Final automated/package/SSR gate
@@ -1317,11 +1317,42 @@ owns the full shapes and rationale. In summary:
   artifacts; the packed declaration is 54.96 kB. Mise reported only the known
   non-fatal user-cache sandbox warning. Live `/project` responsive and accessibility
   matrices remain deliberately owned by Slices 12 and 13.
+- 2026-07-31: Slice 11 closes the formatter-identity gap in the scene-wide cache reuse
+  guard and makes dependency primitive work explicit. Locale and formatter-only
+  changes now rebuild ticks alone; direction rebuilds ticks, task primitives, and
+  dependency geometry without topology/layout/viewport work; collapse/filter/sort
+  rebuild topology and downstream projection; dependency-only updates rebuild indexes
+  plus dependency summaries/routes without intervals, layout, occurrences, tasks, or
+  viewport work; zoom rebuilds ticks, the viewport query, visible task primitives, and
+  dependency geometry without rebuilding topology, intervals, layout, or the full
+  occurrence catalog. Every case retains exact cold-composer parity.
+- 2026-07-31: Fixed-seed property coverage (`20260731`, 50 runs, up to 20 operations)
+  composes hierarchy collapse, dependency updates, filters, sorts, locale, direction,
+  range, task moves, and titles with cached/cold scene and occurrence parity. A pending
+  interactive command remains coherent while collapse, filter, sort, relationship
+  projection, and controlled range change simultaneously; focus promotes to the
+  visible summary, selection reconciles empty, the command commits once, and undo
+  preserves the reconciled session.
+- 2026-07-31: Root-facade type coverage accepts the exact M5 localization and direction
+  contracts while rejecting `auto`, mixed ownership, mixed scale APIs, and unknown
+  message keys. Source inspection confirms private hierarchy, graph, route, pipeline,
+  localization, and zoom engines do not escape the root; project kernels have no
+  React/DOM/browser/clock/host-locale dependency; Community source has no Pro import,
+  licensing gate, working-calendar, auto-scheduling, critical-path, or resource-
+  leveling path.
+- 2026-07-31: `vp test bench ...scene-project-integration.bench.ts --run` passed the
+  `m5-project-v1`/seed `20260731` fixture with 2,000 tasks, 400 summaries, and 1,599
+  dependencies. Collapse retained 1,680 visible rows and the even-child filter 1,200.
+  Ten-sample local means were 112.94 ms cold, 110.25 ms collapse, 121.37 ms filter,
+  103.93 ms dependency-only, and 98.58 ms zoom. These are observations, not thresholds
+  or release claims. Final `mise run ci` passed 87 test files / 470 tests, 191 formatted
+  files, 180 lint/type files, and four package artifacts; the declaration remains
+  54.96 kB with only the known non-fatal Mise cache warning.
 
 ## Next Slice
 
-Start Slice 11 by mapping hierarchy, dependency, query/session, scale, locale, and
-direction inputs to the narrowest safe pipeline invalidation stages. Prove cold/cached
-parity, simultaneous focus/selection/history reconciliation, the accepted root-facade
-boundary, React/browser-free pure kernels, and fixed-seed structural work counters
-without adding Pro scheduling behavior or timing thresholds.
+Start Slice 12 by adding the accepted public `/project` consumer and deterministic SSR/
+hydration example through package-root imports. Demonstrate the complete deep-tree,
+summary/milestone, dependency, filter/sort, zoom, locale, and RTL workflow, document
+the public Community boundary, and prove a fresh packed tarball consumer can import
+runtime/types/styles without workspace-source or browser-global leakage.

@@ -11,6 +11,7 @@ const PROPERTY_SEED = 20_260_730;
 const PROPERTY_RUNS = 80;
 const DAY = 24 * 60 * 60 * 1_000;
 const START = Date.UTC(2026, 6, 29);
+const PROJECT_PROPERTY_SEED = 20_260_731;
 
 function fixture(): GanttDocument {
   return {
@@ -38,6 +39,48 @@ function fixture(): GanttDocument {
       laneId: `lane-${index % 2}`,
     })),
     dependencies: [],
+  };
+}
+
+function projectFixture(): GanttDocument {
+  const summaries = Array.from({ length: 6 }, (_, index) => ({
+    id: `summary-${index}`,
+    kind: 'summary' as const,
+    segments: [],
+    title: `Summary ${index}`,
+  }));
+  const tasks = summaries.flatMap((summary, summaryIndex) => [
+    summary,
+    ...Array.from({ length: 3 }, (_, childIndex) => {
+      const index = summaryIndex * 3 + childIndex;
+      return {
+        id: `project-task-${index}`,
+        kind: 'task' as const,
+        parentId: summary.id,
+        progress: (index % 5) / 4,
+        schedule: {
+          end: START + (index + 2) * DAY,
+          mode: 'instant' as const,
+          start: START + index * DAY,
+        },
+        segments: [],
+        title: `Project task ${index}`,
+      };
+    }),
+  ]);
+  return {
+    assignments: [],
+    dependencies: Array.from({ length: 17 }, (_, index) => ({
+      fromTaskId: `project-task-${index}`,
+      id: `dependency-${index}`,
+      toTaskId: `project-task-${index + 1}`,
+      type: 'finish-to-start' as const,
+    })),
+    lanes: [],
+    placements: [],
+    resources: [],
+    schemaVersion: 1,
+    tasks,
   };
 }
 
@@ -158,6 +201,119 @@ describe(`scene pipeline cached/cold parity seed=${PROPERTY_SEED}`, () => {
         endOnFailure: true,
         numRuns: PROPERTY_RUNS,
         seed: PROPERTY_SEED,
+        verbose: true,
+      },
+    );
+  });
+
+  it(`matches cold project composition across M5 input sequences seed=${PROJECT_PROPERTY_SEED}`, () => {
+    const filterEven = (task: GanttDocument['tasks'][number]) =>
+      task.kind === 'summary' || Number(task.id.split('-').at(-1)) % 2 === 0;
+    const sortDescending = (
+      left: GanttDocument['tasks'][number],
+      right: GanttDocument['tasks'][number],
+    ) => right.title.localeCompare(left.title);
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            kind: fc.constantFrom(
+              'collapse' as const,
+              'dependency' as const,
+              'direction' as const,
+              'filter' as const,
+              'locale' as const,
+              'move' as const,
+              'range' as const,
+              'title' as const,
+            ),
+            step: fc.integer({ min: 0, max: 10_000 }),
+          }),
+          { minLength: 1, maxLength: 20 },
+        ),
+        (operations) => {
+          let document = projectFixture();
+          let direction = 'ltr' as 'ltr' | 'rtl';
+          let locale = 'en-US';
+          let collapsedTaskIds: readonly string[] = [];
+          let filter: typeof filterEven | undefined;
+          let sort: typeof sortDescending | undefined;
+          let range = { end: START + 24 * DAY, start: START };
+          const pipeline = createChartScenePipeline();
+          const currentOptions = () => ({
+            direction,
+            document,
+            locale,
+            projectQuery: { collapsedTaskIds },
+            range,
+            tickAnchor: START,
+            tickInterval: DAY,
+            timeZone: 'UTC',
+            view: {
+              ...(filter === undefined ? {} : { filter }),
+              kind: 'project' as const,
+              ...(sort === undefined ? {} : { sort }),
+            },
+          });
+          pipeline.build(currentOptions());
+
+          for (const operation of operations) {
+            let affected: readonly import('../commands/types').EntityReference[] | undefined;
+            if (operation.kind === 'collapse') {
+              collapsedTaskIds = operation.step % 3 === 0 ? [] : [`summary-${operation.step % 6}`];
+            } else if (operation.kind === 'direction') {
+              direction = operation.step % 2 === 0 ? 'ltr' : 'rtl';
+            } else if (operation.kind === 'locale') {
+              locale = operation.step % 2 === 0 ? 'en-US' : 'sr-Latn-RS';
+            } else if (operation.kind === 'filter') {
+              filter = operation.step % 2 === 0 ? undefined : filterEven;
+              sort = operation.step % 3 === 0 ? sortDescending : undefined;
+            } else if (operation.kind === 'range') {
+              const shift = (operation.step % 4) * DAY;
+              range = { end: START + 24 * DAY + shift, start: START + shift };
+            } else {
+              const command: GanttCommand =
+                operation.kind === 'dependency'
+                  ? {
+                      changes: {
+                        type: operation.step % 2 === 0 ? 'finish-to-start' : 'start-to-start',
+                      },
+                      id: `dependency-${operation.step % 17}`,
+                      type: 'dependency.update',
+                    }
+                  : operation.kind === 'move'
+                    ? {
+                        delta: operation.step % 2 === 0 ? DAY : -DAY,
+                        id: `project-task-${operation.step % 18}`,
+                        type: 'task.move',
+                      }
+                    : {
+                        changes: { title: `Renamed ${operation.step}` },
+                        id: `project-task-${operation.step % 18}`,
+                        type: 'task.update',
+                      };
+              const outcome = applyGanttCommand(document, command);
+              expect(outcome.status).toBe('committed');
+              if (outcome.status !== 'committed') return;
+              document = outcome.document;
+              affected = outcome.affected;
+            }
+
+            const options = currentOptions();
+            const cached = pipeline.build(
+              options,
+              affected === undefined ? undefined : { affected, kind: 'affected' },
+            );
+            const cold = createChartScenePipeline().build(options);
+            expect(cached.scene).toEqual(cold.scene);
+            expect(cached.occurrences).toEqual(cold.occurrences);
+          }
+        },
+      ),
+      {
+        endOnFailure: true,
+        numRuns: 50,
+        seed: PROJECT_PROPERTY_SEED,
         verbose: true,
       },
     );

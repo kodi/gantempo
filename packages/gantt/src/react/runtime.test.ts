@@ -307,6 +307,99 @@ describe('React runtime adapter', () => {
     expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'child' });
     runtime.dispose();
   });
+
+  it('reconciles pending work across simultaneous collapse, filter, sort, dependency, and range state', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let delayed = true;
+    const props: GanttProps = {
+      ...commonProps(),
+      defaultDocument: {
+        ...projectDocumentFixture(),
+        dependencies: [
+          {
+            fromTaskId: 'child',
+            id: 'child-milestone',
+            toTaskId: 'milestone',
+            type: 'finish-to-start',
+          },
+        ],
+      },
+      interceptors: [
+        async () => {
+          if (delayed) {
+            delayed = false;
+            await gate;
+          }
+          return { kind: 'allow' as const };
+        },
+      ],
+      view: { kind: 'project' },
+    };
+    const runtime = createGanttReactRuntime(props);
+    runtime.activate();
+    const child = runtime
+      .getSnapshot()
+      .selector.occurrences.find((occurrence) => occurrence.target.taskId === 'child')!.target;
+    runtime.getHandle().focusTask(child);
+    runtime.keyboardAction({
+      action: { type: 'toggle-selection' },
+      geometry: { height: 174, verticalStart: 0, width: 700, x: 160, y: 0 },
+    });
+
+    const pending = runtime.dispatchAction(
+      { delta: DAY, id: 'child', type: 'task.move' },
+      { action: 'move', source: { kind: 'editor' }, target: child },
+    );
+    await Promise.resolve();
+    expect(runtime.getSnapshot().selector.interaction.status).toBe('pending');
+
+    expect(runtime.toggleProjectTask('summary', false)).toBe(true);
+    const nextProps: GanttProps = {
+      ...props,
+      range: { end: START + 8 * DAY, start: START + DAY },
+      view: {
+        filter: (task) => task.id === 'summary',
+        kind: 'project',
+        sort: (left, right) => right.title.localeCompare(left.title),
+      },
+    };
+    runtime.updateCallbacks(nextProps);
+    runtime.reconcile(nextProps);
+    expect(runtime.getSnapshot().scene.lanes.map((lane) => lane.title)).toEqual(['Summary']);
+    expect(runtime.getSnapshot().scene.dependencySummaries).toHaveLength(1);
+    expect(runtime.getHandle().getSession()).toMatchObject({
+      focused: { taskId: 'summary' },
+      project: { collapsedTaskIds: ['summary'] },
+      selection: [],
+    });
+
+    release();
+    expect(await pending).toMatchObject({ status: 'committed' });
+    expect(
+      runtime
+        .getHandle()
+        .getDocument()
+        .tasks.find((task) => task.id === 'child'),
+    ).toMatchObject({ schedule: { start: START + 2 * DAY } });
+    expect(runtime.getSnapshot().selector).toMatchObject({
+      interaction: { status: 'idle' },
+      range: { end: START + 8 * DAY, start: START + DAY },
+    });
+    expect(runtime.getHandle().canUndo()).toBe(true);
+
+    expect(await runtime.getHandle().undo()).toMatchObject({ status: 'committed' });
+    expect(
+      runtime
+        .getHandle()
+        .getDocument()
+        .tasks.find((task) => task.id === 'child'),
+    ).toMatchObject({ schedule: { start: START + DAY } });
+    expect(runtime.getHandle().getSession().focused).toMatchObject({ taskId: 'summary' });
+    runtime.dispose();
+  });
   it('adopts uncontrolled commands before immutable change and commit callbacks', async () => {
     const order: string[] = [];
     let runtime!: ReturnType<typeof createGanttReactRuntime>;
