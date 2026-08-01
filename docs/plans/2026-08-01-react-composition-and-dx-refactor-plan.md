@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: Planned; implementation explicitly deferred
+Status: In progress; Slice 1 complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -390,7 +390,7 @@ Dependencies: completed M5.
 
 ### Slice 1: Lock black-box structure and render-isolation evidence
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: make accidental behavior and performance regressions observable before moving
 code.
@@ -420,9 +420,12 @@ Expected output:
 
 Verification:
 
-- `vp test run packages/gantt/src/react/Gantt*.test.tsx`;
-- existing SSR and public consumer tests;
-- `mise run ci` before marking the slice done.
+- `vp test run packages/gantt/src/react/Gantt*.test.tsx` passed 8 files / 91 tests;
+- `vp test run packages/gantt/src/index.consumer.dom.test.tsx
+  apps/playground/src/project-ssr.dom.test.tsx` passed 2 files / 3 tests;
+- `mise run ci` passed on 2026-08-01: 90 test files / 484 tests, 199 formatted
+  files, 188 lint/type files, and the 138-artifact package build;
+- `git diff --check` passed.
 
 Dependencies: Slice 0.
 
@@ -799,11 +802,28 @@ These are implementation judgments, not reasons to change the public API:
 - Slice 0 verification passed: the plan and roadmap links resolve, `git diff --check`
   is clean, and implementation remains deferred.
 
+### 2026-08-01 — Slice 1 characterization baseline
+
+- Added one focused structure suite plus a small React test fixture for the stable
+  chart/layer order, treegrid `aria-owns` links, dependency visual/summary pairing,
+  body-owned overlay host, editor focus return, and deterministic SSR structure.
+- The render probe measured the pre-extraction behavior rather than inferring it:
+  focusing and selecting Task A invokes both Task A and unrelated Task B content,
+  and also invokes unrelated lane cells.
+- A trial ordinary `memo` boundary around the existing task component did not isolate
+  Task B because parent inputs do not yet retain stable identity through the update.
+  It was removed instead of adding a custom comparator. Slice 3 must create the
+  stable surface model/component inputs; Slice 4 will convert the recorded positive
+  fan-out assertions to zero-render isolation assertions.
+- No public facade, DOM, accessibility, SSR, runtime, or package behavior changed.
+- The first full gate found only formatter drift in the new test; after
+  `vp check --fix`, the required `mise run ci` rerun passed completely.
+
 ## Next Slice
 
-After the planning documents are accepted, start Slice 1 in
-`packages/gantt/src/react/Gantt*.test.tsx` and the existing SSR/public consumer tests.
-First add narrow structure and render-probe coverage around the current implementation,
-then make only the minimum component boundary needed for the target isolation
-assertion. Run the complete React DOM suite and `mise run ci` before marking Slice 1
-done or beginning file moves.
+Start Slice 2 in `packages/gantt/src/react/Gantt.tsx` and
+`packages/gantt/src/react/surfaces.tsx`. Move pure presentation and editor-command
+helpers into narrow private modules first, then split each existing default surface
+without changing the public types or package exports. Run the focused customization,
+properties, localization, facade, and surface tests plus `mise run ci` before marking
+Slice 2 done or beginning visual component extraction.

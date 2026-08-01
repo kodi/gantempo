@@ -127,7 +127,7 @@ Detailed completion evidence is recorded in
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
-| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[ ]` | [Planned](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
+| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[-]` | [Slice 1 complete](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -155,7 +155,7 @@ M4 item-properties appendix [done]
 M5 basic project Gantt [done]
   |
   v
-Post-M5 React composition/DX refactor [planned]
+Post-M5 React composition/DX refactor [in progress]
   |
   v
 M6 advanced scheduling/resources
@@ -176,7 +176,7 @@ foundation step before M6 detailed planning.
 
 ### Post-M5: React composition and DX refactor
 
-**Status:** `[ ]` Planned; implementation explicitly deferred; M5 complete
+**Status:** `[-]` In progress; Slice 1 complete; M5 complete
 
 The
 [React composition and DX refactor plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md)
@@ -187,12 +187,14 @@ the private React runtime by cohesive product and subscription boundaries. The p
 explicitly avoids exporting renderer internals or componentizing individual SVG
 elements merely to reduce line counts.
 
-The 2026-08-01 pass is documentation-only at the user's request. Implementation starts
-with black-box structure and render-isolation evidence, then moves pure helpers and
-default surfaces, visual layers, subscriptions, overlays, DOM adapters, and finally
-private runtime controllers. `Gantt`, root exports, props, slots, class hooks, data
-parts, controlled ownership, command behavior, and renderer/kernel boundaries remain
-unchanged. M6 planning follows the verified cleanup rather than being mixed into it.
+Slice 1 now locks black-box chart/layer structure, accessible ownership, dependency
+summaries, body-owned overlays, focus return, deterministic SSR, and the current
+render-fan-out baseline. The measured baseline confirms that a Task A focus/selection
+update still invokes unrelated Task B content and lane cells; Slices 3 and 4 own the
+stable model/component inputs and zero-render isolation correction. Slice 2 moves pure
+presentation/editor helpers and splits default surfaces. `Gantt`, root exports, props,
+slots, class hooks, data parts, controlled ownership, command behavior, and
+renderer/kernel boundaries remain unchanged.
 
 The accepted
 [basic project Gantt contract](decisions/2026-07-31-basic-project-gantt-contract.md)
@@ -777,6 +779,14 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-01: Completed React composition/DX Slice 1. A focused React fixture and
+  structure suite now lock chart/layer order, treegrid ownership, dependency summary
+  pairing, overlay ownership/focus return, deterministic SSR, and the observed
+  task/lane render fan-out. Focused React tests passed 8 files / 91 tests, SSR and
+  public-consumer coverage passed 2 files / 3 tests, and `mise run ci` passed 90 files
+  / 484 tests with the package build. The measured unrelated task/lane fan-out remains
+  the explicit Slice 4 target after Slice 3 stabilizes surface inputs.
 
 - 2026-08-01: Created the post-M5
   [React composition and DX refactor plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md)
