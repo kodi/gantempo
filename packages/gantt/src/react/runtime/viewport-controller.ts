@@ -11,10 +11,23 @@ import {
   type GanttTimeScaleLevel,
 } from '../../time/adaptive-scale';
 import type { GanttHandle, GanttSemanticEvent } from '../types';
-import type { GanttViewportNavigationInput, GanttViewportNavigationResult } from '../runtime';
 import { projectSessionPart } from './selector-snapshot';
 
 type ViewportSource = Extract<GanttSemanticEvent['source'], 'imperative' | 'runtime'>;
+
+interface RuntimeViewportNavigationInput {
+  readonly horizontalDelta?: number;
+  readonly reason?: 'pan' | 'scroll';
+  readonly source?: ViewportSource;
+  readonly verticalDelta?: number;
+  readonly viewportHeight: number;
+  readonly viewportWidth: number;
+}
+
+interface RuntimeViewportNavigationResult {
+  readonly horizontal: boolean;
+  readonly vertical: boolean;
+}
 
 interface RuntimeViewportControllerOptions {
   readonly announceEmpty: () => void;
@@ -43,7 +56,7 @@ interface RuntimeViewportControllerOptions {
 
 export interface RuntimeViewportController {
   fitProject(options: Parameters<GanttHandle['fitToProject']>[0], source: ViewportSource): boolean;
-  navigate(input: GanttViewportNavigationInput): GanttViewportNavigationResult;
+  navigate(input: RuntimeViewportNavigationInput): RuntimeViewportNavigationResult;
   zoomLevel(
     level: GanttTimeScaleLevel,
     options: Parameters<GanttHandle['zoomTo']>[1],

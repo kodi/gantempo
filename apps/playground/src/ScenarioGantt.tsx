@@ -51,7 +51,7 @@ export function ScenarioGantt({
             Today
           </button>
           <button
-            aria-label="More options (not implemented)"
+            aria-label="··· More options (not implemented)"
             disabled
             title="View options are not implemented yet"
             type="button"

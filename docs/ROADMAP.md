@@ -127,7 +127,7 @@ Detailed completion evidence is recorded in
 | M4: Interaction runtime and public API | Slice 3 | Controlled and uncontrolled applications use the same command path as pointer, touch, and keyboard interaction | `[x]` | [Completed plan](plans/2026-07-30-interaction-runtime-public-api-plan.md) |
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
-| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[-]` | [Slice 7 complete](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
+| Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[x]` | [Completed plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -155,7 +155,7 @@ M4 item-properties appendix [done]
 M5 basic project Gantt [done]
   |
   v
-Post-M5 React composition/DX refactor [in progress]
+Post-M5 React composition/DX refactor [done]
   |
   v
 M6 advanced scheduling/resources
@@ -169,18 +169,18 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. M5 is complete with all thirteen
-slices verified. The planned internal React composition and DX refactor is the next
-foundation step before M6 detailed planning.
+slices verified. The internal React composition and DX refactor is complete; M6
+advanced scheduling and resources is the next detailed-planning action.
 
 ## Current Focus
 
 ### Post-M5: React composition and DX refactor
 
-**Status:** `[-]` In progress; Slice 7 complete; M5 complete
+**Status:** `[x]` Complete and verified; M5 complete
 
 The
 [React composition and DX refactor plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md)
-is the next implementation handoff. It preserves the completed public API, DOM and
+is complete. It preserves the completed public API, DOM and
 accessibility behavior, scene/runtime ownership, SSR contract, and package facade
 while decomposing the 4,028-line React component, independent default surfaces, and
 the private React runtime by cohesive product and subscription boundaries. The plan
@@ -203,7 +203,10 @@ measurement/observer lifecycle, and native wheel navigation; `Gantt.tsx` is 1,68
 lines. Pure runtime input/snapshot derivation and instance-local range, viewport, pan,
 pointer, keyboard, and dependency-link controllers now sit behind the unchanged
 runtime facade; `runtime.ts` is 2,270 lines. Slice 8 owns the final API, package,
-browser, and documentation gate.
+browser, and documentation gate. The final package facade is unchanged, the 109-file
+source import graph is cycle-free, an isolated packed consumer passes model, React
+SSR, stylesheet, peer, and strict TypeScript checks, and the representative live route
+matrix passes. M6 detailed planning is next.
 Root exports, props, slots, class hooks, data parts, controlled ownership, command
 behavior, and renderer/kernel boundaries remain unchanged.
 
@@ -790,6 +793,17 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-01: Completed and verified the React composition/DX refactor. Slice 8 kept
+  the pre-refactor root source and package manifest byte-identical, removed the one
+  detected type-only runtime-controller cycle, passed a fresh 380,214-byte/209-file
+  tarball consumer, rebuilt the 1,967-module playground, and reran all three fixed
+  benchmark profiles. Chrome DevTools reused one page for `/`, `/interactive`,
+  `/project`, and `/navigation` across 1,440×1,000, 1,024×768, 500×844, and 820×900;
+  the final navigation accessibility snapshot scored 100 after four narrow
+  playground-only fixes, with no observed console/network failure. Final
+  `mise run ci` passed 97 files / 501 tests with 208 build artifacts. Physical
+  trackpad and forced-colors input were not newly exercised.
 
 - 2026-08-01: Completed React composition/DX Slice 7. Pure display and selector
   derivation plus instance-local range, viewport, pan, pointer, keyboard, and

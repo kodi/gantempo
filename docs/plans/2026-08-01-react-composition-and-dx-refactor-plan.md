@@ -1,6 +1,6 @@
 # React Composition and DX Refactor Plan
 
-Status: In progress; Slice 7 complete
+Status: Complete
 Milestone: Post-M5 foundation cleanup before M6
 Architecture mapping: React adapter, default DOM/SVG renderer, and interaction ownership
 Last updated: 2026-08-01
@@ -726,7 +726,7 @@ Dependencies: Slice 6.
 
 ### Slice 8: Final API, package, browser, and documentation gate
 
-Status: `[ ]` Not started
+Status: `[x]` Complete
 
 Goal: prove the restructure is behavior-preserving and leave a clean M6 handoff.
 
@@ -1001,11 +1001,58 @@ These are implementation judgments, not reasons to change the public API:
   501 tests, 242 formatted files, 231 lint/type files, and the 208-artifact package
   build.
 
+### 2026-08-01 — Slice 8 final evidence gate
+
+- Compared `packages/gantt/src/index.tsx` and `packages/gantt/package.json` with the
+  pre-refactor parent of Slice 0; both remain byte-for-byte unchanged. The final
+  package exposes the same 11 runtime values, `index.d.ts` is 8,595 bytes, private
+  runtime controller names do not appear in root declarations, and the export map
+  still exposes only the root and stylesheet.
+- Audited relative imports across 109 non-test package source files. The first pass
+  found one type-only `runtime.ts`/viewport-controller cycle; replacing that coupling
+  with the controller's narrow structural navigation input removed it. The final
+  graph has zero cycles and keeps React-only modules downstream of model, command,
+  runtime, interaction, render, and view kernels.
+- `vp pack` emitted 208 artifacts. A fresh 380,214-byte/209-file tarball installed in
+  an isolated npm consumer with React 19 peers; the consumer imported all 11 runtime
+  values without a browser global, resolved `styles.css`, parsed and serialized a
+  document, rendered a 4,978-character React SSR chart, and passed strict TypeScript
+  compilation.
+- Focused package, SSR, complete React DOM, runtime, and controller verification
+  passed 15 files / 131 tests. `mise run build-playground` transformed 1,967 modules
+  and emitted 46.91 kB CSS and 569.86 kB JavaScript; the existing chunk-size advisory
+  remains non-fatal.
+- The final fixed benchmark rerun retained its named fixture metadata. Runtime
+  observations were 303.46 selection/focus updates/s, 138.83 pointer preview
+  updates/s, 475.43 measured scroll queries/s, and 79,976.30 indexed hit tests/s.
+  Scene observations were 41.1918 cold builds/s, 94.3378 label updates/s, 79.6638
+  appearance/progress updates/s, and 5,010.57 vertical queries/s. Project observations
+  were 9.2074 cold builds/s, 8.3699 collapse queries/s, 8.5691 filter queries/s,
+  9.8528 dependency updates/s, and 9.8322 zooms/s. These remain observations rather
+  than thresholds.
+- Chrome DevTools reused the sole existing `about:blank` page and inspected `/` at
+  1,440×1,000, `/interactive` at 1,024×768, `/project` at Chrome's 500×844 minimum,
+  and `/navigation` at 820×900. Accessibility trees exposed the expected chart
+  regions, treegrid/task/dependency controls, hierarchy levels, keyboard guidance,
+  menu, and modal editor. Pointer activation, menu open/Escape return, editor
+  open/Escape focus return, fit, and virtualized PageDown focus all worked; document
+  overflow stayed zero and observed requests returned HTTP 200/304 with no console
+  warnings, errors, or issues.
+- The first `/navigation` Lighthouse snapshot found two playground-only contrast
+  failures and two visible-label/name mismatches. Narrow token and accessible-name
+  corrections raised the repeat snapshot from 96 to 100 accessibility without
+  changing package markup or behavior. Chrome DevTools did not provide a physical
+  trackpad for this run, so trackpad behavior remains automated plus prior live
+  evidence rather than a new physical-input claim; forced-colors was not exercised.
+- Final `git diff --check` and the explicit dirty-worktree audit found only the
+  intended Slice 8 source and documentation paths. `mise run ci` passed on 2026-08-01
+  with 97 test files / 501 tests, 242 formatted files, 231 lint/type files, and the
+  208-artifact package build. No deliberate product, public contract, or architecture
+  deviation remains.
+
 ## Next Slice
 
-Run Slice 8 as the final API, dependency-direction, package, browser, and documentation
-gate. Compare root exports and packed declarations with the locked facade; use fresh
-packed React and browser-free consumers; build the playground; inspect `/`,
-`/interactive`, `/project`, and `/navigation` at representative widths with Chrome
-DevTools; record accessibility, focus, menu/editor, pointer, console, network,
-benchmark, CI, SSR, and dirty-worktree evidence before marking the plan complete.
+The refactor is complete. Create the M6 advanced-scheduling-and-resources detailed
+plan before implementation, preserving the verified public facade, Community
+manual/diagnostic dependency boundary, scene-pipeline cache, instance-local React
+runtime controllers, and additive Pro capability architecture.
