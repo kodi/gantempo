@@ -45,18 +45,18 @@ import {
   taskPropertiesValue,
   validateItemPropertiesValue,
   validateTaskEditorValue,
-} from './surface/editor-commands';
-import { AccessibleDependencies } from './surface/AccessibleDependencies';
-import { AccessibleTreeGrid } from './surface/AccessibleTreeGrid';
-import { DependencyLayer } from './surface/DependencyLayer';
-import { GridLayer } from './surface/GridLayer';
+} from './renderer/editor-commands';
+import { AccessibleDependencies } from './renderer/AccessibleDependencies';
+import { AccessibleTreeGrid } from './renderer/AccessibleTreeGrid';
+import { DependencyLayer } from './renderer/DependencyLayer';
+import { GridLayer } from './renderer/GridLayer';
 import {
   DependencyPreview,
   InteractionPreview,
   ProgressPreviewValue,
-} from './surface/InteractionPreview';
-import { LaneGrid } from './surface/LaneGrid';
-import { LaneTimelineCells } from './surface/LaneTimelineCells';
+} from './renderer/InteractionPreview';
+import { LaneGrid } from './renderer/LaneGrid';
+import { LaneTimelineCells } from './renderer/LaneTimelineCells';
 import {
   idleClassState,
   inspectionSelectionKey,
@@ -65,22 +65,22 @@ import {
   resolveClassName,
   taskSummary,
   taskTarget,
-} from './surface/presentation';
-import { TaskLayer } from './surface/TaskLayer';
-import { TimeHeader } from './surface/TimeHeader';
-import { ZoomControls } from './surface/ZoomControls';
-import { useOverlayController } from './surface/overlays/controller';
-import { OverlayLayer } from './surface/overlays/OverlayLayer';
-import { useMeasuredViewport } from './surface/dom/useMeasuredViewport';
-import { useWheelNavigation } from './surface/dom/useWheelNavigation';
-import { keyboardActionForEvent } from './surface/dom/keyboard';
-import { usePointerInteractions } from './surface/dom/usePointerInteractions';
-import { useFocusBridge } from './surface/dom/useFocusBridge';
+} from './renderer/presentation';
+import { TaskLayer } from './renderer/TaskLayer';
+import { TimeHeader } from './renderer/TimeHeader';
+import { ZoomControls } from './renderer/ZoomControls';
+import { useOverlayController } from './renderer/overlays/controller';
+import { OverlayLayer } from './renderer/overlays/OverlayLayer';
+import { useMeasuredViewport } from './renderer/dom/useMeasuredViewport';
+import { useWheelNavigation } from './renderer/dom/useWheelNavigation';
+import { keyboardActionForEvent } from './renderer/dom/keyboard';
+import { usePointerInteractions } from './renderer/dom/usePointerInteractions';
+import { useFocusBridge } from './renderer/dom/useFocusBridge';
 import {
   buildDependencySummaryMap,
   buildGanttSurfaceModel,
   stabilizeDependencyPaths,
-} from './surface/surface-model';
+} from './renderer/surface-model';
 import type {
   GanttContextMenuItem,
   GanttDependencySummary,

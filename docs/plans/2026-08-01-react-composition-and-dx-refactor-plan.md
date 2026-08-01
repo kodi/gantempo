@@ -261,7 +261,7 @@ packages/gantt/src/react/
 │   ├── viewport-controller.ts        # range, pan, fit, zoom, viewport proposals
 │   ├── keyboard-controller.ts        # keyboard/link state transitions
 │   └── pointer-controller.ts         # pointer gesture and auto-pan orchestration
-├── surface/
+├── renderer/
 │   ├── GanttSurface.tsx              # chart shell and layer composition
 │   ├── surface-model.ts              # per-scene indexes and stable summaries
 │   ├── TaskItem.tsx                  # one visible task occurrence
@@ -300,16 +300,16 @@ Dependency direction must remain:
 
 ```text
 public Gantt composition
-  -> private surface components and DOM adapters
+  -> private renderer components and DOM adapters
   -> private React runtime facade
   -> runtime / interaction / render kernels
   -> view / model / command kernels
 ```
 
-Kernel modules must not import from `react/`. Surface components may consume scene
+Kernel modules must not import from `react/`. Renderer components may consume scene
 primitives and public slot types, but may not call layout or scheduling code.
 
-Avoid barrel imports inside `surface/` and `runtime/` when they obscure cycles. The
+Avoid barrel imports inside `renderer/` and `runtime/` when they obscure cycles. The
 private `surfaces/index.ts` may exist as the one stable aggregation point because the
 default surfaces are already independent leaves.
 
@@ -761,6 +761,32 @@ Verification:
 
 Dependencies: Slices 1–7.
 
+### Slice 8.1: Clarify the private renderer boundary
+
+Status: `[x]` Done
+
+Goal: remove the ambiguous `surface/` versus `surfaces/` directory naming without
+changing either boundary's responsibility.
+
+This slice should implement:
+
+- rename the private chart-rendering directory from `react/surface/` to
+  `react/renderer/`;
+- update private imports and the plan's target-state terminology;
+- keep `react/surfaces/` as the default implementations of the existing public
+  customization slots;
+- preserve all public exports, runtime behavior, markup, accessibility, and package
+  shape.
+
+Verification:
+
+- `vp test run packages/gantt/src/react/renderer/*.test.ts` passed 3 files / 8 tests;
+- `git diff --check` passed;
+- `mise run ci` passed on 2026-08-01 with 97 test files / 501 tests, 242
+  formatted files, 231 lint/type files, and the 208-artifact package build.
+
+Dependencies: Slice 8 and the completed refactor evidence gate.
+
 ## Testing Plan
 
 ### Per-slice automated gates
@@ -1049,6 +1075,18 @@ These are implementation judgments, not reasons to change the public API:
   with 97 test files / 501 tests, 242 formatted files, 231 lint/type files, and the
   208-artifact package build. No deliberate product, public contract, or architecture
   deviation remains.
+
+### 2026-08-01 — Slice 8.1 renderer naming clarification
+
+- Renamed the private `react/surface/` directory to `react/renderer/` so it cannot be
+  confused with `react/surfaces/`, which remains the default implementation boundary
+  for public customization slots.
+- Updated only private imports and the plan's target-state terminology. Public
+  exports, package exports, runtime behavior, markup, accessibility, and the
+  renderer/default-surface dependency direction are unchanged.
+- Focused renderer tests passed 3 files / 8 tests; `git diff --check` passed; and
+  `mise run ci` passed with 97 test files / 501 tests, 242 formatted files, 231
+  lint/type files, and the 208-artifact package build.
 
 ## Next Slice
 
