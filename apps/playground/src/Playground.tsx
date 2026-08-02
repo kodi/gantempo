@@ -6,6 +6,7 @@ import { MainPage } from './pages/MainPage';
 import { MatrixPage } from './pages/MatrixPage';
 import { NavigationPage } from './pages/NavigationPage';
 import { ProjectPage } from './pages/ProjectPage';
+import { SimpleProjectExamplePage } from './pages/SimpleProjectExamplePage';
 import { UncontrolledPage } from './pages/UncontrolledPage';
 
 interface PlaygroundLink {
@@ -21,12 +22,13 @@ const links: readonly PlaygroundLink[] = [
   { href: '/uncontrolled', label: 'Runtime-owned' },
   { href: '/navigation', label: 'Navigation' },
   { href: '/project', label: 'Project' },
+  { href: '/examples/simple-project', label: 'API Example' },
 ];
 
 function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
   return (
     <header className="playground-header">
-      <a className="brand" href="/">
+      <a aria-label="Gantempo Playground" className="brand" href="/">
         <span aria-hidden="true" className="brand__mark">
           G
         </span>
@@ -71,6 +73,8 @@ export function Playground(): ReactElement {
       <NavigationPage />
     ) : pathname === '/project' ? (
       <ProjectPage search={window.location.search} />
+    ) : pathname === '/examples/simple-project' ? (
+      <SimpleProjectExamplePage />
     ) : (
       <MainPage />
     );

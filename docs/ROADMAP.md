@@ -1,7 +1,7 @@
 # Gantempo Roadmap
 
 Status: Active execution roadmap
-Last updated: 2026-07-31
+Last updated: 2026-08-02
 
 ## Purpose
 
@@ -128,6 +128,7 @@ Detailed completion evidence is recorded in
 | M4 appendix: Item properties, semantic appearance, and progress | Post-M4 appendix | Canonical task/lane properties, portable semantic variants, and complete progress behavior extend the verified command path | `[x]` | [Completed plan](plans/2026-07-30-m4-item-properties-and-semantic-color-appendix-plan.md) |
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
 | Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[x]` | [Completed plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
+| Post-M5: API-loaded simple project example | Integration guidance before Slice 5 | A standalone, copyable example loads API-shaped JSON, validates it, edits through controlled React state, and explicitly saves the draft | `[x]` | [Completed plan](plans/2026-08-02-api-loaded-simple-project-example-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -158,6 +159,9 @@ M5 basic project Gantt [done]
 Post-M5 React composition/DX refactor [done]
   |
   v
+Post-M5 API-loaded simple project example [done]
+  |
+  v
 M6 advanced scheduling/resources
   |
   v
@@ -169,10 +173,34 @@ architecture Slice 1, M3 completes architecture Slice 2, and base M4 completes
 architecture Slice 3 with one verified interaction/runtime/public-facade path. The
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. M5 is complete with all thirteen
-slices verified. The internal React composition and DX refactor is complete; M6
-advanced scheduling and resources is the next detailed-planning action.
+slices verified. The internal React composition and DX refactor is complete. The
+API-loaded simple project example is complete. M6 advanced scheduling and resources
+is the next milestone-planning focus.
 
 ## Current Focus
+
+### Post-M5: API-loaded simple project example
+
+**Status:** `[x]` Complete and verified
+
+The
+[API-loaded simple project example plan](plans/2026-08-02-api-loaded-simple-project-example-plan.md)
+owns a standalone `/examples/simple-project` tutorial and working consumer. It uses a
+static JSON asset as a deterministic simulated `GET`, validates that unknown input
+through `parseGanttDocument`, acknowledges edits immediately into controlled React
+state, and exposes an explicit Save through a clearly labeled in-memory application
+adapter. The page shows the exact fixture, adapter, component, and CSS used by its
+final live result. Autosave, incremental persistence, retries, and conflicts remain
+for a later medium example.
+
+All four slices are complete. Focused coverage passed 2 files / 6 tests, and the final
+repository gate passed 99 files / 507 tests, formatting for 249 files, lint/type
+checking for 236 files, and the 208-file package build. The production playground
+build transformed 1,974 modules. Chrome DevTools verified the exact route at
+1440x1000 and 560x900 with successful fixture requests, controlled edit and
+2,425-byte Save behavior, labelled task properties, zero chart diagnostics, zero
+page-level overflow, and a clean console. Mobile Lighthouse scored 100 accessibility
+and 100 best practices after live contrast and compact-brand fixes.
 
 ### Post-M5: React composition and DX refactor
 
@@ -206,7 +234,8 @@ runtime facade; `runtime.ts` is 2,270 lines. Slice 8 owns the final API, package
 browser, and documentation gate. The final package facade is unchanged, the 109-file
 source import graph is cycle-free, an isolated packed consumer passes model, React
 SSR, stylesheet, peer, and strict TypeScript checks, and the representative live route
-matrix passes. M6 detailed planning is next.
+matrix passes. The API-loaded simple project example is the next verified handoff
+before M6 detailed planning.
 Root exports, props, slots, class hooks, data parts, controlled ownership, command
 behavior, and renderer/kernel boundaries remain unchanged.
 
@@ -793,6 +822,16 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-02: Completed and verified the API-loaded simple project example at
+  `/examples/simple-project`. The five-step guide displays the exact fetched fixture,
+  adapter, controlled React component, and CSS used by its final live chart. Focused
+  coverage passed 2 files / 6 tests; `mise run ci` passed 99 files / 507 tests; and
+  the 1,974-module production playground build passed. Chrome DevTools verified
+  1440x1000 and 560x900, the real static-fixture request, edit/dirty/2,425-byte Save,
+  task-properties keyboard flow, zero diagnostics/overflow, and a clean console.
+  Mobile Lighthouse accessibility and best practices both scored 100 after live
+  fixes.
 
 - 2026-08-01: Completed and verified the React composition/DX refactor. Slice 8 kept
   the pre-refactor root source and package manifest byte-identical, removed the one
