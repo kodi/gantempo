@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { parseGanttDocument } from '@gantempo/gantt';
 import axe from 'axe-core';
+import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { Playground } from '../Playground';
@@ -19,9 +21,21 @@ vi.mock('../examples/simple-project-api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../examples/simple-project-api')>();
   return {
     ...actual,
-    simpleProjectApi: Object.freeze({ load: apiMocks.load, save: apiMocks.save }),
+    loadSimpleProject: apiMocks.load,
+    saveSimpleProject: apiMocks.save,
   };
 });
+
+function renderWithQuery(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  });
+
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 function testDocument() {
   const result = parseGanttDocument({
@@ -69,7 +83,7 @@ afterEach(() => {
 describe('API-loaded simple project example', () => {
   it('routes to a short accessible guide backed by the working chart', async () => {
     window.history.replaceState({}, '', '/examples/simple-project');
-    const mounted = render(<Playground />);
+    const mounted = renderWithQuery(<Playground />);
 
     expect(screen.getByRole('link', { name: 'API Example' }).getAttribute('aria-current')).toBe(
       'page',
@@ -78,12 +92,22 @@ describe('API-loaded simple project example', () => {
       'Your first working Gantt chart',
     );
     expect(
-      screen.getAllByRole('listitem').filter((item) => item.classList.contains('example-step')),
+      within(screen.getByRole('list', { name: 'Integration steps' })).getAllByRole('listitem'),
     ).toHaveLength(3);
     expect(screen.getByText('simple-project-api.ts')).not.toBeNull();
     expect(screen.getByText('SimpleProjectExample.tsx')).not.toBeNull();
-    expect(screen.getByText(/useGanttDocument/)).not.toBeNull();
+    expect(screen.getByText('vite.config.ts')).not.toBeNull();
+    expect(screen.getByText('styles.css')).not.toBeNull();
+    expect(screen.getByText(/plugins: \[react\(\), tailwindcss\(\)\]/)).not.toBeNull();
+    expect(screen.getAllByText('View complete file')).toHaveLength(6);
+    expect(screen.getByText(/useGanttDocumentQuery/)).not.toBeNull();
+    expect(screen.getAllByText(/QueryClientProvider/)).not.toHaveLength(0);
+    expect(screen.getByText(/mutationFn: saveSimpleProject/)).not.toBeNull();
+    expect(screen.getByText(/method: 'PUT'/)).not.toBeNull();
+    expect(screen.queryByText(/import \{ Playground \}/)).toBeNull();
+    expect(screen.queryByText(/AbortSignal|AbortController|DOMException/)).toBeNull();
     expect(screen.queryByText(/appearanceVariants=/)).toBeNull();
+    expect(mounted.container.querySelector('[class*="simple-project-example"]')).toBeNull();
     expect(await screen.findByRole('region', { name: 'API-loaded project' })).not.toBeNull();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
       true,
@@ -91,9 +115,9 @@ describe('API-loaded simple project example', () => {
     expect((await axe.run(mounted.container)).violations).toEqual([]);
   });
 
-  it('acknowledges a keyboard progress edit and saves through the tiny adapter', async () => {
+  it('acknowledges a keyboard progress edit and saves through the mutation', async () => {
     const user = userEvent.setup();
-    render(<SimpleProjectExamplePage />);
+    renderWithQuery(<SimpleProjectExamplePage />);
     const task = await screen.findByRole('button', {
       name: /Build the first release.*45% complete/,
     });
@@ -117,13 +141,16 @@ describe('API-loaded simple project example', () => {
     );
   });
 
-  it('offers reload and keeps a failed Save retryable', async () => {
+  it('shows a small load error and keeps a failed Save retryable', async () => {
     const user = userEvent.setup();
     apiMocks.load.mockRejectedValueOnce(new Error('Network unavailable'));
-    render(<SimpleProjectExample />);
+    const failedLoad = renderWithQuery(<SimpleProjectExample />);
 
-    expect((await screen.findByRole('alert')).textContent).toContain('Network unavailable');
-    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toContain('Network unavailable'),
+    );
+    failedLoad.unmount();
+    renderWithQuery(<SimpleProjectExample />);
     const task = await screen.findByRole('button', {
       name: /Build the first release.*45% complete/,
     });

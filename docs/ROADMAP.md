@@ -130,6 +130,8 @@ Detailed completion evidence is recorded in
 | Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[x]` | [Completed plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
 | Post-M5: API-loaded simple project example | Integration guidance before Slice 5 | A standalone, copyable example loads API-shaped JSON, validates it, edits through controlled React state, and explicitly saves the draft | `[x]` | [Completed plan](plans/2026-08-02-api-loaded-simple-project-example-plan.md) |
 | Post-M5: Simple integration defaults | Correction before Slice 5 | A public document hook and overridable built-in appearances reduce the first API example to one small adapter and React component | `[x]` | [Completed plan](plans/2026-08-02-simple-integration-defaults-plan.md) |
+| Post-M5: React Query document integration | Integration boundary correction before Slice 5 | Core owns editable draft state while an optional TanStack Query entry owns standard server-state wiring | `[x]` | [Completed plan](plans/2026-08-02-react-query-document-integration-plan.md) |
+| Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities while the package remains design-system-neutral | `[-]` | [Active plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -166,6 +168,12 @@ Post-M5 API-loaded simple project example [done]
 Post-M5 simple integration defaults [done]
   |
   v
+Post-M5 React Query document integration [done]
+  |
+  v
+Post-M5 playground Tailwind migration [in progress]
+  |
+  v
 M6 advanced scheduling/resources
   |
   v
@@ -180,9 +188,54 @@ semantic-color, and progress appendix are complete. M5 is complete with all thir
 slices verified. The internal React composition and DX refactor is complete. The
 first API-loaded example proved the integration boundary but exposed too much
 consumer boilerplate for a simple entry point. The simple integration defaults
-correction is complete; M6 advanced scheduling and resources is next.
+correction is complete. The React Query integration boundary and its simple-guide
+correction are complete before M6 advanced scheduling and resources.
 
 ## Current Focus
+
+### Post-M5: Playground Tailwind migration
+
+**Status:** `[-]` In progress
+
+The
+[playground Tailwind migration plan](plans/2026-08-03-playground-tailwind-migration-plan.md)
+standardizes `apps/playground` on Tailwind CSS v4 for user-facing chrome and examples.
+The package stays framework-neutral. Slice 1 is complete: the Tailwind foundation and
+simple API example now use direct utilities with live desktop and narrow proof. Slice
+2 is next for shared chrome; the remaining routes follow in bounded visual slices.
+The boundary is recorded in the
+[playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
+
+### Post-M5: React Query document integration
+
+**Status:** `[x]` Complete and verified
+
+The
+[React Query document integration plan](plans/2026-08-02-react-query-document-integration-plan.md)
+replaces the broad `useGanttDocument` network controller with the root
+`useGanttDocumentDraft` hook and an optional `@gantempo/gantt/react-query`
+`useGanttDocumentQuery` adapter. Core remains free of TanStack runtime imports;
+applications retain query keys, endpoints, authentication, retry/stale policy,
+revisions, conflicts, and product UI.
+
+All six slices are complete. Their evidence includes 101 test files / 518 tests,
+the two-entry 214-file package build, a 2,023-module playground build, a 385.8-kB /
+215-file npm tarball, strict TypeScript plus SSR in fresh core-only and React Query
+consumers, and Chrome verification at 1440x1000 and 560x900. Core-only installation
+was verified without TanStack present; the live route verified loading, zoom,
+edit/dirty/Save, one-day movement, full code panels, responsive overflow, warning
+colors, accessibility structure, network, and console state. Focused adapter tests
+cover refetch/error, cancellation, failed-Save retryability, cache updates, and dirty
+remote-update protection. The durable boundary is recorded in the
+[React Query document integration decision](decisions/2026-08-02-react-query-document-integration.md).
+
+Slice 6 corrected the user-review finding that the first page exposed the playground
+shell and a hand-written `AbortSignal` delay. The page now shows a standalone
+QueryClient entry, `queryFn`, `mutationFn`, GET, PUT, and the working chart; no
+playground or cancellation primitives appear in the source. Focused coverage passed
+2 files / 5 tests, full CI remained 101 files / 518 tests, and Chrome verified the
+live GET 304 plus Save PUT 204 at desktop and narrow viewports without source-panel
+scroll, page overflow, or console findings.
 
 ### Post-M5: Simple integration defaults
 
@@ -190,12 +243,12 @@ correction is complete; M6 advanced scheduling and resources is next.
 
 The
 [simple integration defaults plan](plans/2026-08-02-simple-integration-defaults-plan.md)
-owns the public `useGanttDocument` hook, overridable built-in semantic appearances,
-and reset of `/examples/simple-project` to five ordinary tasks, two optional features,
-one small fake API adapter, and one small React component. It also corrects the
-adaptive chart's default editing snap to one day while retaining the public override.
-Automatic persistence, retries, revisions, and conflict policy remain outside the
-simple contract.
+introduced overridable built-in semantic appearances and reset
+`/examples/simple-project` to five ordinary tasks, two optional features, one small
+fake API adapter, and one small React component. It also corrected the adaptive
+chart's default editing snap to one day while retaining the public override. Its
+broad document controller is superseded by the active draft/query split; automatic
+persistence, revisions, and conflict policy remain outside the simple contract.
 
 All four slices are complete. The final gate passed 100 test files / 513 tests, a
 1,974-module playground build, and a strict TypeScript plus SSR check in a fresh
@@ -847,6 +900,41 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Started the playground Tailwind migration. Tailwind v4 is now the
+  accepted application styling direction for playground chrome and examples, while
+  `@gantempo/gantt` remains independent. Slice 1 is complete: the simple guide and
+  working component use direct utilities, all six source files render fully without
+  code-panel scrolling, 101 files and 518 tests pass, the playground builds, and
+  Chrome desktop plus narrow inspection found no overflow or console errors. Shared
+  chrome is the next slice.
+
+- 2026-08-03: Completed the simple-guide correction. The displayed `main.tsx` now
+  renders `SimpleProjectExample` directly inside `QueryClientProvider`; the API file
+  is one GET and one PUT; and `useGanttDocumentQuery` visibly receives TanStack-style
+  `queryFn` and `mutationFn`. Cancellation remains supported in the adapter but is no
+  longer introductory source. Focused tests, full CI, the production build, and live
+  1440x1000 plus 560x900 verification passed.
+
+- 2026-08-03: Reopened the React Query integration plan for a focused simple-guide
+  correction. The page will stop displaying the internal `<Playground />` entry and
+  hand-written cancellation helper; it will explicitly show the QueryClient,
+  `queryFn`, `mutationFn`, one GET, one Save, and the working chart.
+
+- 2026-08-02: Completed the React Query document integration correction. The root
+  package now owns only `useGanttDocumentDraft`; the optional
+  `@gantempo/gantt/react-query` entry exposes `useGanttDocumentQuery` with native
+  query/mutation results, canonical parsing, cache acknowledgement, cancellation,
+  and dirty-refetch protection. The three-step simple example uses a QueryClient and
+  two small API functions. Final evidence: 101 files / 518 tests, the two-entry
+  package and 2,023-module playground builds, a 385.8-kB / 215-file tarball, strict
+  core-only and adapter consumers, and desktop/narrow Chrome verification.
+
+- 2026-08-02: Started the React Query document integration correction. The root hook
+  becomes draft-only and receives the explicit `useGanttDocumentDraft` name; standard
+  query/mutation behavior moves to an optional `@gantempo/gantt/react-query` entry
+  with `useGanttDocumentQuery`. The flagship example will use that adapter without
+  making TanStack Query part of the core runtime.
 
 - 2026-08-02: Started the user-directed simple integration correction. The first
   API-loaded example remains verified evidence but is medium-level in scope. The new

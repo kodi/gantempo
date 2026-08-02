@@ -2,9 +2,20 @@ import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@gantempo/gantt': new URL('./packages/gantt/src/index.tsx', import.meta.url).pathname,
-    },
+    alias: [
+      {
+        find: /^@gantempo\/gantt\/react-query$/,
+        replacement: new URL('./packages/gantt/src/react-query.ts', import.meta.url).pathname,
+      },
+      {
+        find: /^@gantempo\/gantt\/styles\.css$/,
+        replacement: new URL('./packages/gantt/src/styles.css', import.meta.url).pathname,
+      },
+      {
+        find: /^@gantempo\/gantt$/,
+        replacement: new URL('./packages/gantt/src/index.tsx', import.meta.url).pathname,
+      },
+    ],
   },
   fmt: {
     ignorePatterns: ['docs/**'],
@@ -30,7 +41,7 @@ export default defineConfig({
       neverBundle: true,
     },
     dts: true,
-    entry: ['packages/gantt/src/index.tsx'],
+    entry: ['packages/gantt/src/index.tsx', 'packages/gantt/src/react-query.ts'],
     format: ['esm'],
     outDir: 'packages/gantt/dist',
     platform: 'neutral',

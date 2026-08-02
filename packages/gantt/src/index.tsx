@@ -1,17 +1,16 @@
 export { Gantt, type GanttHandle, type GanttProps } from './react/Gantt';
 export { useGanttSelector } from './react/context';
 export {
+  useGanttDocumentDraft,
+  type GanttDocumentDraftBinding,
+  type UseGanttDocumentDraftOptions,
+  type UseGanttDocumentDraftResult,
+} from './react/useGanttDocumentDraft';
+export {
   GANTT_DEFAULT_APPEARANCE_VARIANTS,
   type GanttAppearanceToken,
   type GanttAppearanceVariantOption,
 } from './render/appearance';
-export {
-  useGanttDocument,
-  type GanttDocumentBinding,
-  type GanttDocumentStatus,
-  type UseGanttDocumentOptions,
-  type UseGanttDocumentResult,
-} from './react/useGanttDocument';
 export type {
   GanttCommandMappingResult,
   GanttBuiltInMenuAction,

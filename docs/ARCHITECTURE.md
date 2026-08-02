@@ -878,6 +878,11 @@ The theming promise is **Tailwind-native without Tailwind lock-in**. Tailwind us
 a first-class token bridge, stable selectors, and utility-friendly React slots, while
 the library itself has no Tailwind runtime or peer dependency.
 
+The repository playground uses Tailwind for application chrome and example
+presentation, but this is an application-owned choice rather than a package runtime or
+styling contract. See the
+[playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
+
 The architectural rules are:
 
 - required structural CSS and optional visual themes are separate;
@@ -1244,18 +1249,24 @@ revisions as external controlled document updates. Uncontrolled mode can observe
 same entity changes, but controlled mode is the recommended authoritative-backend
 integration until an adapter owns rollback, conflict handling, and ID reconciliation.
 
-The public `useGanttDocument` hook owns the common React orchestration for this
-boundary: abortable loading, canonical parsing, immediate controlled acknowledgement,
-dirty state, explicit Save state, and retryable load/save errors. Applications still
-supply transport functions and own authentication, endpoints, server revisions,
-retry, conflict, and rollback policy. This ergonomic state machine does not make
-storage part of `<Gantt>` or change controlled/uncontrolled document ownership. See
-the
-[simple integration defaults decision](decisions/2026-08-02-simple-integration-defaults.md).
+The root package's public `useGanttDocumentDraft` hook owns only the local React side
+of this boundary: a canonical editable draft, immediate controlled acknowledgement,
+dirty state, explicit adoption of newer source data, reset, and saved-baseline
+acknowledgement. It does not fetch, cache, retry, mutate, or invalidate server state.
 
-The first release should provide examples for REST, GraphQL, Redux, Zustand, and direct
-React state. State-manager-specific packages are unnecessary unless examples prove
-insufficient.
+The optional `@gantempo/gantt/react-query` entry composes that draft with TanStack
+Query. `useGanttDocumentQuery` parses unknown query results, exposes native query and
+mutation state, updates the matching cache after Save, and prevents background
+refetches from silently replacing a dirty draft. Core imports have no TanStack
+runtime dependency. Applications still own query keys, authentication, endpoints,
+stale/retry policy, server revisions, conflicts, optimistic backend behavior, and
+rollback. Neither hook makes storage part of `<Gantt>` or changes controlled versus
+uncontrolled document ownership. See the
+[React Query document integration decision](decisions/2026-08-02-react-query-document-integration.md).
+
+The first release should provide examples for REST, GraphQL, Redux, Zustand, direct
+React state, and the optional TanStack Query entry. Additional state-manager-specific
+packages are unnecessary unless examples prove insufficient.
 
 ### 14.1 Partial-data loading
 

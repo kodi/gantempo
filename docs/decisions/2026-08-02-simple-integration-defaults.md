@@ -1,7 +1,8 @@
 # Simple Integration Defaults
 
-Status: Accepted
+Status: Superseded in part
 Date: 2026-08-02
+Superseded by: [React Query Document Integration](2026-08-02-react-query-document-integration.md)
 
 ## Context
 

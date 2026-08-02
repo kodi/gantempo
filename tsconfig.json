@@ -20,7 +20,8 @@
     "strict": true,
     "target": "ES2024",
     "paths": {
-      "@gantempo/gantt": ["./packages/gantt/src/index.tsx"]
+      "@gantempo/gantt": ["./packages/gantt/src/index.tsx"],
+      "@gantempo/gantt/react-query": ["./packages/gantt/src/react-query.ts"]
     },
     "verbatimModuleSyntax": true
   },

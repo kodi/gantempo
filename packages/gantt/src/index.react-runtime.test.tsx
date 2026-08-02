@@ -45,8 +45,12 @@ const common = {
 describe('public React runtime facade', () => {
   it('declares every external React runtime import as a compatible peer', () => {
     expect(packageMetadata.peerDependencies).toEqual({
+      '@tanstack/react-query': '^5.0.0',
       react: '^18.3.0 || ^19.0.0',
       'react-dom': '^18.3.0 || ^19.0.0',
+    });
+    expect(packageMetadata.peerDependenciesMeta).toEqual({
+      '@tanstack/react-query': { optional: true },
     });
   });
 

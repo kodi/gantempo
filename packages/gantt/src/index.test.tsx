@@ -19,7 +19,7 @@ import {
   type TaskSegment,
   parseGanttDocument,
   serializeGanttDocument,
-  useGanttDocument,
+  useGanttDocumentDraft,
   useGanttSelector,
 } from './index';
 
@@ -46,7 +46,7 @@ function render(document: GanttDocument): string {
 
 describe('Gantt', () => {
   it('exports the simple integration defaults through the package root', () => {
-    expect(typeof useGanttDocument).toBe('function');
+    expect(typeof useGanttDocumentDraft).toBe('function');
     expect(GANTT_DEFAULT_APPEARANCE_VARIANTS.map((variant) => variant.id)).toEqual([
       'accent',
       'neutral',
