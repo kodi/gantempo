@@ -23,7 +23,7 @@ function SourcePanel({
         <span>{filename}</span>
         <span>View complete file</span>
       </summary>
-      <pre tabIndex={0}>
+      <pre>
         <code>{children.trim()}</code>
       </pre>
     </details>

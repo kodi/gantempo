@@ -320,23 +320,22 @@ button {
   font-family: inherit;
 }
 
-.example-source > summary:focus-visible,
-.example-source pre:focus-visible {
+.example-source > summary:focus-visible {
   outline: 3px solid #7fd4b9;
   outline-offset: -3px;
 }
 
 .example-source pre {
-  max-height: 540px;
   margin: 0;
-  overflow: auto;
+  overflow: visible;
   padding: 18px;
   color: #e8efec;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   line-height: 1.65;
   tab-size: 2;
-  white-space: pre;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .example-result {
@@ -1441,7 +1440,6 @@ button {
   }
 
   .example-source pre {
-    max-height: 440px;
     padding: 14px;
     font-size: 10px;
   }
