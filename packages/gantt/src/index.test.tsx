@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  GANTT_DEFAULT_APPEARANCE_VARIANTS,
   Gantt,
   applyGanttCommand,
   type AssignmentRecord,
@@ -18,6 +19,7 @@ import {
   type TaskSegment,
   parseGanttDocument,
   serializeGanttDocument,
+  useGanttDocument,
   useGanttSelector,
 } from './index';
 
@@ -43,6 +45,16 @@ function render(document: GanttDocument): string {
 }
 
 describe('Gantt', () => {
+  it('exports the simple integration defaults through the package root', () => {
+    expect(typeof useGanttDocument).toBe('function');
+    expect(GANTT_DEFAULT_APPEARANCE_VARIANTS.map((variant) => variant.id)).toEqual([
+      'accent',
+      'neutral',
+      'success',
+      'warning',
+    ]);
+  });
+
   it('exports the dependency update command through the package root', () => {
     const document: GanttDocument = {
       ...EMPTY_COLLECTIONS,

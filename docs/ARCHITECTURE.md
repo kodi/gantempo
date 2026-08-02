@@ -1,7 +1,7 @@
 # Architecture: React Gantt and Scheduling Library
 
 Status: Architecture baseline
-Last updated: 2026-07-30
+Last updated: 2026-08-02
 
 ## 1. Executive summary
 
@@ -902,8 +902,12 @@ border, lane accent, and lane surface tokens. Resolution uses theme/kind default
 lane appearance, a source-compatible view-only `taskVariants` fallback, persisted task
 appearance, then derived system state. Unknown valid IDs survive document round trips,
 fall back deterministically, and are diagnosed once per ID and registry revision. The
-accepted contract is recorded in the
-[item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md).
+registry includes overridable `accent`, `neutral`, `success`, and `warning` defaults;
+instance options merge over same-ID defaults and may add application-specific IDs.
+The accepted contracts are recorded in the
+[item-properties, semantic-appearance, and progress decision](decisions/2026-07-31-item-properties-semantic-appearance-progress.md)
+and the
+[simple integration defaults decision](decisions/2026-08-02-simple-integration-defaults.md).
 
 ### 10.5 Lane overlap strategies
 
@@ -1239,6 +1243,15 @@ persistence layer supplies retry-safe operation IDs and applies later server
 revisions as external controlled document updates. Uncontrolled mode can observe the
 same entity changes, but controlled mode is the recommended authoritative-backend
 integration until an adapter owns rollback, conflict handling, and ID reconciliation.
+
+The public `useGanttDocument` hook owns the common React orchestration for this
+boundary: abortable loading, canonical parsing, immediate controlled acknowledgement,
+dirty state, explicit Save state, and retryable load/save errors. Applications still
+supply transport functions and own authentication, endpoints, server revisions,
+retry, conflict, and rollback policy. This ergonomic state machine does not make
+storage part of `<Gantt>` or change controlled/uncontrolled document ownership. See
+the
+[simple integration defaults decision](decisions/2026-08-02-simple-integration-defaults.md).
 
 The first release should provide examples for REST, GraphQL, Redux, Zustand, and direct
 React state. State-manager-specific packages are unnecessary unless examples prove

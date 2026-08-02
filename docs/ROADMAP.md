@@ -129,6 +129,7 @@ Detailed completion evidence is recorded in
 | M5: Basic project Gantt | Slice 4 | Hierarchy, summaries, milestones, dependencies, zoom, filtering, localization, and SSR form a complete free Gantt | `[x]` | [Completed plan](plans/2026-07-31-basic-project-gantt-plan.md) |
 | Post-M5: React composition and DX refactor | Foundation cleanup before Slice 5 | The public component remains stable while private renderer atoms, DOM adapters, overlays, default surfaces, and the React runtime become cohesive, performance-isolated modules | `[x]` | [Completed plan](plans/2026-08-01-react-composition-and-dx-refactor-plan.md) |
 | Post-M5: API-loaded simple project example | Integration guidance before Slice 5 | A standalone, copyable example loads API-shaped JSON, validates it, edits through controlled React state, and explicitly saves the draft | `[x]` | [Completed plan](plans/2026-08-02-api-loaded-simple-project-example-plan.md) |
+| Post-M5: Simple integration defaults | Correction before Slice 5 | A public document hook and overridable built-in appearances reduce the first API example to one small adapter and React component | `[x]` | [Completed plan](plans/2026-08-02-simple-integration-defaults-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -162,6 +163,9 @@ Post-M5 React composition/DX refactor [done]
 Post-M5 API-loaded simple project example [done]
   |
   v
+Post-M5 simple integration defaults [done]
+  |
+  v
 M6 advanced scheduling/resources
   |
   v
@@ -174,10 +178,31 @@ architecture Slice 3 with one verified interaction/runtime/public-facade path. T
 timeline navigation interaction correction and the bounded item-properties,
 semantic-color, and progress appendix are complete. M5 is complete with all thirteen
 slices verified. The internal React composition and DX refactor is complete. The
-API-loaded simple project example is complete. M6 advanced scheduling and resources
-is the next milestone-planning focus.
+first API-loaded example proved the integration boundary but exposed too much
+consumer boilerplate for a simple entry point. The simple integration defaults
+correction is complete; M6 advanced scheduling and resources is next.
 
 ## Current Focus
+
+### Post-M5: Simple integration defaults
+
+**Status:** `[x]` Complete and verified
+
+The
+[simple integration defaults plan](plans/2026-08-02-simple-integration-defaults-plan.md)
+owns the public `useGanttDocument` hook, overridable built-in semantic appearances,
+and reset of `/examples/simple-project` to five ordinary tasks, two optional features,
+one small fake API adapter, and one small React component. It also corrects the
+adaptive chart's default editing snap to one day while retaining the public override.
+Automatic persistence, retries, revisions, and conflict policy remain outside the
+simple contract.
+
+All four slices are complete. The final gate passed 100 test files / 513 tests, a
+1,974-module playground build, and a strict TypeScript plus SSR check in a fresh
+384.5-kB / 212-file tarball consumer. Chrome verified desktop and narrow layouts,
+working zoom, one-day movement, edit/dirty/Save, the API request, no page overflow,
+and 9.42:1 warning-task text contrast. The accepted durable boundary is recorded in
+the [simple integration defaults decision](decisions/2026-08-02-simple-integration-defaults.md).
 
 ### Post-M5: API-loaded simple project example
 
@@ -822,6 +847,22 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-02: Started the user-directed simple integration correction. The first
+  API-loaded example remains verified evidence but is medium-level in scope. The new
+  plan adds a public package-owned document lifecycle hook, overridable built-in
+  appearance variants, and a smaller five-task example without hierarchy, summaries,
+  milestones, or custom token setup.
+
+- 2026-08-02: Completed the simple integration defaults correction. The public
+  `useGanttDocument` hook owns the common load/validate/acknowledge/save lifecycle;
+  four built-in semantic appearances remain overridable; and the first example is
+  now a three-step, five-task integration. Live follow-up fixed page CSS leaking into
+  zoom controls, made warning colors self-contained at 9.42:1, and replaced the
+  accidental 14-day adaptive editing snap with a one-day default. Final evidence:
+  100 files / 513 tests, the 1,974-module playground build, a fresh 384.5-kB /
+  212-file strict TypeScript plus SSR consumer, and Chrome verification at 1440x1000
+  and 560x900.
 
 - 2026-08-02: Completed and verified the API-loaded simple project example at
   `/examples/simple-project`. The five-step guide displays the exact fetched fixture,

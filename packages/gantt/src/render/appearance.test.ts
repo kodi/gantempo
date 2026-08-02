@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   createAppearanceRegistry,
+  GANTT_DEFAULT_APPEARANCE_VARIANTS,
   resolveLaneAppearance,
   resolveTaskAppearance,
 } from './appearance';
@@ -61,5 +62,33 @@ describe('semantic appearance resolution', () => {
       variant: 'customer:unknown',
     });
     expect(Object.isFrozen(resolveLaneAppearance(registry, 'customer:unknown'))).toBe(true);
+  });
+
+  it('registers portable defaults and merges same-ID application overrides', () => {
+    const defaults = createAppearanceRegistry(undefined);
+    expect([...defaults.byId.keys()]).toEqual(['accent', 'neutral', 'success', 'warning']);
+    expect(GANTT_DEFAULT_APPEARANCE_VARIANTS).toHaveLength(4);
+    expect(resolveTaskAppearance(defaults, { taskVariant: 'warning' })).toMatchObject({
+      resolution: 'resolved',
+      tokens: {
+        'task.fill': 'var(--gt-task-warning, #f0d7a5)',
+        'task.text': 'var(--gt-task-muted-text, #18352f)',
+      },
+      variant: 'warning',
+    });
+
+    const overridden = createAppearanceRegistry([
+      { id: 'warning', label: 'Needs attention', tokens: { 'task.fill': '#fb7185' } },
+      { id: 'customer:review', label: 'Customer review', tokens: { 'task.fill': '#60a5fa' } },
+    ]);
+    expect(overridden.byId.get('warning')).toEqual({
+      id: 'warning',
+      label: 'Needs attention',
+      tokens: {
+        ...defaults.byId.get('warning')?.tokens,
+        'task.fill': '#fb7185',
+      },
+    });
+    expect(overridden.byId.get('customer:review')?.label).toBe('Customer review');
   });
 });

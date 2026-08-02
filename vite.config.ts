@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@gantempo/gantt': new URL('./packages/gantt/src/index.tsx', import.meta.url).pathname,
+    },
+  },
   fmt: {
     ignorePatterns: ['docs/**'],
     semi: true,

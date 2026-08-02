@@ -1,63 +1,62 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { parseGanttDocument } from '@gantempo/gantt';
 import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { Playground } from '../Playground';
-import { createProjectDocument } from '../project-fixture';
 import { SimpleProjectExample } from '../examples/SimpleProjectExample';
 import { SimpleProjectExamplePage } from './SimpleProjectExamplePage';
 
 const apiMocks = vi.hoisted(() => ({
-  loadProjectPlan: vi.fn(),
-  saveProjectPlan: vi.fn(),
+  load: vi.fn(),
+  save: vi.fn(),
 }));
 
 vi.mock('../examples/simple-project-api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../examples/simple-project-api')>();
   return {
     ...actual,
-    loadProjectPlan: apiMocks.loadProjectPlan,
-    saveProjectPlan: apiMocks.saveProjectPlan,
+    simpleProjectApi: Object.freeze({ load: apiMocks.load, save: apiMocks.save }),
   };
 });
 
 function testDocument() {
-  const document = createProjectDocument();
-  return {
-    ...document,
-    dependencies: document.dependencies.map((dependency) => ({
-      ...dependency,
-      fromTaskId: dependency.fromTaskId === 'api' ? 'api-integration' : dependency.fromTaskId,
-      toTaskId: dependency.toTaskId === 'api' ? 'api-integration' : dependency.toTaskId,
-    })),
-    tasks: document.tasks.map((task) =>
-      task.id === 'api'
-        ? { ...task, id: 'api-integration', progress: 0.45, title: 'Connect save workflow' }
-        : task,
-    ),
-  };
+  const result = parseGanttDocument({
+    schemaVersion: 1,
+    tasks: [
+      {
+        id: 'build',
+        progress: 0.45,
+        schedule: {
+          end: '2026-08-20T17:00:00Z',
+          mode: 'instant',
+          start: '2026-08-10T09:00:00Z',
+        },
+        title: 'Build the first release',
+      },
+      {
+        appearance: { variant: 'warning' },
+        id: 'quality',
+        progress: 0.15,
+        schedule: {
+          end: '2026-08-25T17:00:00Z',
+          mode: 'instant',
+          start: '2026-08-19T09:00:00Z',
+        },
+        title: 'Test and polish',
+      },
+    ],
+  });
+  if (result.document === undefined) throw new Error('Test fixture must be valid.');
+  return result.document;
 }
 
 beforeEach(() => {
-  apiMocks.loadProjectPlan.mockResolvedValue(testDocument());
-  apiMocks.saveProjectPlan.mockResolvedValue({
-    bytes: 1234,
-    savedAt: '2026-08-02T12:00:00.000Z',
-  });
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () =>
-      Promise.resolve(
-        new Response(JSON.stringify({ schemaVersion: 1, tasks: [] }), {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200,
-        }),
-      ),
-    ),
-  );
+  apiMocks.load.mockResolvedValue(testDocument());
+  apiMocks.save.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -65,11 +64,10 @@ afterEach(() => {
   document.body.replaceChildren();
   window.history.replaceState({}, '', '/');
   vi.clearAllMocks();
-  vi.unstubAllGlobals();
 });
 
 describe('API-loaded simple project example', () => {
-  it('routes to a complete accessible guide backed by the working chart', async () => {
+  it('routes to a short accessible guide backed by the working chart', async () => {
     window.history.replaceState({}, '', '/examples/simple-project');
     const mounted = render(<Playground />);
 
@@ -77,63 +75,73 @@ describe('API-loaded simple project example', () => {
       'page',
     );
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-      'Project plan in a real application',
+      'Your first working Gantt chart',
     );
     expect(
       screen.getAllByRole('listitem').filter((item) => item.classList.contains('example-step')),
-    ).toHaveLength(5);
+    ).toHaveLength(3);
     expect(screen.getByText('simple-project-api.ts')).not.toBeNull();
     expect(screen.getByText('SimpleProjectExample.tsx')).not.toBeNull();
-    expect(screen.getByText(/export async function loadProjectPlan/)).not.toBeNull();
-    expect(await screen.findByRole('region', { name: 'API-loaded launch project' })).not.toBeNull();
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save draft' }).disabled).toBe(
+    expect(screen.getByText(/useGanttDocument/)).not.toBeNull();
+    expect(screen.queryByText(/appearanceVariants=/)).toBeNull();
+    expect(await screen.findByRole('region', { name: 'API-loaded project' })).not.toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
       true,
     );
     expect((await axe.run(mounted.container)).violations).toEqual([]);
   });
 
-  it('acknowledges an edit immediately and explicitly saves the controlled document', async () => {
+  it('acknowledges a keyboard progress edit and saves through the tiny adapter', async () => {
     const user = userEvent.setup();
     render(<SimpleProjectExamplePage />);
-    await screen.findByRole('region', { name: 'API-loaded launch project' });
+    const task = await screen.findByRole('button', {
+      name: /Build the first release.*45% complete/,
+    });
 
-    await user.click(screen.getByRole('button', { name: 'Advance API step' }));
+    await user.click(task);
+    fireEvent.keyDown(task, { key: 'Enter' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit Build the first release properties',
+    });
+    const progress = within(dialog).getByRole('spinbutton', { name: 'Progress (percent)' });
+    await user.clear(progress);
+    await user.type(progress, '50');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+    await waitFor(() => expect(screen.getByText('Unsaved changes')).not.toBeNull());
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    await waitFor(() => expect(screen.getByText('Unsaved local changes')).not.toBeNull());
-    const saveButton = screen.getByRole<HTMLButtonElement>('button', { name: 'Save draft' });
-    expect(saveButton.disabled).toBe(false);
-    await user.click(saveButton);
-
-    await waitFor(() =>
-      expect(screen.getByText('Saved 1,234 bytes to the in-memory API mock.')).not.toBeNull(),
+    await waitFor(() => expect(screen.getByText('Saved')).not.toBeNull());
+    expect(apiMocks.save).toHaveBeenCalledTimes(1);
+    expect(apiMocks.save.mock.calls[0]?.[0].tasks).toContainEqual(
+      expect.objectContaining({ id: 'build', progress: 0.5 }),
     );
-    expect(apiMocks.saveProjectPlan).toHaveBeenCalledTimes(1);
-    expect(apiMocks.saveProjectPlan.mock.calls[0]?.[0].tasks).toContainEqual(
-      expect.objectContaining({ id: 'api-integration', progress: 0.55 }),
-    );
-    expect(saveButton.disabled).toBe(true);
   });
 
-  it('shows a retryable load error and keeps a failed save dirty', async () => {
+  it('offers reload and keeps a failed Save retryable', async () => {
     const user = userEvent.setup();
-    apiMocks.loadProjectPlan
-      .mockRejectedValueOnce(new Error('Network unavailable'))
-      .mockResolvedValueOnce(testDocument());
-    const mounted = render(<SimpleProjectExample />);
+    apiMocks.load.mockRejectedValueOnce(new Error('Network unavailable'));
+    render(<SimpleProjectExample />);
 
     expect((await screen.findByRole('alert')).textContent).toContain('Network unavailable');
     await user.click(screen.getByRole('button', { name: 'Try again' }));
-    await screen.findByRole('region', { name: 'API-loaded launch project' });
+    const task = await screen.findByRole('button', {
+      name: /Build the first release.*45% complete/,
+    });
+    await user.click(task);
+    fireEvent.keyDown(task, { key: 'Enter' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit Build the first release properties',
+    });
+    const progress = within(dialog).getByRole('spinbutton', { name: 'Progress (percent)' });
+    await user.clear(progress);
+    await user.type(progress, '50');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
 
-    await user.click(screen.getByRole('button', { name: 'Advance API step' }));
-    await waitFor(() => expect(screen.getByText('Unsaved local changes')).not.toBeNull());
-
-    apiMocks.saveProjectPlan.mockRejectedValueOnce(new Error('Write failed'));
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-    await waitFor(() => expect(screen.getByText('Save failed: Write failed')).not.toBeNull());
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save draft' }).disabled).toBe(
+    apiMocks.save.mockRejectedValueOnce(new Error('Write failed'));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(screen.getByText('Save failed — try again')).not.toBeNull());
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
       false,
     );
-    expect(mounted.container.textContent).toContain('Connect save workflow');
   });
 });

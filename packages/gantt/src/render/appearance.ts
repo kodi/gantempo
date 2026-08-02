@@ -28,6 +28,58 @@ export interface AppearanceRegistry {
 
 const EMPTY_TOKENS = Object.freeze({});
 
+export const GANTT_DEFAULT_APPEARANCE_VARIANTS: readonly GanttAppearanceVariantOption[] =
+  Object.freeze([
+    Object.freeze({
+      id: 'accent',
+      label: 'Primary work',
+      tokens: Object.freeze({
+        'lane.accent': 'var(--gt-color-task)',
+        'lane.surface': 'color-mix(in srgb, var(--gt-color-task) 7%, transparent)',
+        'task.border': 'color-mix(in srgb, var(--gt-color-task) 76%, black)',
+        'task.fill': 'var(--gt-color-task)',
+        'task.progressFill': 'color-mix(in srgb, var(--gt-color-task) 72%, black)',
+        'task.text': 'var(--gt-color-task-text)',
+      }),
+    }),
+    Object.freeze({
+      id: 'neutral',
+      label: 'Supporting work',
+      tokens: Object.freeze({
+        'lane.accent': 'var(--gt-task-neutral, #dde3e4)',
+        'lane.surface': 'color-mix(in srgb, var(--gt-task-neutral, #dde3e4) 22%, transparent)',
+        'task.border': 'color-mix(in srgb, var(--gt-task-neutral, #dde3e4) 72%, black)',
+        'task.fill': 'var(--gt-task-neutral, #dde3e4)',
+        'task.progressFill': 'color-mix(in srgb, var(--gt-task-neutral, #dde3e4) 68%, black)',
+        'task.text': 'var(--gt-task-muted-text, #18352f)',
+      }),
+    }),
+    Object.freeze({
+      id: 'success',
+      label: 'Ready',
+      tokens: Object.freeze({
+        'lane.accent': 'var(--gt-task-success, #bfe6c4)',
+        'lane.surface': 'color-mix(in srgb, var(--gt-task-success, #bfe6c4) 15%, transparent)',
+        'task.border': 'color-mix(in srgb, var(--gt-task-success, #bfe6c4) 72%, black)',
+        'task.fill': 'var(--gt-task-success, #bfe6c4)',
+        'task.progressFill': 'color-mix(in srgb, var(--gt-task-success, #bfe6c4) 78%, black)',
+        'task.text': 'var(--gt-task-muted-text, #18352f)',
+      }),
+    }),
+    Object.freeze({
+      id: 'warning',
+      label: 'At risk',
+      tokens: Object.freeze({
+        'lane.accent': 'var(--gt-task-warning, #f0d7a5)',
+        'lane.surface': 'color-mix(in srgb, var(--gt-task-warning, #f0d7a5) 15%, transparent)',
+        'task.border': 'color-mix(in srgb, var(--gt-task-warning, #f0d7a5) 72%, black)',
+        'task.fill': 'var(--gt-task-warning, #f0d7a5)',
+        'task.progressFill': 'color-mix(in srgb, var(--gt-task-warning, #f0d7a5) 70%, black)',
+        'task.text': 'var(--gt-task-muted-text, #18352f)',
+      }),
+    }),
+  ]);
+
 function normalizedTokens(
   tokens: GanttAppearanceVariantOption['tokens'],
 ): Readonly<Partial<Record<GanttAppearanceToken, number | string>>> {
@@ -51,20 +103,21 @@ export function createAppearanceRegistry(
   options: readonly GanttAppearanceVariantOption[] | undefined,
 ): AppearanceRegistry {
   const byId = new Map<string, GanttAppearanceVariantOption>();
-  for (const option of options ?? []) {
-    if (
-      !isCanonicalAppearanceVariant(option.id) ||
-      typeof option.label !== 'string' ||
-      byId.has(option.id)
-    ) {
+  for (const option of [...GANTT_DEFAULT_APPEARANCE_VARIANTS, ...(options ?? [])]) {
+    if (!isCanonicalAppearanceVariant(option.id) || typeof option.label !== 'string') {
       continue;
     }
+    const existing = byId.get(option.id);
+    const tokens = Object.freeze({
+      ...existing?.tokens,
+      ...normalizedTokens(option.tokens),
+    });
     byId.set(
       option.id,
       Object.freeze({
         id: option.id,
         label: option.label,
-        ...(option.tokens === undefined ? {} : { tokens: normalizedTokens(option.tokens) }),
+        ...(Object.keys(tokens).length === 0 ? {} : { tokens }),
       }),
     );
   }

@@ -6,6 +6,8 @@ import { timeScaleLevelSpan, type GanttTimeScaleDefinition } from '../../time/ad
 import { sameViewDefinition } from '../../view/definition-equality';
 import type { GanttProps } from '../types';
 
+const DAY = 24 * 60 * 60 * 1_000;
+
 export interface DisplayInputs {
   readonly appearanceVariants: GanttProps['appearanceVariants'];
   readonly direction: GanttDirection;
@@ -60,7 +62,7 @@ export function displayInputs(props: GanttProps, rangeOverride?: TimeRange): Dis
     range: Object.freeze({ ...(rangeOverride ?? props.range ?? props.defaultRange) }),
     taskVariants: props.taskVariants,
     tickAnchor: timeScale.kind === 'fixed' ? timeScale.tickAnchor : 0,
-    tickInterval: timeScale.kind === 'fixed' ? timeScale.tickInterval : timeScaleLevelSpan('day'),
+    tickInterval: timeScale.kind === 'fixed' ? timeScale.tickInterval : DAY,
     timeScale: Object.freeze({ ...timeScale }),
     timeZone: localization.timeZone,
     view: props.view,

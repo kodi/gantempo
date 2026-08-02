@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 
-import { serializeGanttDocument } from '@gantempo/gantt';
+import { parseGanttDocument } from '@gantempo/gantt';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { loadProjectPlan, saveProjectPlan, SIMPLE_PROJECT_ENDPOINT } from './simple-project-api';
+import { simpleProjectApi, SIMPLE_PROJECT_ENDPOINT } from './simple-project-api';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -18,10 +18,11 @@ async function readFixture(): Promise<unknown> {
 }
 
 describe('simple project API adapter', () => {
-  it('fetches the static endpoint and parses a canonical project document', async () => {
+  it('fetches a small API response for the package hook to validate', async () => {
+    const fixture = await readFixture();
     const fetchMock = vi.fn(async () =>
       Promise.resolve(
-        new Response(JSON.stringify(await readFixture()), {
+        new Response(JSON.stringify(fixture), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
         }),
@@ -29,56 +30,32 @@ describe('simple project API adapter', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const document = await loadProjectPlan(undefined, 0);
+    const value = await simpleProjectApi.load(new AbortController().signal, 0);
+    const parsed = parseGanttDocument(value);
 
-    expect(fetchMock).toHaveBeenCalledWith(SIMPLE_PROJECT_ENDPOINT, {});
-    expect(document.tasks).toHaveLength(9);
-    expect(document.dependencies).toHaveLength(5);
-    expect(document.tasks.find((task) => task.id === 'release')?.kind).toBe('milestone');
+    expect(fetchMock).toHaveBeenCalledWith(
+      SIMPLE_PROJECT_ENDPOINT,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(parsed.document?.tasks).toHaveLength(5);
+    expect(parsed.document?.dependencies).toHaveLength(2);
+    expect(parsed.document?.tasks.every((task) => task.kind === 'task')).toBe(true);
+    expect(parsed.document?.tasks.find((task) => task.id === 'quality')?.appearance).toEqual({
+      variant: 'warning',
+    });
   });
 
-  it('rejects HTTP and fatal document failures before React receives data', async () => {
+  it('keeps transport errors in the adapter and Save intentionally small', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Promise.resolve(new Response('Unavailable', { status: 503 }))),
     );
-    await expect(loadProjectPlan(undefined, 0)).rejects.toThrow('Project API returned 503.');
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        Promise.resolve(
-          new Response(JSON.stringify({ schemaVersion: 99 }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          }),
-        ),
-      ),
+    await expect(simpleProjectApi.load(new AbortController().signal, 0)).rejects.toThrow(
+      'Project API returned 503.',
     );
-    await expect(loadProjectPlan(undefined, 0)).rejects.toThrow(
-      'Project API returned an invalid document',
-    );
-  });
 
-  it('serializes the acknowledged document for the explicit mock Save', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        Promise.resolve(
-          new Response(JSON.stringify(await readFixture()), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          }),
-        ),
-      ),
-    );
-    const document = await loadProjectPlan(undefined, 0);
-
-    const receipt = await saveProjectPlan(document, 0);
-
-    expect(receipt.bytes).toBe(
-      new TextEncoder().encode(serializeGanttDocument(document)).byteLength,
-    );
-    expect(Number.isNaN(Date.parse(receipt.savedAt))).toBe(false);
+    const parsed = parseGanttDocument(await readFixture());
+    expect(parsed.document).toBeDefined();
+    await expect(simpleProjectApi.save(parsed.document!, 0)).resolves.toBeUndefined();
   });
 });

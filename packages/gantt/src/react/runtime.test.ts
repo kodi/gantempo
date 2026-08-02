@@ -1065,6 +1065,45 @@ describe('React runtime adapter', () => {
     runtime.dispose();
   });
 
+  it('moves adaptive-scale tasks with a one-day default snap', async () => {
+    const runtime = createGanttReactRuntime({
+      defaultDocument: documentFixture(),
+      defaultRange: { end: START + 14 * DAY, start: START },
+      timeScale: { kind: 'adaptive' },
+      timeZone: 'UTC',
+    });
+    runtime.activate();
+    const geometry = {
+      height: 58,
+      verticalStart: 0,
+      width: 700,
+      x: 160,
+      y: 0,
+    };
+
+    expect(
+      runtime.pointerDown({
+        geometry,
+        point: { x: 235, y: 29 },
+        pointerId: 1,
+        pointerType: 'mouse',
+      }),
+    ).toBe(true);
+    expect(
+      runtime.pointerMove({
+        geometry,
+        point: { x: 285, y: 29 },
+        pointerId: 1,
+      }),
+    ).toBe(true);
+    await runtime.pointerUp(1);
+
+    expect(runtime.getHandle().getDocument().tasks[0]?.schedule).toMatchObject({
+      start: START + 2 * DAY,
+    });
+    runtime.dispose();
+  });
+
   it('creates one dependency command and selects its canonical target', async () => {
     const runtime = createGanttReactRuntime({
       ...commonProps(),
