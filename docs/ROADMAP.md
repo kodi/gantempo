@@ -132,7 +132,7 @@ Detailed completion evidence is recorded in
 | Post-M5: Simple integration defaults | Correction before Slice 5 | A public document hook and overridable built-in appearances reduce the first API example to one small adapter and React component | `[x]` | [Completed plan](plans/2026-08-02-simple-integration-defaults-plan.md) |
 | Post-M5: React Query document integration | Integration boundary correction before Slice 5 | Core owns editable draft state while an optional TanStack Query entry owns standard server-state wiring | `[x]` | [Completed plan](plans/2026-08-02-react-query-document-integration-plan.md) |
 | Post-M5: Obstacle-aware dependency connectors | Dependency-rendering correction before Slice 5 | Earlier-target and overlapping links remain continuous by routing through task-row gutters without moving dates | `[x]` | [Completed plan](plans/2026-08-03-obstacle-aware-dependency-connectors-plan.md) |
-| Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities while the package remains design-system-neutral | `[-]` | [Active plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
+| Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities, and matrix scenarios reveal focused presentation recipes, while the package remains design-system-neutral | `[-]` | [Active plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -932,7 +932,11 @@ chart-owned interaction, session, or imperative contracts.
   working component use direct utilities, all six source files render fully without
   code-panel scrolling, 101 files and 518 tests pass, the playground builds, and
   Chrome desktop plus narrow inspection found no overflow or console errors. Shared
-  chrome is the next slice.
+  chrome remains the next migration slice. User-directed Slice 1.1 is also complete:
+  every matrix scenario now independently reveals a data-agnostic presentation
+  recipe. Focused accessibility coverage, 102 files / 523 tests in full CI, the
+  production playground build, and live 1440x1000 plus 390x844 inspection pass with
+  no page overflow or console warnings/errors.
 
 - 2026-08-03: Completed the simple-guide correction. The displayed `main.tsx` now
   renders `SimpleProjectExample` directly inside `QueryClientProvider`; the API file
