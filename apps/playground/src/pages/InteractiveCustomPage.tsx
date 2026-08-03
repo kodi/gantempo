@@ -48,6 +48,13 @@ const RANGE_START = Date.UTC(2026, 6, 29);
 const RANGE_END = Date.UTC(2026, 7, 27);
 const LANE_IDS = ['discovery', 'design', 'delivery', 'release'] as const;
 
+const customDetailsFieldClasses =
+  "grid min-w-0 gap-1.5 text-[10px] font-[750] text-[#4f5b6c] [&_input]:box-border [&_input]:min-h-[38px] [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border [&_input]:border-ink/16 [&_input]:bg-white [&_input]:px-2.5 [&_input]:py-2 [&_input]:text-xs [&_input]:font-[520] [&_input]:text-[#263142] [&_input]:[font-family:inherit] [&_input]:focus-visible:outline-3 [&_input]:focus-visible:outline-offset-2 [&_input]:focus-visible:outline-brand/24 [&_[aria-invalid='true']]:border-[#b4483f] [&_select]:box-border [&_select]:min-h-[38px] [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border [&_select]:border-ink/16 [&_select]:bg-white [&_select]:px-2.5 [&_select]:py-2 [&_select]:text-xs [&_select]:font-[520] [&_select]:text-[#263142] [&_select]:[font-family:inherit] [&_select]:focus-visible:outline-3 [&_select]:focus-visible:outline-offset-2 [&_select]:focus-visible:outline-brand/24 [&_textarea]:box-border [&_textarea]:min-h-[38px] [&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-ink/16 [&_textarea]:bg-white [&_textarea]:px-2.5 [&_textarea]:py-2 [&_textarea]:text-xs [&_textarea]:font-[520] [&_textarea]:text-[#263142] [&_textarea]:[font-family:inherit] [&_textarea]:focus-visible:outline-3 [&_textarea]:focus-visible:outline-offset-2 [&_textarea]:focus-visible:outline-brand/24 [&_small]:m-0 [&_small]:text-[10px] [&_small]:leading-[1.4] [&_small]:font-semibold [&_small]:text-[#9b3d36]";
+const customDetailsActionClasses =
+  'min-h-9 rounded-lg border px-3.5 text-[11px] font-[760] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand/24';
+const customDetailsDefinitionClasses =
+  'min-w-0 rounded-[10px] border border-ink/8 bg-panel-soft/78 px-3 py-[11px] [&_dd]:mt-[5px] [&_dd]:mr-0 [&_dd]:mb-0 [&_dd]:ml-0 [&_dd]:[overflow-wrap:anywhere] [&_dd]:text-xs [&_dd]:font-[650] [&_dd]:text-[#2d3a4b] [&_dt]:text-[9px] [&_dt]:font-[760] [&_dt]:tracking-[0.07em] [&_dt]:text-[#737b87] [&_dt]:uppercase';
+
 const CUSTOM_DOCUMENT = {
   assignments: [],
   dependencies: [],
@@ -697,7 +704,7 @@ export function InteractiveCustomPage(): ReactElement {
   };
 
   return (
-    <div className="page--interactive page--interactive-custom mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
+    <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
       <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
@@ -891,24 +898,41 @@ export function InteractiveCustomPage(): ReactElement {
 
       {details.status === 'open' && openTask !== undefined ? (
         <section
-          aria-labelledby="interactive-custom-details-title"
-          className="custom-details"
+          aria-labelledby="interactive-custom-task-panel-title"
+          className="mt-[18px] grid gap-[18px] rounded-2xl border border-ink/12 bg-white/68 p-[clamp(18px,3vw,26px)] shadow-[0_12px_30px_rgb(36_48_68/6%)] focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-brand/24"
           ref={panelRef}
           tabIndex={-1}
         >
-          <div className="custom-details__header">
+          <div className="flex items-start justify-between gap-5 max-[561px]:items-stretch max-[561px]:flex-col max-[561px]:gap-2.5">
             <div>
-              <p>{details.mode === 'edit' ? 'Edit mode' : 'Display mode'}</p>
-              <h2 id="interactive-custom-details-title">{openTask.title} details</h2>
+              <p className="mt-0 mr-0 mb-1 ml-0 text-[10px] font-extrabold tracking-[0.1em] text-brand-light uppercase">
+                {details.mode === 'edit' ? 'Edit mode' : 'Display mode'}
+              </p>
+              <h2
+                className="m-0 text-lg font-bold text-[#263142]"
+                id="interactive-custom-task-panel-title"
+              >
+                {openTask.title} details
+              </h2>
             </div>
-            <span>{openTask.id}</span>
+            <span className="flex-none rounded-[7px] bg-ink/6 px-2 py-[5px] font-mono text-[9px] text-[#626b7a] max-[561px]:self-start">
+              {openTask.id}
+            </span>
           </div>
 
           {details.mode === 'edit' && form !== undefined ? (
-            <form aria-label={`Edit ${openTask.title} properties`} noValidate onSubmit={saveForm}>
-              <fieldset disabled={form.pending}>
-                <div className="custom-details__form-grid">
-                  <label>
+            <form
+              aria-label={`Edit ${openTask.title} properties`}
+              className="m-0 min-w-0 p-0"
+              noValidate
+              onSubmit={saveForm}
+            >
+              <fieldset
+                className="m-0 min-w-0 border-0 p-0 disabled:opacity-[.68]"
+                disabled={form.pending}
+              >
+                <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5 max-[561px]:grid-cols-1">
+                  <label className={customDetailsFieldClasses}>
                     <span>Title</span>
                     <input
                       aria-describedby={form.errors.title ? 'custom-title-error' : undefined}
@@ -923,7 +947,9 @@ export function InteractiveCustomPage(): ReactElement {
                       <small id="custom-title-error">{form.errors.title}</small>
                     ) : null}
                   </label>
-                  <label className="custom-details__wide-field">
+                  <label
+                    className={`${customDetailsFieldClasses} col-span-full max-[561px]:col-auto`}
+                  >
                     <span>Description</span>
                     <textarea
                       name="description"
@@ -934,7 +960,7 @@ export function InteractiveCustomPage(): ReactElement {
                       value={form.values.description}
                     />
                   </label>
-                  <label>
+                  <label className={customDetailsFieldClasses}>
                     <span>Start (UTC)</span>
                     <input
                       aria-describedby={form.errors.start ? 'custom-start-error' : undefined}
@@ -948,7 +974,7 @@ export function InteractiveCustomPage(): ReactElement {
                       <small id="custom-start-error">{form.errors.start}</small>
                     ) : null}
                   </label>
-                  <label>
+                  <label className={customDetailsFieldClasses}>
                     <span>End (UTC)</span>
                     <input
                       aria-describedby={form.errors.end ? 'custom-end-error' : undefined}
@@ -962,7 +988,7 @@ export function InteractiveCustomPage(): ReactElement {
                       <small id="custom-end-error">{form.errors.end}</small>
                     ) : null}
                   </label>
-                  <label>
+                  <label className={customDetailsFieldClasses}>
                     <span>Progress (percent)</span>
                     <input
                       aria-describedby={form.errors.progress ? 'custom-progress-error' : undefined}
@@ -979,7 +1005,7 @@ export function InteractiveCustomPage(): ReactElement {
                       <small id="custom-progress-error">{form.errors.progress}</small>
                     ) : null}
                   </label>
-                  <label>
+                  <label className={customDetailsFieldClasses}>
                     <span>Appearance</span>
                     <select
                       name="appearance"
@@ -994,7 +1020,7 @@ export function InteractiveCustomPage(): ReactElement {
                       ))}
                     </select>
                   </label>
-                  <label>
+                  <label className={customDetailsFieldClasses}>
                     <span>Current lane</span>
                     <select
                       disabled={openPlacement === undefined}
@@ -1014,25 +1040,37 @@ export function InteractiveCustomPage(): ReactElement {
                   </label>
                 </div>
                 {form.error ? (
-                  <p className="custom-details__error" role="alert">
+                  <p
+                    className="mt-3 mr-0 mb-0 ml-0 text-[10px] leading-[1.4] font-semibold text-[#9b3d36]"
+                    role="alert"
+                  >
                     {form.error}
                   </p>
                 ) : null}
-                <div className="custom-details__actions">
-                  <button type="submit">{form.pending ? 'Saving…' : 'Save changes'}</button>
-                  <button onClick={cancelEdit} type="button">
+                <div className="mt-[18px] flex gap-2 max-[561px]:items-stretch max-[561px]:flex-col">
+                  <button
+                    className={`${customDetailsActionClasses} border-brand bg-brand text-white`}
+                    type="submit"
+                  >
+                    {form.pending ? 'Saving…' : 'Save changes'}
+                  </button>
+                  <button
+                    className={`${customDetailsActionClasses} border-ink/14 bg-white text-[#2d3a4b]`}
+                    onClick={cancelEdit}
+                    type="button"
+                  >
                     Cancel
                   </button>
                 </div>
               </fieldset>
             </form>
           ) : (
-            <div className="custom-details__display">
-              <p className="custom-details__description">
+            <div className="grid gap-4">
+              <p className="m-0 text-[13px] leading-[1.55] text-[#596474]">
                 {openTask.description ?? 'No description provided.'}
               </p>
-              <dl>
-                <div>
+              <dl className="m-0 grid grid-cols-3 gap-2.5 max-[901px]:grid-cols-2 max-[561px]:grid-cols-1">
+                <div className={customDetailsDefinitionClasses}>
                   <dt>Start</dt>
                   <dd>
                     {openTask.schedule?.mode === 'instant'
@@ -1040,7 +1078,7 @@ export function InteractiveCustomPage(): ReactElement {
                       : 'Unavailable'}
                   </dd>
                 </div>
-                <div>
+                <div className={customDetailsDefinitionClasses}>
                   <dt>End</dt>
                   <dd>
                     {openTask.schedule?.mode === 'instant'
@@ -1048,7 +1086,7 @@ export function InteractiveCustomPage(): ReactElement {
                       : 'Unavailable'}
                   </dd>
                 </div>
-                <div>
+                <div className={customDetailsDefinitionClasses}>
                   <dt>Progress</dt>
                   <dd>
                     {openTask.progress === undefined
@@ -1056,15 +1094,15 @@ export function InteractiveCustomPage(): ReactElement {
                       : `${Math.round(openTask.progress * 100)}%`}
                   </dd>
                 </div>
-                <div>
+                <div className={customDetailsDefinitionClasses}>
                   <dt>Appearance</dt>
                   <dd>{appearanceLabel(openTask.appearance?.variant)}</dd>
                 </div>
-                <div>
+                <div className={customDetailsDefinitionClasses}>
                   <dt>Lane</dt>
                   <dd>{openLane?.title ?? 'No persisted placement'}</dd>
                 </div>
-                <div>
+                <div className={customDetailsDefinitionClasses}>
                   <dt>Kind</dt>
                   <dd>{openTask.kind}</dd>
                 </div>

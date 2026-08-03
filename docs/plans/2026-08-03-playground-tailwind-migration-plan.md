@@ -421,7 +421,7 @@ Dependencies: Slice 3.
 
 ### Slice 6: Migrate the application-owned custom interaction panel
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Convert `/interactive-custom`, including its details display and edit form, to
 Tailwind without changing the application-owned edit-request contract.
@@ -839,10 +839,35 @@ built-ins with Tailwind arbitrary-property maps.
   regions, two-button narrow rows, hidden separators, 515px narrow charts, zero page
   overflow, clean warning/error/issue consoles, and no XHR or fetch requests.
 
+### 2026-08-03 — Slice 6 completion evidence
+
+- Migrated the complete application-owned details display/edit panel to static direct
+  utilities: container, focus treatment, mode header, canonical-ID badge,
+  three/two/one-column definitions, two/one-column form, fields, invalid and error
+  states, disabled fieldset, and desktop/stacked actions. Removed 224 stylesheet
+  lines plus the last custom-route wrapper and presentation hooks; the focused test
+  now proves the absence of the semantic API-log data part instead of `.api-log`.
+- The focused custom-page command passed the complete 102-file / 523-test suite.
+  `vp check` passes 258 formatted files and 245 lint/type files. The production
+  playground build passes with 2,027 modules transformed and 74.65 kB emitted CSS;
+  `git diff --check` and full `mise run ci` pass with all 523 tests and the 214-file
+  package build.
+- Chrome DevTools inspected `/interactive-custom` at 1440x1000 and exactly 560x900.
+  Desktop proof covered Shift+F10 menu entry, keyboard selection of Edit properties,
+  inline validation, Cancel without history, a saved title/description/progress/
+  appearance/lane transaction, Undo/Redo, details-region focus, deletion-driven
+  closure, and focus return to the surviving task. The intentional API/debug surface
+  remains absent.
+- Narrow proof confirms a 479px one-column form, stacked full-width actions, matching
+  control/label widths, and zero body/document overflow. Live inspection found and
+  fixed the inclusive 560px breakpoint edge and a primary-button utility conflict;
+  it also tightened the custom badge and shared interaction status/code contrast.
+  Lighthouse accessibility is 100, the accessibility tree remains complete, the
+  console has no warnings/errors/issues, and there are no XHR or fetch requests.
+
 ## Next Slice
 
-Start Slice 6 by migrating the application-owned custom details display and edit form
-to direct utilities. Preserve menu and keyboard entry, focus ownership, validation,
-Save/Cancel/Delete, Undo/Redo, and the intentional absence of an API/debug surface;
-then remove the remaining custom-details selectors and run the focused, production,
-full-CI, and desktop/narrow browser gates.
+Start Slice 7 by migrating the remaining simple-example guide selectors, reducing the
+playground stylesheets to Tailwind directives and theme tokens, auditing all source
+files for forbidden selector/presentation patterns, and adding the permanent focused
+source-boundary regression test.

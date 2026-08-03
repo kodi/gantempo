@@ -259,8 +259,10 @@ Slice 2 shared chrome is complete and verified through DOM, production build, em
  is complete: shared interaction chrome, typed package slot presentation, controlled
  and runtime-owned routes, and the reusable API log use static/direct utilities; 500
 superseded stylesheet lines are gone. Focused/full gates and live stateful desktop/
- narrow interaction proof pass. Slice 6 is next for the application-owned custom
- details form; the remaining cleanup follows in bounded slices.
+ narrow interaction proof pass. Slice 6 is complete: the application-owned details
+ display/edit panel is Tailwind-only, preserves its controlled transaction contract,
+ and passes full behavior plus desktop/narrow accessibility proof. Slice 7 is next to
+ remove the final guide selectors and enforce the zero-custom-selector boundary.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
@@ -958,6 +960,16 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Completed Slice 6 of the playground Tailwind migration. The complete
+  application-owned details display/edit panel now uses static direct utilities;
+  custom-route presentation hooks and 224 superseded stylesheet lines are gone.
+  Focused tests, production build, `git diff --check`, and full CI pass with 102 test
+  files / 523 tests and a 214-file package build. Live 1440x1000 and 560x900 proof
+  exercised keyboard menu/edit entry, validation, Cancel, Save, Undo/Redo, deletion
+  closure, and focus return. Two responsive/primary-action issues found live were
+  fixed; Lighthouse accessibility is 100 with zero page overflow, a clean console,
+  and no XHR/fetch requests.
 
 - 2026-08-03: Completed Slice 5 of the playground Tailwind migration. Shared
   interaction controls and package slot hooks, controlled/runtime-owned routes, and

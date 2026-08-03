@@ -90,7 +90,7 @@ describe('Interactive Custom playground consumer', () => {
     expect(panel.closest('[data-gt-part="overlay-host"]')).toBeNull();
     expect(document.activeElement).toBe(panel);
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(mounted.container.querySelector('.api-log')).toBeNull();
+    expect(mounted.container.querySelector('[data-api-log-part]')).toBeNull();
     expect(mounted.container.querySelector('pre')).toBeNull();
     await expectNoAxeViolations(mounted.container);
   });

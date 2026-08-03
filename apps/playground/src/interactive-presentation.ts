@@ -7,13 +7,13 @@ export const interactiveControlButtonsClasses =
 export const interactiveControlSeparatorClasses = 'mx-[3px] h-6 w-px bg-ink/12 max-[561px]:hidden';
 
 export const interactiveControlStatusClasses =
-  'max-w-[330px] text-right text-[11px] leading-[1.4] text-[#6f7784] max-[900px]:max-w-none max-[900px]:text-left';
+  'max-w-[330px] text-right text-[11px] leading-[1.4] text-[#626a76] max-[900px]:max-w-none max-[900px]:text-left';
 
 export const interactiveChartCountClasses =
   'flex items-baseline gap-[5px] text-[var(--gt-color-text-muted)] [&_strong]:text-[18px] [&_strong]:text-[var(--gt-color-text)] [&_span]:text-[10px]';
 
 export const interactiveColumnCellClasses =
-  '[&_code]:font-mono [&_code]:text-[9px] [&_code]:text-[var(--gt-color-text-muted)]';
+  '[&_code]:font-mono [&_code]:text-[9px] [&_code]:text-[#626d65]';
 
 export const interactiveSurfaceClasses =
   'border-[color-mix(in_srgb,var(--gt-color-task)_45%,var(--gt-color-border))]';
