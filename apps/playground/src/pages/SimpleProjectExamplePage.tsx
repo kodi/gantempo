@@ -31,7 +31,7 @@ function SourcePanel({
         <span>{filename}</span>
         <span className="text-[#96aaa2]">View complete file</span>
       </summary>
-      <pre className="m-0 overflow-visible p-[18px] font-mono text-[11px] leading-[1.65] whitespace-pre-wrap text-[#e8efec] [overflow-wrap:anywhere] [tab-size:2] max-[560px]:p-3.5 max-[560px]:text-[10px]">
+      <pre className="m-0 overflow-visible p-[18px] font-mono text-[11px] leading-[1.65] whitespace-pre-wrap text-[#e8efec] [overflow-wrap:anywhere] [tab-size:2] max-[561px]:p-3.5 max-[561px]:text-[10px]">
         <HighlightedCode language={language} source={children} />
       </pre>
     </details>
@@ -48,16 +48,16 @@ function Step({
   readonly title: string;
 }): ReactElement {
   return (
-    <li className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-5 pb-[42px] max-[560px]:grid-cols-[34px_minmax(0,1fr)] max-[560px]:gap-3">
+    <li className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-5 pb-[42px] max-[561px]:grid-cols-[34px_minmax(0,1fr)] max-[561px]:gap-3">
       {number < 3 ? (
         <span
           aria-hidden="true"
-          className="absolute top-[42px] bottom-0 left-[21px] w-px bg-ink/15 max-[560px]:top-[34px] max-[560px]:left-4"
+          className="absolute top-[42px] bottom-0 left-[21px] w-px bg-ink/15 max-[561px]:top-[34px] max-[561px]:left-4"
         />
       ) : null}
       <div
         aria-hidden="true"
-        className="relative z-1 grid size-11 place-items-center rounded-[13px] border border-brand/25 bg-[#f7faf7] text-[13px] font-extrabold text-brand shadow-[0_4px_12px_rgb(36_48_68/6%)] max-[560px]:size-[34px] max-[560px]:rounded-[10px]"
+        className="relative z-1 grid size-11 place-items-center rounded-[13px] border border-brand/25 bg-[#f7faf7] text-[13px] font-extrabold text-brand shadow-[0_4px_12px_rgb(36_48_68/6%)] max-[561px]:size-[34px] max-[561px]:rounded-[10px]"
       >
         {number}
       </div>
@@ -71,7 +71,7 @@ function Step({
 
 export function SimpleProjectExamplePage(): ReactElement {
   return (
-    <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[560px]:px-3.5">
+    <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
       <header className="mb-[34px] flex items-end justify-between gap-8 max-[800px]:items-start max-[800px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
@@ -85,7 +85,7 @@ export function SimpleProjectExamplePage(): ReactElement {
             the chart. TanStack Query handles the server state while Gantempo protects edits.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[560px]:flex-wrap">
+        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[561px]:flex-wrap">
           <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
             ~5 minute integration
           </span>

@@ -266,7 +266,7 @@ Dependencies: Slice 1.
 
 ### Slice 2: Migrate document defaults, shared shell, and main page
 
-Status: `[-]` In progress
+Status: `[x]` Done
 
 Goal: Make the application shell and `/` route fully Tailwind-owned.
 
@@ -291,13 +291,10 @@ rules.
 
 Verification:
 
-- `pnpm test -- apps/playground/src/pages/MainPage.dom.test.tsx --reporter=verbose`
-- `vp check`
-- `mise run build-playground`
-- `git diff --check`
-- Chrome on `/` and `/examples/simple-project` at 1440x1000 and 560x900 (or the
-  available narrow minimum), checking navigation overflow, current-page state,
-  focus, theme changes, and console state
+Completed evidence is recorded in Working Notes. The focused main-page and React
+Query tests, `vp check`, production playground build, `git diff --check`, full
+`mise run ci`, and Chrome on `/` plus `/examples/simple-project` at 1440x1000 and
+560x900 passed.
 
 Dependencies: Slice 1.1 complete or cleanly committed so shared Matrix changes are
 not mixed into this slice.
@@ -727,10 +724,37 @@ built-ins with Tailwind arbitrary-property maps.
   in-app Browser fallback reported no connected browser. No live visual,
   accessibility-tree, focus, overflow, or console claim is made for this checkpoint.
 
+### 2026-08-03 — Slice 2 completion evidence
+
+- Chrome DevTools inspected `/` and `/examples/simple-project` at 1440x1000 and
+  exactly 560x900. Both routes expose the expected banner, navigation, main landmark,
+  headings, controls, and chart regions in the accessibility tree. Current-page
+  styling is correct, the main theme selector changes the chart through light, dark,
+  and high-contrast tokens, and its focus-visible outline is 3px with a 2px offset.
+- Desktop and narrow layouts have zero document-level horizontal overflow. At 560px,
+  the brand copy is hidden and the route navigation scrolls within its own container;
+  main metadata wraps and both intros stack. The API example keeps every code panel
+  fully expanded with equal client/scroll dimensions and its chart is 430px desktop
+  and 470px narrow.
+- Live inspection found and fixed two parity issues: `html` and `body` now explicitly
+  own `border-box`, and Tailwind's strict arbitrary max-width query uses 561px to
+  preserve the legacy inclusive-through-560px breakpoint. Before the breakpoint fix,
+  the exact 560px viewport had 279px of page overflow; after it, overflow is zero.
+- Both route consoles have no warnings, errors, or issues. The example's cached API
+  request completed successfully with HTTP 304.
+- The first two full CI attempts exposed a pre-existing timing assumption in the
+  React Query DOM test: query success can render before the draft derived from query
+  data. The test now waits for both states. Its focused 5-test suite passes, and the
+  final `mise run ci` passes formatting for 256 files, lint/type checks for 243 files,
+  all 102 test files and 523 tests, and the 214-file package build. The production
+  playground build passes with 2,025 modules transformed, and `git diff --check`
+  passes.
+
 ## Next Slice
 
-Finish Slice 2 by inspecting `/` and `/examples/simple-project` at 1440x1000 and
-560x900 (or the available narrow minimum) as soon as Chrome DevTools MCP or the
-in-app Browser is available. Verify navigation overflow, current-page state, focus,
-theme changes, accessibility structure, and console state; fix any live issues, rerun
-`mise run ci`, and only then mark Slice 2 done and start Slice 3.
+Start Slice 3 by inspecting `ScenarioGantt.tsx`, `MatrixPage.tsx`, and the chart-frame,
+theme, density, toolbar, and matrix sections of `styles.css`. Confirm the existing
+public `data-gt-*` and typed `classNames` hooks replace every private package-class
+target, move the shared chart and matrix presentation into static utility maps, and
+run the main/matrix DOM suites, production playground build, full `mise run ci`, and
+desktop/narrow Chrome gate before marking the slice done.

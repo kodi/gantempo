@@ -52,7 +52,7 @@ export function SimpleProjectExample(): ReactElement {
       </div>
       <Gantt
         {...project.ganttProps}
-        className="h-[430px]! rounded-none! border-0! shadow-none! max-[560px]:h-[470px]!"
+        className="h-[430px]! rounded-none! border-0! shadow-none! max-[561px]:h-[470px]!"
         defaultRange={RANGE}
         features={{ properties: true, tooltip: true }}
         label="API-loaded project"

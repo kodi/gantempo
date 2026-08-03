@@ -680,7 +680,7 @@ export function InteractiveCustomPage(): ReactElement {
   };
 
   return (
-    <div className="page--interactive page--interactive-custom mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[560px]:px-3.5">
+    <div className="page--interactive page--interactive-custom mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
       <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
@@ -694,7 +694,7 @@ export function InteractiveCustomPage(): ReactElement {
             This page owns the task details and editing panel rendered below the chart.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[560px]:flex-wrap">
+        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[561px]:flex-wrap">
           <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
             {state.document.tasks.length} items
           </span>

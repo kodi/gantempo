@@ -143,8 +143,10 @@ describe('useGanttDocumentQuery', () => {
       </Providers>,
     );
 
-    await waitFor(() => expect(screen.getByLabelText('query-status').textContent).toBe('success'));
-    expect(screen.getByLabelText('progress').textContent).toBe('0.25');
+    await waitFor(() => {
+      expect(screen.getByLabelText('query-status').textContent).toBe('success');
+      expect(screen.getByLabelText('progress').textContent).toBe('0.25');
+    });
     await user.click(screen.getByRole('button', { name: 'Edit 50' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
 

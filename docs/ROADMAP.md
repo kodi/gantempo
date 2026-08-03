@@ -247,10 +247,10 @@ standardizes `apps/playground` on Tailwind CSS v4 for user-facing chrome and exa
 The package stays framework-neutral. Slice 1 is complete: the Tailwind foundation and
 simple API example now use direct utilities with live desktop and narrow proof. Slice
 1.1 is also complete with independent presentation recipes for every matrix scenario.
-Slice 2 shared chrome is implemented and its DOM, production build, emitted CSS, and
-full CI gates pass. Its live desktop/narrow browser gate remains pending before Slice
-3. That later shared chart-frame slice consumes the completed public theme/density
-correction instead of rebuilding package themes in application utilities; the
+Slice 2 shared chrome is complete and verified through DOM, production build, emitted
+CSS, full CI, and live 1440x1000 plus 560x900 inspection. Slice 3 is next for the
+shared chart-frame and matrix boundary; it consumes the completed public theme/density
+correction instead of rebuilding package themes in application utilities. The
 remaining routes follow in bounded visual slices.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
@@ -958,6 +958,15 @@ chart-owned interaction, session, or imperative contracts.
   full CI, package and playground builds, and desktop/narrow live inspection pass;
   final-code follow-up confirms the responsive path geometry and clean console after
   the development server restart.
+
+- 2026-08-03: Completed Slice 2 of the playground Tailwind migration. Document
+  defaults, shared shell/navigation, page intros, metadata, notes, and the main route
+  use direct utilities; 244 superseded stylesheet lines are gone. Live desktop and
+  exact-560px inspection fixed root box-sizing and inclusive-breakpoint parity, then
+  confirmed isolated navigation scrolling, zero page overflow, accessible structure,
+  working theme/focus states, fully expanded API code panels, and clean consoles.
+  Focused tests, the production playground build, `git diff --check`, and final
+  `mise run ci` pass with 102 test files / 523 tests and a 214-file package build.
 
 - 2026-08-03: Started the playground Tailwind migration. Tailwind v4 is now the
   accepted application styling direction for playground chrome and examples, while
