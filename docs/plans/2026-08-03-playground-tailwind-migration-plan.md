@@ -19,9 +19,9 @@ public semantic tokens, `data-gt-*` attributes, typed `classNames`, and slots, b
 must not migrate package renderer CSS or make Tailwind a package dependency.
 
 The migration is already underway. Tailwind and the Vite integration are installed,
-and the simple API example is complete and verified. This plan preserves that work,
-incorporates the in-progress matrix recipe addition, and makes the zero-custom-class
-target explicit for every remaining route and shared component.
+the simple API example is complete and verified, and every matrix scenario has an
+independently revealable presentation recipe. This plan preserves that work and makes
+the zero-custom-class target explicit for every remaining route and shared component.
 
 ## Target State And Definition Of Done
 
@@ -143,9 +143,9 @@ in-flight playground work lands:
 - `MainPage.dom.test.tsx`, `AppendixConsumers.dom.test.tsx`,
   `InteractiveCustomPage.dom.test.tsx`, and `ExampleApiLog.dom.test.tsx` still query or
   assert legacy presentation classes;
-- a user-directed matrix recipe addition is in progress in `MatrixPage.tsx`,
+- the user-directed matrix recipe addition is complete in `MatrixPage.tsx`,
   `scenarios/index.ts`, `matrix-recipes.ts`, and `MatrixPage.dom.test.tsx`. Its content
-  and verification should be preserved when the matrix presentation is migrated.
+  and verification must be preserved when the matrix presentation is migrated.
 
 ## Behavior To Preserve
 
@@ -237,7 +237,7 @@ Dependencies: Accepted Tailwind adoption decision and the React Query example.
 
 ### Slice 1.1: Add matrix presentation recipes
 
-Status: `[-]` In progress
+Status: `[x]` Done
 
 Goal: Let each matrix scenario independently reveal the focused React/CSS recipe for
 its rendered presentation.
@@ -258,11 +258,9 @@ CSS and remain ready for the full matrix-card migration in Slice 3.
 
 Verification:
 
-- `pnpm test -- apps/playground/src/pages/MatrixPage.dom.test.tsx --reporter=verbose`
-- `vp check`
-- `mise run build-playground`
-- `git diff --check`
-- Chrome on `/matrix` at desktop and narrow widths
+Completed evidence is recorded in Working Notes. The focused matrix command, full
+`mise run ci`, production playground build, `git diff --check`, and Chrome on
+`/matrix` at desktop and narrow widths passed.
 
 Dependencies: Slice 1.
 
@@ -693,12 +691,25 @@ built-ins with Tailwind arbitrary-property maps.
 - No implementation or verification for Slices 2-8 was performed by this planning
   audit.
 
+### 2026-08-03 — Slice 1.1 completion evidence
+
+- Added one data-agnostic React/CSS presentation recipe for each matrix scenario and
+  independent accessible Show code/Hide code controls with associated code regions.
+- `pnpm test -- apps/playground/src/pages/MatrixPage.dom.test.tsx
+  --reporter=verbose` passed the complete repository suite: 102 files and 523 tests.
+  A fresh `mise run ci` checkpoint passed formatting for 256 files, lint/type checks
+  for 243 files, all 102 test files and 523 tests, and the 214-file package build.
+- The previously recorded production playground build, `git diff --check`, and live
+  Chrome inspection on `/matrix` at 1440x1000 and 390x844 passed with independent
+  disclosure behavior, no page overflow, and no console warnings or errors.
+- The implementation is committed as `b5f4537` (`feat(playground): add matrix recipe
+  code samples`).
+
 ## Next Slice
 
-Complete and verify Slice 1.1 without mixing in broad styling changes. Then start
-Slice 2 by inspecting `apps/playground/index.html`, `src/Playground.tsx`,
+Start Slice 2 by inspecting `apps/playground/index.html`, `src/Playground.tsx`,
 `src/pages/MainPage.tsx`, and the global/shell/main sections of `src/styles.css`.
 Move the no-Preflight document defaults and shared chrome to static utilities, update
 `MainPage.dom.test.tsx` to use semantic chart hooks, run its focused test plus the
-production playground build, and inspect `/` and `/examples/simple-project` at desktop
-and narrow widths before marking Slice 2 done.
+production playground build and full `mise run ci`, and inspect `/` and
+`/examples/simple-project` at desktop and narrow widths before marking Slice 2 done.

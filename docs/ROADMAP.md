@@ -246,10 +246,11 @@ The
 standardizes `apps/playground` on Tailwind CSS v4 for user-facing chrome and examples.
 The package stays framework-neutral. Slice 1 is complete: the Tailwind foundation and
 simple API example now use direct utilities with live desktop and narrow proof. Slice
-2 remains next for shared chrome. Its later shared chart-frame Slice 3 now consumes
-the completed public theme/density correction instead of rebuilding package themes
-in application utilities. The
-remaining routes follow in bounded visual slices.
+1.1 is also complete with independent presentation recipes for every matrix scenario.
+Slice 2 remains next for shared chrome. Its later shared chart-frame Slice 3 now
+consumes the completed public theme/density correction instead of rebuilding package
+themes in application utilities. The remaining routes follow in bounded visual
+slices.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
