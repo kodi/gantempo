@@ -252,8 +252,12 @@ Slice 2 shared chrome is complete and verified through DOM, production build, em
  Tailwind maps own playground wrapper chrome, toolbars, sizing, and the matrix surface,
  while the package's public theme and density props own built-in themes and renderer
  metrics. Matrix package-part styling uses public typed hooks and all superseded
- shared/private selectors are gone. Slice 4 is next for navigation and project
- consumers; the remaining routes follow in bounded visual slices.
+ shared/private selectors are gone. Slice 4 is complete: navigation and
+ project surfaces use direct utilities, and the narrow time-header treatment now uses
+ the public `data-gt-part` contract. Focused/full gates, SSR/hydration, controlled
+ navigation, and live LTR/Arabic RTL/read-only desktop/narrow inspection pass. Slice 5
+ is next for controlled/runtime-owned interaction chrome and the API log; the
+ remaining routes follow in bounded visual slices.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
@@ -951,6 +955,17 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Completed Slice 4 of the playground Tailwind migration. Navigation
+  summary and project configuration/status surfaces now use direct utilities; 165
+  superseded stylesheet lines and all navigation/project presentation hooks are gone.
+  The narrow time-header treatment moved from a private package selector to a public
+  `data-gt-part` Tailwind variant shared by chart consumers and the API example.
+  Focused DOM/SSR, production build, emitted-selector inspection, `git diff --check`,
+  and full CI pass with 102 test files / 523 tests and a 214-file package build. Live
+  desktop/narrow navigation plus controlled LTR and read-only Arabic RTL project
+  inspection confirms paging, filtering, responsive layouts, focus, zero overflow,
+  clean consoles, and no network activity.
 
 - 2026-08-03: Completed Slice 3 of the playground Tailwind migration. Typed static
   utility maps now own shared chart semantic tokens, themes, size/density metrics,

@@ -2,6 +2,7 @@ import { Gantt } from '@gantempo/gantt';
 import { useGanttDocumentQuery } from '@gantempo/gantt/react-query';
 import type { ReactElement } from 'react';
 
+import { narrowTimeHeaderClasses } from '../chart-frame';
 import { loadSimpleProject, saveSimpleProject } from './simple-project-api';
 
 const RANGE = {
@@ -52,7 +53,7 @@ export function SimpleProjectExample(): ReactElement {
       </div>
       <Gantt
         {...project.ganttProps}
-        className="h-[430px]! rounded-none! border-0! shadow-none! max-[561px]:h-[470px]!"
+        className={`${narrowTimeHeaderClasses} h-[430px]! rounded-none! border-0! shadow-none! max-[561px]:h-[470px]!`}
         defaultRange={RANGE}
         features={{ properties: true, tooltip: true }}
         label="API-loaded project"

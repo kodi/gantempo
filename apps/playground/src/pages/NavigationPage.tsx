@@ -52,18 +52,27 @@ export function NavigationPage(): ReactElement {
         </div>
       </header>
 
-      <section aria-label="Navigation fixture summary" className="navigation-summary">
-        <div>
-          <span>Covered period</span>
-          <strong>
+      <section
+        aria-label="Navigation fixture summary"
+        className="mb-3.5 grid grid-cols-2 gap-2.5 max-[561px]:grid-cols-1"
+      >
+        <div className="grid gap-1 rounded-xl border border-ink/9 bg-white/48 px-[15px] py-[13px]">
+          <span className="text-[10px] font-bold tracking-[0.06em] text-[#606874] uppercase">
+            Covered period
+          </span>
+          <strong className="text-[13px] text-[#263142]">
             {formatRange({ start: NAVIGATION_PERIOD_START, end: NAVIGATION_PERIOD_END })}
           </strong>
         </div>
-        <div>
-          <span>Current visible range</span>
-          <strong data-testid="navigation-visible-range">{formatRange(visibleRange)}</strong>
+        <div className="grid gap-1 rounded-xl border border-ink/9 bg-white/48 px-[15px] py-[13px]">
+          <span className="text-[10px] font-bold tracking-[0.06em] text-[#606874] uppercase">
+            Current visible range
+          </span>
+          <strong className="text-[13px] text-[#263142]" data-testid="navigation-visible-range">
+            {formatRange(visibleRange)}
+          </strong>
         </div>
-        <p>
+        <p className="col-span-full m-0 rounded-xl border border-ink/9 bg-white/48 px-[15px] py-[13px] text-[11px] leading-[1.55] text-[#687181] max-[561px]:col-auto">
           Pan time with a horizontal wheel or trackpad gesture, Shift plus a vertical wheel, a
           primary drag on the header, or a middle drag on the timeline. Use PageUp/PageDown for
           lanes and Alt+PageUp/Alt+PageDown for time. Browser zoom modifiers pass through.

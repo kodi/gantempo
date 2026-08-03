@@ -17,6 +17,7 @@ import {
   chartFrameElevatedClasses,
   chartFrameThemeClasses,
   chartFrameToolbarClasses,
+  narrowTimeHeaderClasses,
 } from '../chart-frame';
 import {
   createProjectDocument,
@@ -69,6 +70,12 @@ const MESSAGES: Readonly<Record<ProjectPageOptions['locale'], GanttMessages>> = 
   }),
 });
 
+const projectControlLinkClasses =
+  'min-h-[34px] rounded-lg border border-[#cfd6cf] px-2.5 py-[9px] text-center text-[10px] font-[750] text-[#405048] no-underline aria-[current=page]:border-[#0f766e] aria-[current=page]:bg-[#0f766e] aria-[current=page]:text-white';
+const projectFieldClasses = 'grid gap-[5px] text-[10px] font-bold text-[#687181]';
+const projectFieldControlClasses =
+  'min-h-[34px] min-w-0 rounded-lg border border-[#cfd6cf] bg-white px-[9px] text-[#26352f] [font:inherit]';
+
 export function parseProjectPageOptions(search: string): ProjectPageOptions {
   const parameters = new URLSearchParams(search);
   const ownership = parameters.get('ownership');
@@ -115,7 +122,7 @@ function ProjectChart({
   const [range, setRange] = useState<TimeRange>(PROJECT_RANGE);
   const common = {
     appearanceVariants: PROJECT_APPEARANCE_VARIANTS,
-    className: 'project-chart__gantt',
+    className: narrowTimeHeaderClasses,
     density: 'comfortable' as const,
     direction,
     features: { contextMenu: true, properties: true, tooltip: true },
@@ -241,7 +248,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
     projectHref({ ...options, ...changes });
 
   return (
-    <div className="page--project mx-auto w-[min(1480px,100%)] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
+    <div className="mx-auto w-[min(1480px,100%)] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
       <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
@@ -272,11 +279,18 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
         </div>
       </header>
 
-      <section aria-label="Project example configuration" className="project-controls">
-        <div aria-label="Ownership mode" className="project-controls__choices">
+      <section
+        aria-label="Project example configuration"
+        className="grid grid-cols-[minmax(250px,1.5fr)_repeat(4,minmax(120px,0.7fr))_auto] items-end gap-3 rounded-[14px] border border-[#dde2dc] bg-white/70 p-3.5 max-[900px]:grid-cols-2 max-[561px]:grid-cols-1"
+      >
+        <div
+          aria-label="Ownership mode"
+          className="flex items-center gap-[5px] max-[900px]:col-span-full max-[561px]:col-auto max-[561px]:overflow-x-auto"
+        >
           {(['controlled', 'uncontrolled', 'read-only'] as const).map((ownership) => (
             <a
               aria-current={options.ownership === ownership ? 'page' : undefined}
+              className={`${projectControlLinkClasses} max-[561px]:flex-[1_0_auto]`}
               href={optionHref({ ownership })}
               key={ownership}
             >
@@ -284,10 +298,11 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
             </a>
           ))}
         </div>
-        <label>
+        <label className={projectFieldClasses}>
           <span>Locale</span>
           <select
             aria-label="Project locale"
+            className={projectFieldControlClasses}
             name="project-locale"
             onChange={(event) =>
               window.location.assign(
@@ -303,10 +318,11 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
             <option value="ar">العربية</option>
           </select>
         </label>
-        <label>
+        <label className={projectFieldClasses}>
           <span>Direction</span>
           <select
             aria-label="Project direction"
+            className={projectFieldControlClasses}
             name="project-direction"
             onChange={(event) =>
               window.location.assign(
@@ -319,10 +335,11 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
             <option value="rtl">RTL</option>
           </select>
         </label>
-        <label>
+        <label className={projectFieldClasses}>
           <span>Filter</span>
           <input
             aria-label="Filter project tasks"
+            className={projectFieldControlClasses}
             name="project-filter"
             onChange={(event) => setFilter(event.currentTarget.value)}
             placeholder="Title contains…"
@@ -330,10 +347,11 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
             value={filter}
           />
         </label>
-        <label>
+        <label className={projectFieldClasses}>
           <span>Sort siblings</span>
           <select
             aria-label="Sort project siblings"
+            className={projectFieldControlClasses}
             name="project-sort"
             onChange={(event) => setSort(event.currentTarget.value as typeof sort)}
             value={sort}
@@ -342,7 +360,10 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
             <option value="title">Title</option>
           </select>
         </label>
-        <a className="project-controls__cycle" href={optionHref({ cycle: !options.cycle })}>
+        <a
+          className={`${projectControlLinkClasses} grid place-items-center text-[#9a3412] max-[900px]:self-stretch`}
+          href={optionHref({ cycle: !options.cycle })}
+        >
           {options.cycle ? 'Use valid graph' : 'Show cycle diagnostic'}
         </a>
       </section>
@@ -357,8 +378,13 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
         view={view}
       />
 
-      <section aria-live="polite" className="project-status">
-        <strong data-testid="project-consumer-status">{status}</strong>
+      <section
+        aria-live="polite"
+        className="flex items-baseline justify-between gap-5 rounded-xl bg-[#e9efea] px-4 py-3.5 text-[11px] text-[#405048] max-[561px]:items-stretch max-[561px]:flex-col"
+      >
+        <strong className="text-[#26352f]" data-testid="project-consumer-status">
+          {status}
+        </strong>
         <span>
           {options.cycle
             ? 'The opt-in cycle remains visible and diagnostic; automatic scheduling is not performed.'

@@ -7,6 +7,7 @@ import {
   chartFrameElevatedClasses,
   chartFrameThemeClasses,
   chartFrameToolbarClasses,
+  narrowTimeHeaderClasses,
 } from './chart-frame';
 import type { PlaygroundScenario, ScenarioTheme } from './scenarios';
 
@@ -83,6 +84,7 @@ export function ScenarioGantt({
       </div>
 
       <Gantt
+        className={narrowTimeHeaderClasses}
         {...(size === 'matrix'
           ? {
               classNames: {

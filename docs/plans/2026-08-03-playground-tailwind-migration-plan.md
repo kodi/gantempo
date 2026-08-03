@@ -346,7 +346,7 @@ Dependencies: Slice 2 and completed Slice 1.1.
 
 ### Slice 4: Migrate navigation and project consumers
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Convert the navigation stress route and M5 project consumer without changing
 their controlled view, query-string, localization, hierarchy, or interaction logic.
@@ -783,11 +783,38 @@ built-ins with Tailwind arbitrary-property maps.
   stays within its card at the narrow viewport. The inspected routes produced no
   console warnings, errors, or issues beyond Vite development messages.
 
+### 2026-08-03 — Slice 4 completion evidence
+
+- Migrated the navigation summary and the complete project configuration, ownership,
+  field, cycle, status, and responsive presentation to direct utilities. Removed 165
+  more stylesheet lines and the remaining `navigation-summary`, `project-controls`,
+  `project-status`, `project-chart`, and `page--project` presentation hooks.
+- Replaced the global private `.gt-gantt__time-header` rule with one statically
+  emitted narrow Tailwind variant rooted at public `data-gt-part="time-header"`.
+  The shared chart root and the already-migrated simple API example both consume the
+  variant, preserving the prior app-wide narrow tick treatment without a package API
+  or stylesheet change.
+- The focused navigation/project/SSR command passed the complete 102-file / 523-test
+  suite. `vp check`, `git diff --check`, and full `mise run ci` pass with 257
+  formatted files, 244 lint/type files, all 102 test files / 523 tests, and the
+  214-file package build. The production playground build passes with 2,026 modules
+  transformed and its emitted CSS contains the public-part narrow selector.
+- Chrome DevTools inspected `/navigation` and controlled English LTR plus read-only
+  Arabic RTL `/project` modes at 1440x1000 and exactly 560x900. Navigation preserved
+  controlled Alt+PageDown acknowledgement, two desktop summary columns, one narrow
+  column, 6 desktop ticks, 3 narrow ticks, focus on the chart root, and zero page
+  overflow.
+- Project preserved six desktop configuration columns, one narrow column, current
+  ownership styling, native input focus visibility, filtering to four hierarchy
+  rows, 2-to-1 narrow tick reduction, RTL direction/localized chart labels, disabled
+  read-only commands, and no read-only link handles. Accessibility trees remained
+  complete, both routes had zero page overflow, no console warnings/errors/issues,
+  and no XHR or fetch requests.
+
 ## Next Slice
 
-Start Slice 4 by migrating the navigation summary and project configuration/status
-surfaces to direct utilities. Replace the private narrow `.gt-gantt__time-header`
-target with a public part or typed `classNames` hook, preserve navigation range
-ownership and project URL/RTL/read-only behavior, then run the focused DOM/SSR,
-production build, full `mise run ci`, and desktop/narrow browser gates before marking
-the slice done.
+Start Slice 5 by migrating the shared interactive controls, controlled/runtime-owned
+chart content hooks, and `ExampleApiLog` presentation to direct utilities. Preserve
+command ownership, pending/selected state styling, API-log retention/disclosure, and
+all accessible names before running the focused interaction/log suites, production
+build, full `mise run ci`, and desktop/narrow browser gates.

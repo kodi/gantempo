@@ -18,3 +18,6 @@ export const chartFrameToolbarClasses =
 
 export const chartFrameActionsClasses =
   'flex gap-[5px] [&_button]:min-h-[29px] [&_button]:rounded-[7px] [&_button]:border [&_button]:border-[var(--playground-frame-border)] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:text-[10px] [&_button]:font-bold [&_button]:text-inherit [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-62';
+
+export const narrowTimeHeaderClasses =
+  "max-[561px]:[&_[data-gt-part='time-header']>span:nth-child(even)]:hidden";
