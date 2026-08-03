@@ -126,13 +126,13 @@ export function ExampleApiLog({ entries }: ExampleApiLogProps): ReactElement {
                   className={`group border-l-[3px] ${entryBorderToneClasses[tone]}`}
                   data-tone={tone}
                 >
-                  <summary className="grid min-h-[72px] cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-[13px] py-[11px] pr-[13px] pl-3 hover:bg-[#ecf2ee]/78 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand/24 group-open:bg-[#ecf2ee]/78 max-[900px]:grid-cols-[minmax(0,1fr)_auto] max-[900px]:gap-x-3 max-[900px]:gap-y-2 [&::-webkit-details-marker]:hidden">
+                  <summary className="grid min-h-[72px] cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-[13px] py-[11px] pr-[13px] pl-3 hover:bg-[#ecf2ee]/78 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand/24 group-open:bg-[#ecf2ee]/78 max-[901px]:grid-cols-[minmax(0,1fr)_auto] max-[901px]:gap-x-3 max-[901px]:gap-y-2 [&::-webkit-details-marker]:hidden">
                     <span
-                      className={`rounded-full border border-[#566f67]/18 px-[7px] py-[5px] text-[9px] leading-none font-[760] tracking-[0.02em] whitespace-nowrap uppercase max-[900px]:justify-self-start ${badgeToneClasses[tone]}`}
+                      className={`rounded-full border border-[#566f67]/18 px-[7px] py-[5px] text-[9px] leading-none font-[760] tracking-[0.02em] whitespace-nowrap uppercase max-[901px]:justify-self-start ${badgeToneClasses[tone]}`}
                     >
                       {eventLabel(primary.type)}
                     </span>
-                    <span className="grid min-w-0 gap-[3px] max-[900px]:col-span-full max-[900px]:row-start-2">
+                    <span className="grid min-w-0 gap-[3px] max-[901px]:col-span-full max-[901px]:row-start-2">
                       <strong className="truncate text-[11px] text-[#273444]">
                         {entityLabel(primary)}
                         {additional > 0 ? (
@@ -145,7 +145,7 @@ export function ExampleApiLog({ entries }: ExampleApiLogProps): ReactElement {
                         {eventDetail(primary)}
                       </span>
                     </span>
-                    <span className="grid min-w-0 justify-items-end gap-[3px] text-[9px] text-[#7d858f] [font-variant-numeric:tabular-nums] max-[900px]:col-start-1 max-[900px]:row-start-3 max-[900px]:justify-items-start">
+                    <span className="grid min-w-0 justify-items-end gap-[3px] text-[9px] text-[#7d858f] [font-variant-numeric:tabular-nums] max-[901px]:col-start-1 max-[901px]:row-start-3 max-[901px]:justify-items-start">
                       <code className="text-[9px] text-[#4f5c6c]" data-api-log-part="operation">
                         {write.operationId}
                       </code>
@@ -153,13 +153,13 @@ export function ExampleApiLog({ entries }: ExampleApiLogProps): ReactElement {
                     </span>
                     <span
                       aria-hidden="true"
-                      className="text-[19px] leading-none text-[#69766f] transition-transform duration-130 group-open:rotate-90 max-[900px]:col-start-2 max-[900px]:row-start-3"
+                      className="text-[19px] leading-none text-[#69766f] transition-transform duration-130 group-open:rotate-90 max-[901px]:col-start-2 max-[901px]:row-start-3"
                     >
                       ›
                     </span>
                   </summary>
                   <div className="grid gap-[13px] border-t border-ink/7 bg-[#f8faf7]/90 px-[13px] pb-3.5">
-                    <dl className="mt-[13px] mb-0 grid grid-cols-3 gap-2 max-[900px]:grid-cols-1 [&>div]:min-w-0 [&>div]:rounded-[7px] [&>div]:border [&>div]:border-ink/8 [&>div]:bg-white/72 [&>div]:p-[9px]">
+                    <dl className="mt-[13px] mb-0 grid grid-cols-3 gap-2 max-[901px]:grid-cols-1 [&>div]:min-w-0 [&>div]:rounded-[7px] [&>div]:border [&>div]:border-ink/8 [&>div]:bg-white/72 [&>div]:p-[9px]">
                       <div>
                         <dt className="text-[8px] font-[760] tracking-[0.05em] text-[#7a828d] uppercase">
                           Operation ID

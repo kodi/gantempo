@@ -132,7 +132,7 @@ Detailed completion evidence is recorded in
 | Post-M5: Simple integration defaults | Correction before Slice 5 | A public document hook and overridable built-in appearances reduce the first API example to one small adapter and React component | `[x]` | [Completed plan](plans/2026-08-02-simple-integration-defaults-plan.md) |
 | Post-M5: React Query document integration | Integration boundary correction before Slice 5 | Core owns editable draft state while an optional TanStack Query entry owns standard server-state wiring | `[x]` | [Completed plan](plans/2026-08-02-react-query-document-integration-plan.md) |
 | Post-M5: Obstacle-aware dependency connectors | Dependency-rendering correction before Slice 5 | Earlier-target and overlapping links remain continuous by routing through task-row gutters without moving dates | `[x]` | [Completed plan](plans/2026-08-03-obstacle-aware-dependency-connectors-plan.md) |
-| Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities, and matrix scenarios reveal focused presentation recipes, while the package remains design-system-neutral | `[-]` | [Active plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
+| Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities, and matrix scenarios reveal focused presentation recipes, while the package remains design-system-neutral | `[x]` | [Completed plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
 | Post-M5: Public theme and density contract | UI/theming correction before playground chart-frame migration | Built-in and typed custom themes plus renderer-backed density are selected per Gantt instance and retained by portals | `[x]` | [Completed plan](plans/2026-08-04-public-theme-and-density-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -173,7 +173,7 @@ Post-M5 simple integration defaults [done]
 Post-M5 React Query document integration [done]
   |
   v
-Post-M5 playground Tailwind migration [in progress]
+Post-M5 playground Tailwind migration [done]
   |
   v
 Post-M5 public theme/density correction [done]
@@ -239,32 +239,20 @@ arrowheads, no page overflow, and a clean console.
 
 ### Post-M5: Playground Tailwind migration
 
-**Status:** `[-]` In progress
+**Status:** `[x]` Complete and verified
 
 The
 [playground Tailwind migration plan](plans/2026-08-03-playground-tailwind-migration-plan.md)
 standardizes `apps/playground` on Tailwind CSS v4 for user-facing chrome and examples.
-The package stays framework-neutral. Slice 1 is complete: the Tailwind foundation and
-simple API example now use direct utilities with live desktop and narrow proof. Slice
-1.1 is also complete with independent presentation recipes for every matrix scenario.
-Slice 2 shared chrome is complete and verified through DOM, production build, emitted
- CSS, full CI, and live 1440x1000 plus 560x900 inspection. Slice 3 is complete: typed
- Tailwind maps own playground wrapper chrome, toolbars, sizing, and the matrix surface,
- while the package's public theme and density props own built-in themes and renderer
- metrics. Matrix package-part styling uses public typed hooks and all superseded
- shared/private selectors are gone. Slice 4 is complete: navigation and
- project surfaces use direct utilities, and the narrow time-header treatment now uses
- the public `data-gt-part` contract. Focused/full gates, SSR/hydration, controlled
- navigation, and live LTR/Arabic RTL/read-only desktop/narrow inspection pass. Slice 5
- is complete: shared interaction chrome, typed package slot presentation, controlled
- and runtime-owned routes, and the reusable API log use static/direct utilities; 500
-superseded stylesheet lines are gone. Focused/full gates and live stateful desktop/
- narrow interaction proof pass. Slice 6 is complete: the application-owned details
- display/edit panel is Tailwind-only, preserves its controlled transaction contract,
- and passes full behavior plus desktop/narrow accessibility proof. Slice 7 is complete:
- both playground stylesheets are directive/theme-only and a permanent source gate
- enforces zero authored selectors, historical classes, private package targets, or
- alternate styling systems. Slice 8 final package-boundary and browser proof is next.
+The package stays framework-neutral. All eight slices are complete: every playground
+route and the copyable example now use direct/static Tailwind utilities, matrix
+scenarios expose focused recipes, typed public package hooks replace private selector
+targeting, public theme/density props own renderer state, and the two remaining app
+stylesheets contain directives/theme tokens only.
+A permanent source gate rejects authored selectors, historical classes, private
+package targets, alternate styling systems, and dynamic utility fragments. Final CI,
+package-boundary, responsive browser, interaction, accessibility, overflow, console,
+and network evidence is recorded in the completed plan. M6 detailed planning is next.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
@@ -962,6 +950,16 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Completed Slice 8 and the playground Tailwind migration. Final CI
+  passes 259 formatted files, 246 lint/type files, 103 test files / 525 tests, and the
+  214-file package build. The production playground transforms 2,027 modules and
+  emits 72.28 kB CSS. A fresh 386,806-byte tarball consumer passes strict TypeScript,
+  SSR, and stylesheet resolution without Tailwind. Chrome DevTools verifies all eight
+  routes at 1440x1000, 900x900, and 560x900 with meaningful interactions, zero page
+  overflow, clean consoles, successful API `GET 304` / `PUT 204`, and 100 Lighthouse
+  accessibility. Live fixes preserved the inclusive 900px breakpoint and corrected
+  shared-header contrast and accessible naming. M6 detailed planning is next.
 
 - 2026-08-03: Completed Slice 7 of the playground Tailwind migration. Deleted the
   final 166 compatibility lines and stale navigation wrapper; the main and example

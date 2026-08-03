@@ -321,7 +321,7 @@ export function InteractivePage(): ReactElement {
 
   return (
     <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
-      <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
+      <header className="mb-[26px] flex items-end justify-between gap-8 max-[901px]:items-start max-[901px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
             Controlled consumer proof
@@ -510,7 +510,7 @@ export function InteractivePage(): ReactElement {
         aria-labelledby="api-log-title"
         className="mt-[18px] grid gap-[9px] rounded-[15px] border border-ink/10 bg-white/58 p-[18px]"
       >
-        <div className="flex items-start justify-between gap-6 max-[900px]:items-stretch max-[900px]:flex-col max-[900px]:gap-3">
+        <div className="flex items-start justify-between gap-6 max-[901px]:items-stretch max-[901px]:flex-col max-[901px]:gap-3">
           <div>
             <h2 className="m-0 text-sm text-[#263142]" id="api-log-title">
               Persistence boundary
@@ -522,7 +522,7 @@ export function InteractivePage(): ReactElement {
             </p>
           </div>
           <button
-            className="min-h-8 flex-none rounded-lg border border-ink/14 bg-white px-[11px] text-[11px] font-[720] text-[#2d3a4b] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand/24 disabled:cursor-not-allowed disabled:opacity-48 max-[900px]:self-start"
+            className="min-h-8 flex-none rounded-lg border border-ink/14 bg-white px-[11px] text-[11px] font-[720] text-[#2d3a4b] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand/24 disabled:cursor-not-allowed disabled:opacity-48 max-[901px]:self-start"
             disabled={state.apiLog.length === 0}
             onClick={() => dispatch({ type: 'clear-log' })}
             type="button"

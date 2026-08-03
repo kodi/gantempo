@@ -39,7 +39,7 @@ function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
         >
           G
         </span>
-        <span className="grid gap-px max-[561px]:hidden">
+        <span aria-hidden="true" className="grid gap-px max-[561px]:hidden">
           <strong className="text-sm tracking-[0.01em]">Gantempo</strong>
           <small className="text-[11px] text-muted">Playground</small>
         </span>
@@ -55,7 +55,7 @@ function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
           return (
             <a
               aria-current={isCurrent ? 'page' : undefined}
-              className="rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-[#687181] no-underline aria-[current=page]:bg-white aria-[current=page]:text-[#18352f] aria-[current=page]:shadow-[0_1px_3px_rgb(36_48_68/9%)] max-[561px]:shrink-0 max-[561px]:px-[9px] max-[561px]:whitespace-nowrap"
+              className="rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-[#5d6672] no-underline aria-[current=page]:bg-white aria-[current=page]:text-[#18352f] aria-[current=page]:shadow-[0_1px_3px_rgb(36_48_68/9%)] max-[561px]:shrink-0 max-[561px]:px-[9px] max-[561px]:whitespace-nowrap"
               href={link.href}
               key={link.href}
             >

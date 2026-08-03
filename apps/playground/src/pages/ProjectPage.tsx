@@ -249,7 +249,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
 
   return (
     <div className="mx-auto w-[min(1480px,100%)] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
-      <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
+      <header className="mb-[26px] flex items-end justify-between gap-8 max-[901px]:items-start max-[901px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
             M5 public consumer
@@ -281,11 +281,11 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
 
       <section
         aria-label="Project example configuration"
-        className="grid grid-cols-[minmax(250px,1.5fr)_repeat(4,minmax(120px,0.7fr))_auto] items-end gap-3 rounded-[14px] border border-[#dde2dc] bg-white/70 p-3.5 max-[900px]:grid-cols-2 max-[561px]:grid-cols-1"
+        className="grid grid-cols-[minmax(250px,1.5fr)_repeat(4,minmax(120px,0.7fr))_auto] items-end gap-3 rounded-[14px] border border-[#dde2dc] bg-white/70 p-3.5 max-[901px]:grid-cols-2 max-[561px]:grid-cols-1"
       >
         <div
           aria-label="Ownership mode"
-          className="flex items-center gap-[5px] max-[900px]:col-span-full max-[561px]:col-auto max-[561px]:overflow-x-auto"
+          className="flex items-center gap-[5px] max-[901px]:col-span-full max-[561px]:col-auto max-[561px]:overflow-x-auto"
         >
           {(['controlled', 'uncontrolled', 'read-only'] as const).map((ownership) => (
             <a
@@ -361,7 +361,7 @@ export function ProjectPage({ search }: { readonly search: string }): ReactEleme
           </select>
         </label>
         <a
-          className={`${projectControlLinkClasses} grid place-items-center text-[#9a3412] max-[900px]:self-stretch`}
+          className={`${projectControlLinkClasses} grid place-items-center text-[#9a3412] max-[901px]:self-stretch`}
           href={optionHref({ cycle: !options.cycle })}
         >
           {options.cycle ? 'Use valid graph' : 'Show cycle diagnostic'}

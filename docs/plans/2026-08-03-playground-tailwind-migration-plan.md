@@ -1,6 +1,6 @@
 # Entire Playground Tailwind Migration Plan
 
-Status: In progress
+Status: Complete and verified
 Milestone: Post-M5 playground and example DX
 Architecture mapping: Application-owned presentation; framework-neutral package boundary
 Last updated: 2026-08-03
@@ -500,7 +500,7 @@ Dependencies: Slices 2-6.
 
 ### Slice 8: Complete repository, package-boundary, and browser proof
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Verify the completed migration across the repository, distribution boundary,
 all routes, responsive layouts, accessibility, and runtime diagnostics.
@@ -892,9 +892,68 @@ built-ins with Tailwind arbitrary-property maps.
   console warnings, errors, or issues. The production build transforms 2,027 modules
   and emits 72.36 kB CSS.
 
+### 2026-08-03 — Slice 8 completion evidence
+
+- Final `mise run ci` passes formatting for 259 files, lint/type checks for 246 files,
+  all 103 test files / 525 tests, and the 214-file package build. The explicit
+  production playground build transforms 2,027 modules and emits 72.28 kB CSS plus a
+  646.48 kB JavaScript chunk; the existing chunk-size advisory is the only build
+  warning. `vp pack` and `git diff --check` pass.
+- `npm pack` produced a 386,806-byte, 215-entry tarball containing the 214 distribution
+  files plus `package.json`. Its manifest, export map, dependency lists, and archive
+  contain no Tailwind dependency, runtime, or playground source. A fresh temporary
+  consumer installed only the tarball, React, React DOM, TypeScript, and React types;
+  strict NodeNext TypeScript compilation passed, `@gantempo/gantt/styles.css`
+  resolved from `dist`, and server rendering produced 4,329 characters with both
+  `window` and `document` absent.
+- Chrome DevTools inspected all eight routes at 1440x1000, exactly 900x900, and
+  exactly 560x900. All 24 cells retained their expected heading, main/navigation and
+  route-specific accessible regions, visible keyboard focus, zero page-level
+  horizontal overflow, and clean warning/error/issue consoles. Non-API routes made
+  no XHR/fetch requests; the API example loaded with `GET 304` and its exercised save
+  completed with `PUT 204`.
+- The final interaction sweep covered main theme selection, matrix recipe disclosure,
+  controlled add/undo, application-owned task-detail activation, runtime-owned
+  create/undo, controlled `Alt+PageDown` navigation, project filtering, and API-example
+  progress editing plus save. A Lighthouse snapshot on the API example reports 100
+  accessibility and 100 best-practices scores.
+- Live inspection found and fixed three final shared-presentation issues: migrated
+  arbitrary `max` utilities now preserve the former inclusive 900px breakpoint and
+  eliminate `/project` overflow at exactly 900px; inactive navigation text meets
+  contrast; and the decorative brand glyph/copy no longer conflicts with the link's
+  accessible name. No package contract or scheduling behavior changed.
+
+### 2026-08-04 — Rebase integration proof
+
+- Replayed the completed Tailwind migration over the public theme/density and syntax-
+  highlighting features. The conflict resolution keeps Tailwind responsible for
+  playground-owned wrapper chrome while public `theme` and `density` props remain the
+  renderer source of truth; the obsolete package-variable inheritance bridge and
+  wrapper-owned row/header metrics are gone.
+- Final combined `mise run ci` passes formatting for 263 files, lint/type checking for
+  250 files, all 105 test files / 534 tests, and the 217-file package build. The
+  explicit playground build transforms 2,112 modules and emits 71.50 kB CSS plus a
+  1,272.60 kB JavaScript chunk; the existing chunk-size advisory remains the only
+  warning. `npm pack --dry-run --json` reports a 392,964-byte, 218-entry package: the
+  217 distribution files plus `package.json`.
+- The permanent source gate now distinguishes actual CSS-in-JS constructs from the
+  legitimate Shiki `css.mjs` language import. Its zero-selector, historical-class,
+  private-package-target, alternate-styling-system, and dynamic-utility checks pass
+  without weakening the Tailwind boundary.
+- Chrome DevTools inspected `/matrix` at 1440x1000 and 560x900. All five scenarios
+  publish the expected package theme IDs/modes and density metrics: compact uses 38px
+  rows / 34px headers, comfortable uses 58px / 40px, the custom scenario publishes
+  `resource-planning`, and light/dark/high-contrast renderer surfaces match their
+  playground wrapper chrome. Both viewports have zero page overflow; narrow headers
+  hide alternating ticks through the public part hook, no legacy chart/matrix class
+  survives, and the accessibility tree includes every chart and recipe control.
+- Chrome DevTools also inspected `/` at 560x900 and exercised dark plus high-contrast
+  selection. Frame state, package theme/mode attributes, and computed renderer tokens
+  update together while comfortable metrics remain 58px / 40px. The page has zero
+  overflow, no warning/error/issue console messages, and no XHR/fetch requests. A
+  mobile snapshot Lighthouse audit reports 100 accessibility and 100 best practices.
+
 ## Next Slice
 
-Start Slice 8 with the clean implementation state: run the final repository and
-production gates, inspect packed package manifests/artifacts, prove a fresh tarball
-consumer without Tailwind, and complete the eight-route browser matrix at desktop,
-900px, and narrow viewports before closing this plan and roadmap item.
+This plan is complete. M6 advanced-scheduling and resource-planning work remains the
+next roadmap milestone and needs its own detailed plan before implementation begins.

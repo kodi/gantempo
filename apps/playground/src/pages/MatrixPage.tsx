@@ -54,7 +54,7 @@ function MatrixScenarioCard({ scenario }: { readonly scenario: MatrixScenario })
 export function MatrixPage(): ReactElement {
   return (
     <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
-      <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
+      <header className="mb-[26px] flex items-end justify-between gap-8 max-[901px]:items-start max-[901px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
             Visual comparison
@@ -72,7 +72,7 @@ export function MatrixPage(): ReactElement {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 items-start gap-[22px] max-[900px]:grid-cols-1">
+      <div className="grid grid-cols-2 items-start gap-[22px] max-[901px]:grid-cols-1">
         {matrixScenarios.map((scenario) => (
           <MatrixScenarioCard key={scenario.id} scenario={scenario} />
         ))}
