@@ -460,7 +460,7 @@ Dependencies: Slice 5.
 
 ### Slice 7: Delete legacy CSS and enforce the zero-custom-selector boundary
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Remove the final compatibility layer and make the user's no-custom-CSS-class
 requirement mechanically enforceable.
@@ -490,7 +490,8 @@ Verification:
 - focused new Tailwind-boundary test
 - `rg -n "@apply|\\.module\\.css|\\.gt-gantt__" apps/playground` returns no matches
   outside intentional negative assertions in the boundary test
-- `rg -n "playground-(shell|header|nav)|page(__|--)|chart-frame|scenario-(matrix|card)|interactive-|custom-details|api-log|project-(controls|status)" apps/playground/src --glob '!**/*.test.*'` returns no matches
+- a token-aware legacy presentation search returns no runtime matches without
+  overmatching semantic route names, record IDs, data parts, or utility-module paths
 - `vp check`
 - `mise run build-playground`
 - `git diff --check`
@@ -865,9 +866,35 @@ built-ins with Tailwind arbitrary-property maps.
   Lighthouse accessibility is 100, the accessibility tree remains complete, the
   console has no warnings/errors/issues, and there are no XHR or fetch requests.
 
+### 2026-08-03 — Slice 7 completion evidence
+
+- Deleted the final 166 compatibility lines from `styles.css` and removed the stale
+  `page--navigation` wrapper token. The main stylesheet is now 19 lines of Tailwind
+  layer/import/source directives plus theme tokens; the copyable example stylesheet
+  remains four directive-only lines. Neither stylesheet contains an authored
+  selector rule.
+- Added `tailwind-boundary.test.ts` as the permanent source gate. It fixes the exact
+  allowed stylesheet set/content and recursively audits playground CSS/HTML/TS/TSX
+  for every historical presentation class token, private `.gt-gantt__*` targets,
+  `@apply`, CSS Modules or other authored stylesheet formats, CSS-in-JS, and utility
+  fragments synthesized through template interpolation. The focused 2-test gate,
+  12-file / 32-test playground suite, `vp check`, `git diff --check`, production
+  build, and full `mise run ci` pass; CI now covers 103 files / 525 tests and the
+  214-file package build.
+- Refined the plan's original broad substring search to the token-aware regression
+  gate because legitimate module paths, `/interactive-custom`, `interactive-task-*`
+  record IDs, and semantic `data-api-log-part` hooks intentionally contain those
+  words without being presentation classes. The end-state contract is unchanged and
+  is now enforced more precisely.
+- Chrome DevTools swept all eight routes at exactly 560x900 after selector deletion.
+  Every route exposed its expected `h1`, retained its accessibility tree, had zero
+  body/document overflow and zero historical DOM class tokens, and produced no
+  console warnings, errors, or issues. The production build transforms 2,027 modules
+  and emits 72.36 kB CSS.
+
 ## Next Slice
 
-Start Slice 7 by migrating the remaining simple-example guide selectors, reducing the
-playground stylesheets to Tailwind directives and theme tokens, auditing all source
-files for forbidden selector/presentation patterns, and adding the permanent focused
-source-boundary regression test.
+Start Slice 8 with the clean implementation state: run the final repository and
+production gates, inspect packed package manifests/artifacts, prove a fresh tarball
+consumer without Tailwind, and complete the eight-route browser matrix at desktop,
+900px, and narrow viewports before closing this plan and roadmap item.

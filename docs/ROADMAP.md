@@ -261,8 +261,10 @@ Slice 2 shared chrome is complete and verified through DOM, production build, em
 superseded stylesheet lines are gone. Focused/full gates and live stateful desktop/
  narrow interaction proof pass. Slice 6 is complete: the application-owned details
  display/edit panel is Tailwind-only, preserves its controlled transaction contract,
- and passes full behavior plus desktop/narrow accessibility proof. Slice 7 is next to
- remove the final guide selectors and enforce the zero-custom-selector boundary.
+ and passes full behavior plus desktop/narrow accessibility proof. Slice 7 is complete:
+ both playground stylesheets are directive/theme-only and a permanent source gate
+ enforces zero authored selectors, historical classes, private package targets, or
+ alternate styling systems. Slice 8 final package-boundary and browser proof is next.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
@@ -960,6 +962,15 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Completed Slice 7 of the playground Tailwind migration. Deleted the
+  final 166 compatibility lines and stale navigation wrapper; the main and example
+  stylesheets are now 19 and 4 directive/theme-only lines with zero authored
+  selectors. A focused source gate fixes that boundary and rejects every historical
+  class token, private package target, `@apply`, CSS Modules/CSS-in-JS, and dynamic
+  utility fragments. Focused/playground/full gates pass with 103 test files / 525
+  tests and the 214-file package build. All eight routes passed a live 560x900 sweep
+  with expected headings, zero overflow/legacy DOM classes, and clean consoles.
 
 - 2026-08-03: Completed Slice 6 of the playground Tailwind migration. The complete
   application-owned details display/edit panel now uses static direct utilities;
