@@ -205,10 +205,9 @@ dates or adding scheduling behavior. The private React-free router uses a measur
 inter-row gutter detour when opposing endpoint stubs cross, while the renderer emits
 one continuous visible path and one matching hit path. Focused geometry and DOM
 coverage, 101 test files / 521 tests, the package and playground builds, and desktop
-plus narrow live inspection pass. The final browser reload after a fixed-pixel
-clearance refinement was blocked by browser URL policy and is recorded as a precise
-coverage limit in the completed plan; final automated responsive geometry and DOM
-checks pass.
+plus narrow live inspection pass. Final-code browser verification at 1440x1000 and
+560x900 confirms continuous `M/H/V` paths, stable pixel clearance, correctly directed
+arrowheads, no page overflow, and a clean console.
 
 ### Post-M5: Playground Tailwind migration
 
@@ -924,8 +923,8 @@ chart-owned interaction, session, or imperative contracts.
   one hit path. Dates, public scheduling contracts, accessibility, clipping, RTL, and
   interaction semantics remain unchanged. Focused tests, 101 files / 521 tests in
   full CI, package and playground builds, and desktop/narrow live inspection pass;
-  the completed plan records the browser-policy limit on the final post-refinement
-  localhost reload.
+  final-code follow-up confirms the responsive path geometry and clean console after
+  the development server restart.
 
 - 2026-08-03: Started the playground Tailwind migration. Tailwind v4 is now the
   accepted application styling direction for playground chrome and examples, while

@@ -111,6 +111,12 @@ Verification:
   policy; that exact reload was not retried or worked around. Final numerical route,
   responsive-width, DOM-path, accessibility, full-CI, and production-build checks
   passed on the completed code.
+- 2026-08-03: After the development server restarted, final-code browser verification
+  resolved the prior reload limit. At 1440x1000 and 560x900, both dependencies render
+  one continuous `M/H/V` path plus one hit path, preserve their accessible labels and
+  arrow markers, and retain 12 px / 16 px horizontal clearance at both widths. Page
+  width matched viewport width (1425/1425 desktop and 545/545 narrow), the console had
+  no warnings or errors, and the temporary viewport override was reset.
 
 ## Next Slice
 
