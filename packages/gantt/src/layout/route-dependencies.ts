@@ -43,6 +43,7 @@ export interface DependencyRouteViewport {
   readonly left?: number;
   readonly right?: number;
   readonly top: number;
+  readonly width?: number;
 }
 
 function point(x: number, y: number): DependencyRoutePoint {
@@ -133,7 +134,7 @@ export function routeDependency(
   const timeDirection = input.direction === 'rtl' ? -1 : 1;
   const fromDirection = fromStart ? -timeDirection : timeDirection;
   const toDirection = toStart ? -timeDirection : timeDirection;
-  const channel = 0.012 + (input.rank % 5) * 0.004;
+  const channel = (12 + (input.rank % 5) * 4) / (viewport.width ?? 1_000);
   const fromStubX = fromX + fromDirection * channel;
   const toStubX = toX + toDirection * channel;
   const opposingPorts = fromDirection !== toDirection;
@@ -146,14 +147,17 @@ export function routeDependency(
       : (fromStubX + toStubX) / 2;
   const fullRoute = Object.freeze(
     (stubsCross
-      ? [
-          point(fromX, input.from.y),
-          point(fromStubX, input.from.y),
-          point(fromStubX, interRowGutterY(input.from, input.to)),
-          point(toStubX, interRowGutterY(input.from, input.to)),
-          point(toStubX, input.to.y),
-          point(toX, input.to.y),
-        ]
+      ? (() => {
+          const gutterY = interRowGutterY(input.from, input.to);
+          return [
+            point(fromX, input.from.y),
+            point(fromStubX, input.from.y),
+            point(fromStubX, gutterY),
+            point(toStubX, gutterY),
+            point(toStubX, input.to.y),
+            point(toX, input.to.y),
+          ];
+        })()
       : [
           point(fromX, input.from.y),
           point(fromStubX, input.from.y),
@@ -169,6 +173,7 @@ export function routeDependency(
     left: viewport.left ?? 0,
     right: viewport.right ?? 1,
     top: viewport.top,
+    width: viewport.width ?? 1_000,
   };
   const clipped = clipRoute(fullRoute, resolvedViewport);
   if (clipped === undefined) return undefined;

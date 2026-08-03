@@ -10,9 +10,21 @@ function dependencyPathData(
   points: DependencyPathPrimitive['points'],
   timelineWidth: number,
 ): string {
-  return points
-    .map((current, index) => `${index === 0 ? 'M' : 'L'} ${current.x * timelineWidth} ${current.y}`)
-    .join(' ');
+  const first = points[0];
+  if (first === undefined) return '';
+  const commands = [`M ${first.x * timelineWidth} ${first.y}`];
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]!;
+    const current = points[index]!;
+    if (Math.abs(previous.y - current.y) < 1e-9) {
+      commands.push(`H ${current.x * timelineWidth}`);
+    } else if (Math.abs(previous.x - current.x) < 1e-9) {
+      commands.push(`V ${current.y}`);
+    } else {
+      commands.push(`L ${current.x * timelineWidth} ${current.y}`);
+    }
+  }
+  return commands.join(' ');
 }
 
 function dependencyStateEqual(

@@ -619,7 +619,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         tickAnchor: display.tickAnchor,
         tickInterval: display.tickInterval,
         ...(display.timeScale.kind === 'adaptive' ? { timeScaleLevel: scaleLevel } : {}),
-        ...(display.timeScale.kind === 'adaptive' ? { timeScaleWidth: scaleWidth } : {}),
+        timeScaleWidth: scaleWidth,
         timeZone: display.timeZone,
         locale: display.locale,
         ...(storeSnapshot.session.project === undefined

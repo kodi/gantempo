@@ -240,7 +240,7 @@ function tickSignature(options: BuildChartSceneOptions): string {
     options.timeZone,
     options.locale,
     options.timeScaleLevel,
-    options.timeScaleWidth,
+    options.timeScaleLevel === undefined ? undefined : options.timeScaleWidth,
     options.direction,
   ]);
 }
@@ -799,7 +799,7 @@ function buildDependencyPrimitives(
           to,
           type: dependency.type,
         },
-        { bottom, top },
+        { bottom, top, width: options.timeScaleWidth ?? 960 },
       );
       if (route === undefined) return;
       pathById.set(
@@ -1341,6 +1341,7 @@ export function createChartScenePipeline(): ChartScenePipeline {
         occurrences !== cache.occurrences ||
         rangeChanged ||
         options.direction !== cache.options.direction ||
+        options.timeScaleWidth !== cache.options.timeScaleWidth ||
         viewportKey !== viewportSignature(cache.options, layoutStage.layout.totalHeight);
       const dependencyPrimitives = shouldBuildDependencyPrimitives
         ? buildDependencyPrimitives(

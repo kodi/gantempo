@@ -70,6 +70,26 @@ describe('routeDependency', () => {
     ]);
   });
 
+  it('keeps inter-row clearance in pixels and clips its vertical legs continuously', () => {
+    const route = routeDependency(
+      {
+        dependencyId: 'narrow-earlier-target',
+        from,
+        rank: 0,
+        to: { ...to, endX: 0.4, startX: 0.2 },
+        type: 'finish-to-start',
+      },
+      { bottom: 65, top: 35, width: 400 },
+    );
+
+    expect(route).toMatchObject({ clippedEnd: true, clippedStart: true });
+    expect(route?.points.map((current) => current.y)).toEqual([35, 50, 50, 65]);
+    expect(route?.points[0]?.x).toBeCloseTo(0.33);
+    expect(route?.points[1]?.x).toBeCloseTo(0.33);
+    expect(route?.points[2]?.x).toBeCloseTo(0.17);
+    expect(route?.points[3]?.x).toBeCloseTo(0.17);
+  });
+
   it('omits a route that does not intersect the viewport', () => {
     expect(
       routeDependency(

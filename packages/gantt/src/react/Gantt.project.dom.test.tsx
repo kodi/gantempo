@@ -145,7 +145,7 @@ describe('Gantt project tree integration', () => {
     );
     expect(relationship?.querySelector('.gt-gantt__dependency-path')?.tagName).toBe('path');
     expect(relationship?.querySelector('.gt-gantt__dependency-path')?.getAttribute('d')).toMatch(
-      /^M .+ L .+/,
+      /^M .+ [HV] .+/,
     );
     expect(mounted.getByLabelText('Dependencies').textContent).toContain(
       'Implementation to Launch, finish to start',
