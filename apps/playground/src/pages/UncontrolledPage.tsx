@@ -14,6 +14,12 @@ import {
 } from '@gantempo/gantt';
 import { useMemo, useRef, useState, type ReactElement } from 'react';
 import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
+import {
+  chartFrameBaseClasses,
+  chartFrameElevatedClasses,
+  chartFrameThemeClasses,
+  chartFrameToolbarClasses,
+} from '../chart-frame';
 
 const DAY = 24 * 60 * 60 * 1000;
 const START = Date.UTC(2026, 6, 29);
@@ -488,8 +494,11 @@ export function UncontrolledPage(): ReactElement {
         </output>
       </section>
 
-      <div className="chart-frame chart-frame--main chart-frame--interactive">
-        <div className="chart-frame__toolbar">
+      <div
+        className={`${chartFrameBaseClasses} ${chartFrameElevatedClasses} ${chartFrameThemeClasses.light}`}
+        data-theme="light"
+      >
+        <div className={`${chartFrameToolbarClasses} min-h-[70px]`}>
           <div>
             <strong>Runtime-owned resource plan</strong>
             <span>Async policy · app-mapped resource reassignment</span>
@@ -528,6 +537,7 @@ export function UncontrolledPage(): ReactElement {
           ]}
           defaultDocument={INITIAL_DOCUMENT}
           defaultSession={DEFAULT_SESSION}
+          density="touch"
           features={{ contextMenu: true, properties: true, tooltip: true }}
           interactionMappers={interactionMappers}
           interactionSnap={{ anchor: START, step: DAY }}
@@ -573,6 +583,7 @@ export function UncontrolledPage(): ReactElement {
           tickAnchor={START}
           tickInterval={7 * DAY}
           timeZone="Europe/Belgrade"
+          theme="light"
           view={{ kind: 'resource' }}
         />
       </div>

@@ -27,6 +27,12 @@ import {
 } from 'react';
 
 import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
+import {
+  chartFrameBaseClasses,
+  chartFrameElevatedClasses,
+  chartFrameThemeClasses,
+  chartFrameToolbarClasses,
+} from '../chart-frame';
 
 const DAY = 24 * 60 * 60 * 1000;
 const RANGE_START = Date.UTC(2026, 6, 29);
@@ -794,8 +800,11 @@ export function InteractiveCustomPage(): ReactElement {
         </output>
       </section>
 
-      <div className="chart-frame chart-frame--main chart-frame--interactive">
-        <div className="chart-frame__toolbar">
+      <div
+        className={`${chartFrameBaseClasses} ${chartFrameElevatedClasses} ${chartFrameThemeClasses.light}`}
+        data-theme="light"
+      >
+        <div className={`${chartFrameToolbarClasses} min-h-[70px]`}>
           <div>
             <strong>Custom integration plan</strong>
             <span>Controlled document · Europe/Belgrade</span>
@@ -808,7 +817,6 @@ export function InteractiveCustomPage(): ReactElement {
 
         <Gantt
           appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
-          className="chart-frame__chart"
           classNames={{
             contextMenu: 'interactive-surface-menu',
             laneHeader: 'interactive-column-cell',
@@ -837,6 +845,7 @@ export function InteractiveCustomPage(): ReactElement {
               label: 'Mark as focus',
             },
           ]}
+          density="touch"
           document={state.document}
           features={{ contextMenu: true, tooltip: true }}
           interactionMappers={interactionMappers}
@@ -863,6 +872,7 @@ export function InteractiveCustomPage(): ReactElement {
           tickAnchor={RANGE_START}
           tickInterval={7 * DAY}
           timeZone="Europe/Belgrade"
+          theme="light"
         />
       </div>
 

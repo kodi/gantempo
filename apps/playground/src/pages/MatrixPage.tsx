@@ -9,11 +9,13 @@ function MatrixScenarioCard({ scenario }: { readonly scenario: MatrixScenario })
   const codeId = `matrix-source-${scenario.id}`;
 
   return (
-    <article className="scenario-card">
-      <header className="scenario-card__header">
+    <article className="min-w-0 rounded-[18px] border border-ink/10 bg-white/50 p-4 shadow-[0_10px_30px_rgb(56_57_47/4%)]">
+      <header className="flex min-h-[62px] items-start justify-between gap-5 px-[3px] pt-0.5 pb-[13px]">
         <div>
-          <h2>{scenario.title}</h2>
-          <p>{scenario.description}</p>
+          <h2 className="m-0 text-[15px] text-[#263142]">{scenario.title}</h2>
+          <p className="mt-[5px] mb-0 text-xs leading-[1.4] text-[#7a818c]">
+            {scenario.description}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="rounded-md bg-[#e9e7e1] px-[7px] py-[5px] text-[10px] font-bold text-[#687181]">
@@ -65,12 +67,12 @@ export function MatrixPage(): ReactElement {
             choices; its document and range are assumed to already exist.
           </p>
         </div>
-        <div className="scenario-count flex shrink-0 gap-2 rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px] text-xs text-[#69717e]">
+        <div className="flex shrink-0 gap-2 rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px] text-xs text-[#69717e]">
           {matrixScenarios.length} scenarios
         </div>
       </header>
 
-      <div className="scenario-matrix items-start">
+      <div className="grid grid-cols-2 items-start gap-[22px] max-[900px]:grid-cols-1">
         {matrixScenarios.map((scenario) => (
           <MatrixScenarioCard key={scenario.id} scenario={scenario} />
         ))}

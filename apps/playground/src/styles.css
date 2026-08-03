@@ -267,10 +267,6 @@
   line-height: 1.55;
 }
 
-.chart-frame--interactive .chart-frame__toolbar {
-  min-height: 70px;
-}
-
 .interactive-chart-count {
   display: flex;
   align-items: baseline;
@@ -837,211 +833,6 @@
   outline-offset: 2px;
 }
 
-.scenario-matrix {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-}
-
-.scenario-card {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid rgb(36 48 68 / 10%);
-  border-radius: 18px;
-  background: rgb(255 255 255 / 50%);
-  box-shadow: 0 10px 30px rgb(56 57 47 / 4%);
-}
-
-.scenario-card__header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  min-height: 62px;
-  gap: 20px;
-  padding: 2px 3px 13px;
-}
-
-.scenario-card h2 {
-  color: #263142;
-  font-size: 15px;
-}
-
-.scenario-card p {
-  margin: 5px 0 0;
-  color: #7a818c;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.scenario-card__header > span {
-  flex-shrink: 0;
-  padding: 5px 7px;
-  border-radius: 6px;
-  color: #687181;
-  background: #e9e7e1;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.chart-frame {
-  --gt-color-surface: #fbfcfa;
-  --gt-color-surface-muted: #fbfcfa;
-  --gt-color-border: #dfe4df;
-  --gt-color-grid: #e9ede9;
-  --gt-color-text: #26352f;
-  --gt-color-text-muted: #69736c;
-  --gt-color-task: #27806a;
-  --gt-color-task-text: #fff;
-  --gt-color-empty: #778078;
-  --gt-header-height: 40px;
-  --gt-row-height: 58px;
-  --gt-task-neutral: #dde3e4;
-  --gt-task-success: #bfe6c4;
-  --gt-task-warning: #f0d7a5;
-  --gt-task-muted-text: #18352f;
-  overflow: hidden;
-  border: 1px solid var(--gt-color-border);
-  border-radius: 15px;
-  color: var(--gt-color-text);
-  background: var(--gt-color-surface);
-  box-shadow:
-    0 1px 2px rgb(38 48 42 / 4%),
-    0 20px 55px rgb(38 48 42 / 8%);
-}
-
-.chart-frame .gt-gantt {
-  --gt-color-surface: inherit;
-  --gt-color-surface-muted: inherit;
-  --gt-color-border: inherit;
-  --gt-color-grid: inherit;
-  --gt-color-text: inherit;
-  --gt-color-text-muted: inherit;
-  --gt-color-task: inherit;
-  --gt-color-task-text: inherit;
-  --gt-color-empty: inherit;
-  --gt-header-height: inherit;
-  --gt-row-height: inherit;
-}
-
-.chart-frame[data-theme='dark'] {
-  --gt-color-surface: #18211f;
-  --gt-color-surface-muted: #18211f;
-  --gt-color-border: #34423e;
-  --gt-color-grid: #2a3733;
-  --gt-color-text: #edf3f0;
-  --gt-color-text-muted: #99a7a2;
-  --gt-color-task: #79cdb5;
-  --gt-color-task-text: #11251f;
-  --gt-color-empty: #99a7a2;
-  --gt-task-neutral: #465451;
-  --gt-task-success: #346d50;
-  --gt-task-warning: #735e35;
-  --gt-task-muted-text: #edf3f0;
-}
-
-.chart-frame[data-theme='high-contrast'] {
-  --gt-color-surface: #fff;
-  --gt-color-surface-muted: #fff;
-  --gt-color-border: #111;
-  --gt-color-grid: #444;
-  --gt-color-text: #000;
-  --gt-color-text-muted: #111;
-  --gt-color-task: #005fcc;
-  --gt-color-task-text: #fff;
-  --gt-color-empty: #111;
-  --gt-task-neutral: #ddd;
-  --gt-task-success: #48a867;
-  --gt-task-warning: #ffe100;
-  --gt-task-muted-text: #000;
-  border-width: 2px;
-}
-
-.chart-frame__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 66px;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--gt-color-border);
-}
-
-.chart-frame__toolbar > div:first-child {
-  display: grid;
-  gap: 3px;
-}
-
-.chart-frame__toolbar strong {
-  font-size: 13px;
-}
-
-.chart-frame__toolbar span {
-  color: var(--gt-color-text-muted);
-  font-size: 10px;
-}
-
-.chart-frame__actions {
-  display: flex;
-  gap: 5px;
-}
-
-.chart-frame__actions button {
-  min-height: 29px;
-  padding: 0 9px;
-  border: 1px solid var(--gt-color-border);
-  border-radius: 7px;
-  color: var(--gt-color-text);
-  background: transparent;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.chart-frame__actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
-}
-
-.chart-frame--main .chart-frame__toolbar {
-  min-height: 76px;
-}
-
-.chart-frame--main,
-.chart-frame--navigation {
-  --gt-row-height: 74px;
-}
-
-.chart-frame--navigation .chart-frame__toolbar {
-  min-height: 70px;
-}
-
-.chart-frame--navigation {
-  --gt-row-height: 58px;
-}
-
-.chart-frame--matrix {
-  --gt-header-height: 34px;
-  --gt-row-height: 48px;
-  border-radius: 11px;
-  box-shadow: none;
-}
-
-.chart-frame--matrix .chart-frame__toolbar {
-  min-height: 55px;
-  padding: 0 14px;
-}
-
-.chart-frame--matrix .gt-gantt__lane-header {
-  padding-inline: 9px;
-  font-size: 9px;
-}
-
-.chart-frame--matrix .gt-gantt__task-label {
-  font-size: 8px;
-}
-
-.chart-frame--compact {
-  --gt-row-height: 38px;
-}
-
 .page--project {
   gap: 24px;
 }
@@ -1108,10 +899,6 @@
   color: #9a3412;
 }
 
-.chart-frame--project {
-  --gt-row-height: 54px;
-}
-
 .project-status {
   display: flex;
   align-items: baseline;
@@ -1129,10 +916,6 @@
 }
 
 @media (max-width: 900px) {
-  .scenario-matrix {
-    grid-template-columns: 1fr;
-  }
-
   .interactive-controls {
     align-items: stretch;
     flex-direction: column;
@@ -1234,8 +1017,7 @@
     flex: 1 0 auto;
   }
 
-  .project-status,
-  .project-chart__toolbar {
+  .project-status {
     align-items: stretch;
     flex-direction: column;
   }

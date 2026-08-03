@@ -248,10 +248,12 @@ The package stays framework-neutral. Slice 1 is complete: the Tailwind foundatio
 simple API example now use direct utilities with live desktop and narrow proof. Slice
 1.1 is also complete with independent presentation recipes for every matrix scenario.
 Slice 2 shared chrome is complete and verified through DOM, production build, emitted
-CSS, full CI, and live 1440x1000 plus 560x900 inspection. Slice 3 is next for the
-shared chart-frame and matrix boundary; it consumes the completed public theme/density
-correction instead of rebuilding package themes in application utilities. The
-remaining routes follow in bounded visual slices.
+ CSS, full CI, and live 1440x1000 plus 560x900 inspection. Slice 3 is complete: typed
+ Tailwind maps own playground wrapper chrome, toolbars, sizing, and the matrix surface,
+ while the package's public theme and density props own built-in themes and renderer
+ metrics. Matrix package-part styling uses public typed hooks and all superseded
+ shared/private selectors are gone. Slice 4 is next for navigation and project
+ consumers; the remaining routes follow in bounded visual slices.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
@@ -949,6 +951,16 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Completed Slice 3 of the playground Tailwind migration. Typed static
+  utility maps now own shared chart semantic tokens, themes, size/density metrics,
+  toolbar/actions, and package-root inheritance; matrix cards and recipes use direct
+  utilities and public typed package-part hooks. The shared and private matrix
+  selectors are removed. Focused tests, `vp check`, the production build, emitted-
+  utility inspection, `git diff --check`, and full CI pass with 102 test files / 523
+  tests and a 214-file package build. Chrome at 1440x1000 and 560x900 confirms theme
+  isolation, 38px/48px density, public-hook typography, disclosure accessibility,
+  responsive columns, zero page overflow, and no console warnings or errors.
 
 - 2026-08-03: Completed the obstacle-aware dependency connector correction. Earlier-
   target and overlapping links now route through the real inter-row gutter with

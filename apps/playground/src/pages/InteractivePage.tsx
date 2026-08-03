@@ -17,6 +17,12 @@ import { useMemo, useReducer, useRef, type ReactElement } from 'react';
 import { ExampleApiLog } from '../ExampleApiLog';
 import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
 import {
+  chartFrameBaseClasses,
+  chartFrameElevatedClasses,
+  chartFrameThemeClasses,
+  chartFrameToolbarClasses,
+} from '../chart-frame';
+import {
   appendExampleApiWrite,
   createExampleApiWrite,
   type ExampleApiWrite,
@@ -418,8 +424,11 @@ export function InteractivePage(): ReactElement {
         </output>
       </section>
 
-      <div className="chart-frame chart-frame--main chart-frame--interactive">
-        <div className="chart-frame__toolbar">
+      <div
+        className={`${chartFrameBaseClasses} ${chartFrameElevatedClasses} ${chartFrameThemeClasses.light}`}
+        data-theme="light"
+      >
+        <div className={`${chartFrameToolbarClasses} min-h-[70px]`}>
           <div>
             <strong>Interactive delivery plan</strong>
             <span>Parsed API input · Europe/Belgrade</span>
@@ -432,7 +441,6 @@ export function InteractivePage(): ReactElement {
 
         <Gantt
           appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
-          className="chart-frame__chart"
           classNames={{
             contextMenu: 'interactive-surface-menu',
             editor: 'interactive-surface-editor',
@@ -462,6 +470,7 @@ export function InteractivePage(): ReactElement {
               label: 'Mark as focus',
             },
           ]}
+          density="touch"
           document={state.document}
           features={{ contextMenu: true, properties: true, tooltip: true }}
           interactionMappers={interactionMappers}
@@ -483,6 +492,7 @@ export function InteractivePage(): ReactElement {
           tickAnchor={RANGE_START}
           tickInterval={7 * DAY}
           timeZone="Europe/Belgrade"
+          theme="light"
         />
       </div>
 

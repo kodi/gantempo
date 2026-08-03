@@ -138,7 +138,7 @@ describe('navigation playground consumer', () => {
     expect(visibleRange.textContent).not.toBe(before);
     expect(
       mounted.container
-        .querySelector('.chart-frame--navigation')
+        .querySelector('[data-scenario-size="navigation"]')
         ?.getAttribute('data-visible-range-start'),
     ).toBe(String(NAVIGATION_INITIAL_RANGE.start + 0.9 * 12 * 7 * DAY));
   });
@@ -151,7 +151,7 @@ describe('navigation playground consumer', () => {
       </>,
     );
     const charts = screen.getAllByRole('region', { name: 'Website launch plan chart' });
-    const frames = mounted.container.querySelectorAll('.chart-frame--main');
+    const frames = mounted.container.querySelectorAll('[data-scenario-size="main"]');
     installGeometry(charts[0]!);
     installGeometry(charts[1]!);
 

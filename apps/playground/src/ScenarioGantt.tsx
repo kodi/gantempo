@@ -1,7 +1,28 @@
 import { Gantt, type GanttDocumentChange } from '@gantempo/gantt';
 import { useState, type ReactElement } from 'react';
 
+import {
+  chartFrameActionsClasses,
+  chartFrameBaseClasses,
+  chartFrameElevatedClasses,
+  chartFrameThemeClasses,
+  chartFrameToolbarClasses,
+} from './chart-frame';
 import type { PlaygroundScenario, ScenarioTheme } from './scenarios';
+
+type ScenarioSize = ScenarioGanttProps['size'];
+
+const frameSizeClasses: Readonly<Record<ScenarioSize, string>> = Object.freeze({
+  main: chartFrameElevatedClasses,
+  matrix: 'rounded-[11px] shadow-none',
+  navigation: chartFrameElevatedClasses,
+});
+
+const toolbarSizeClasses: Readonly<Record<ScenarioSize, string>> = Object.freeze({
+  main: 'min-h-[76px]',
+  matrix: 'min-h-[55px] px-3.5',
+  navigation: 'min-h-[70px]',
+});
 
 interface ScenarioGanttProps {
   readonly editable?: boolean;
@@ -30,23 +51,23 @@ export function ScenarioGantt({
 }: ScenarioGanttProps): ReactElement {
   const [document, setDocument] = useState(scenario.document);
   const [range, setRange] = useState(scenario.range);
-  const classes = ['chart-frame', `chart-frame--${size}`, `chart-frame--${scenario.density}`].join(
-    ' ',
-  );
+  const chromeTheme = theme ?? scenario.theme;
+  const classes = `${chartFrameBaseClasses} ${chartFrameThemeClasses[chromeTheme]} ${frameSizeClasses[size]}`;
 
   return (
     <div
       className={classes}
-      data-theme={theme}
+      data-scenario-size={size}
+      data-theme={chromeTheme}
       data-visible-range-end={range.end}
       data-visible-range-start={range.start}
     >
-      <div className="chart-frame__toolbar">
+      <div className={`${chartFrameToolbarClasses} ${toolbarSizeClasses[size]}`}>
         <div>
           <strong>{scenario.title}</strong>
           <span>{formatRange(range, scenario.timeZone)}</span>
         </div>
-        <div aria-label="Playground view options" className="chart-frame__actions">
+        <div aria-label="Playground view options" className={chartFrameActionsClasses}>
           <button disabled title="Today jump is not implemented yet" type="button">
             Today
           </button>
@@ -62,7 +83,14 @@ export function ScenarioGantt({
       </div>
 
       <Gantt
-        className="chart-frame__chart"
+        {...(size === 'matrix'
+          ? {
+              classNames: {
+                laneHeader: 'px-[9px]! text-[9px]!',
+                taskContent: 'text-[8px]!',
+              },
+            }
+          : {})}
         density={scenario.density}
         document={document}
         {...(size === 'main' ? { features: { properties: true } } : {})}

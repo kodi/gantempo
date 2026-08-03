@@ -12,6 +12,13 @@ import {
 import { useMemo, useRef, useState, type ReactElement } from 'react';
 
 import {
+  chartFrameActionsClasses,
+  chartFrameBaseClasses,
+  chartFrameElevatedClasses,
+  chartFrameThemeClasses,
+  chartFrameToolbarClasses,
+} from '../chart-frame';
+import {
   createProjectDocument,
   PROJECT_APPEARANCE_VARIANTS,
   PROJECT_RANGE,
@@ -109,6 +116,7 @@ function ProjectChart({
   const common = {
     appearanceVariants: PROJECT_APPEARANCE_VARIANTS,
     className: 'project-chart__gantt',
+    density: 'comfortable' as const,
     direction,
     features: { contextMenu: true, properties: true, tooltip: true },
     interactionSnap: { anchor: PROJECT_RANGE.start, step: 24 * 60 * 60 * 1_000 },
@@ -120,6 +128,7 @@ function ProjectChart({
     ref: gantt,
     timeScale: { kind: 'adaptive' as const, maxLevel: 'month' as const, minLevel: 'day' as const },
     timeZone: 'Europe/Belgrade',
+    theme: 'light' as const,
     view,
   };
   const chart =
@@ -153,15 +162,20 @@ function ProjectChart({
     );
 
   return (
-    <div className="chart-frame chart-frame--project" data-theme="light">
-      <div className="chart-frame__toolbar project-chart__toolbar">
+    <div
+      className={`${chartFrameBaseClasses} ${chartFrameElevatedClasses} ${chartFrameThemeClasses.light}`}
+      data-theme="light"
+    >
+      <div
+        className={`${chartFrameToolbarClasses} min-h-[66px] max-[561px]:items-stretch max-[561px]:flex-col`}
+      >
         <div>
           <strong>{ownership === 'read-only' ? 'Read-only project' : 'Editable project'}</strong>
           <span>
             {ownership} document · {ownership === 'controlled' ? 'controlled' : 'runtime'} range
           </span>
         </div>
-        <div aria-label="Project chart commands" className="chart-frame__actions">
+        <div aria-label="Project chart commands" className={chartFrameActionsClasses}>
           <button onClick={() => gantt.current?.fitToProject()} type="button">
             Fit
           </button>

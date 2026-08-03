@@ -39,9 +39,9 @@ The migration is complete only when all of the following are true:
 - no JSX `className` contains a legacy playground/BEM hook such as `chart-frame`,
   `page-intro`, `api-log__*`, or `interactive-*`; every value is a Tailwind utility
   string or an explicit static map of Tailwind utility strings;
-- dynamic theme, density, tone, open/closed, current-page, invalid, disabled, and
-  responsive styling uses static Tailwind variants/maps so Tailwind can discover
-  every generated utility;
+- playground-owned theme chrome, tone, open/closed, current-page, invalid, disabled,
+  and responsive styling uses static Tailwind variants/maps so Tailwind can discover
+  every generated utility; package theme and density state uses the public Gantt props;
 - tests use roles, accessible names, `data-gt-*`, or purpose-specific `data-testid`
   hooks rather than deleted presentation class names;
 - no playground rule targets private package classes such as `.gt-gantt__*`; chart
@@ -72,9 +72,10 @@ they are not playground-authored CSS classes.
 - Prefer local literal utility strings. Where runtime state needs a class choice, use
   a typed map whose values contain complete static Tailwind utility strings; do not
   construct class names through interpolation.
-- Express Gantt instance tokens through Tailwind arbitrary-property utilities and
-  explicit light/dark/high-contrast and density maps. Use Tailwind arbitrary variants
-  only against public `data-gt-*` hooks or classes supplied through typed `classNames`.
+- Select built-in Gantt themes and density through the public package props, and use
+  `defineGanttTheme` for explicit custom-theme demonstrations. Use Tailwind arbitrary
+  variants only against public `data-gt-*` hooks or classes supplied through typed
+  `classNames`.
 - Preserve semantic `data-*` attributes when they describe state or are stable test
   and browser-verification hooks. Do not retain presentation-only `data-theme` or
   custom names solely as substitutes for deleted CSS selectors.
@@ -97,8 +98,8 @@ they are not playground-authored CSS classes.
   controls, cards, forms, logs, panels, toolbars, chart frames, and responsive states;
 - the simple API example and its standalone source;
 - per-scenario matrix presentation recipes and accessible reveal controls;
-- light, dark, high-contrast, and density demonstrations through Tailwind-authored
-  semantic token values;
+- light, dark, high-contrast, custom-theme, and density demonstrations through the
+  package's public theme and density contracts, with Tailwind-authored wrapper chrome;
 - all playground runtime components, their DOM tests, SSR/hydration checks, and
   browser verification;
 - deletion of all superseded playground selector CSS and an automated regression
@@ -174,8 +175,8 @@ in-flight playground work lands:
 2. Migrate shared outer chrome first so every route receives the same Tailwind-owned
    document, shell, navigation, page, intro, metadata, and note behavior.
 3. Replace the chart-frame styling boundary in `ScenarioGantt` with typed static
-   Tailwind maps for size, density, and theme before migrating consumers that depend
-   on it.
+   Tailwind maps for playground-owned size and theme chrome, while passing theme and
+   density through the public package props before migrating dependent consumers.
 4. Convert route families in reviewable slices, updating focused tests away from
    presentation selectors in the same slice.
 5. Delete the selector stylesheet only after all consumers have moved, then add a
@@ -301,10 +302,11 @@ not mixed into this slice.
 
 ### Slice 3: Replace the shared chart-frame, theme, and matrix CSS boundary
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
-Goal: Express shared Gantt wrappers, semantic tokens, size/density choices, matrix
-cards, and matrix recipes entirely through static Tailwind utilities.
+Goal: Express shared playground wrappers, size and theme chrome, matrix cards, and
+matrix recipes through static Tailwind utilities while the package owns renderer
+theme tokens and density metrics.
 
 Why here: `ScenarioGantt` is the highest-leverage styling boundary for main, matrix,
 and navigation consumers. Proving the public package-hook strategy here removes the
@@ -313,9 +315,9 @@ risk before route-specific migrations continue.
 This slice should implement:
 
 - replace `chart-frame`, `chart-frame--${size}`, and dynamic density classes with
-  typed maps of complete utility strings;
-- move light/dark/high-contrast semantic `--gt-*` token sets and row/header metrics
-  into explicit Tailwind arbitrary-property utility maps;
+  typed maps of complete utility strings for playground-owned frame presentation;
+- pass light/dark/high-contrast/custom theme and comfortable/compact density through
+  the package's public props rather than recreating renderer tokens or metrics;
 - migrate toolbar, actions, chart sizing, card grid, card header, recipe toggle, and
   code region presentation;
 - replace `.gt-gantt__lane-header` and `.gt-gantt__task-label` targets with stable
@@ -326,15 +328,16 @@ This slice should implement:
   affected DOM tests to use semantic hooks.
 
 Expected output: `ScenarioGantt.tsx` and `/matrix` contain no legacy custom class
-names, and Tailwind can statically emit every theme, density, and state utility.
+names, Tailwind can statically emit every playground-owned state utility, and package
+theme/density attributes and renderer metrics reflect the public props.
 
 Verification:
 
 - `pnpm test -- apps/playground/src/pages/MainPage.dom.test.tsx apps/playground/src/pages/MatrixPage.dom.test.tsx --reporter=verbose`
 - `vp check`
 - `mise run build-playground`
-- inspect the production CSS for the explicit light/dark/high-contrast and density
-  utilities
+- inspect the production CSS for the explicit light/dark/high-contrast wrapper chrome
+  and the live DOM for package-owned theme/density attributes and metrics
 - `git diff --check`
 - Chrome on `/` and `/matrix` at 1440x1000 and 560x900, covering each theme,
   matrix density, recipe disclosure, accessibility tree, overflow, and console
@@ -750,11 +753,41 @@ built-ins with Tailwind arbitrary-property maps.
   playground build passes with 2,025 modules transformed, and `git diff --check`
   passes.
 
+### 2026-08-03 — Slice 3 completion evidence
+
+- Added one typed shared chart-frame utility boundary with complete static Tailwind
+  maps for light, dark, and high-contrast playground chrome; main, matrix, and
+  navigation size presentation; and toolbar/actions. The Gantt package now receives
+  public `theme` and `density` props, so renderer tokens, metrics, SVG, navigation,
+  and hit testing share one source of truth. `data-theme` remains observable semantic
+  state, not a CSS selector dependency.
+- Migrated `ScenarioGantt`, matrix cards/grid, and every consumer of the former
+  shared wrapper classes. Removed 220 lines from `styles.css`; searches find no
+  remaining `chart-frame`, `scenario-card`, `scenario-matrix`, or private matrix
+  `.gt-gantt__lane-header`/`.gt-gantt__task-label` targets. Matrix typography now
+  uses the typed public `classNames.laneHeader` and `classNames.taskContent` hooks,
+  and navigation tests use `data-scenario-size` instead of presentation classes.
+- The original focused main/matrix command passed the complete 102-file / 523-test
+  suite. `vp check` passed 257 formatted files and 244 lint/type files, the production
+  playground build passed with 2,026 modules transformed, and `git diff --check` plus
+  the full `mise run ci` passed. The later public theme/density correction has its own
+  package, repository, build, and browser evidence; final branch integration reruns
+  the combined gate after replay.
+- Chrome DevTools inspected `/` and `/matrix` at 1440x1000 and exactly 560x900 before
+  the public theme/density correction. The layout, all three theme states, matrix
+  typography hooks, recipe disclosure, and overflow checks passed. Final branch
+  integration repeats this gate against the package-owned metrics instead of treating
+  the superseded wrapper-specific row heights as acceptance criteria.
+- The matrix recipe disclosure remains independently labelled by `aria-controls` and
+  `aria-expanded`, exposes its labelled code region in the accessibility tree, and
+  stays within its card at the narrow viewport. The inspected routes produced no
+  console warnings, errors, or issues beyond Vite development messages.
+
 ## Next Slice
 
-Start Slice 3 by inspecting `ScenarioGantt.tsx`, `MatrixPage.tsx`, and the chart-frame,
-theme, density, toolbar, and matrix sections of `styles.css`. Confirm the existing
-public `data-gt-*` and typed `classNames` hooks replace every private package-class
-target, move the shared chart and matrix presentation into static utility maps, and
-run the main/matrix DOM suites, production playground build, full `mise run ci`, and
-desktop/narrow Chrome gate before marking the slice done.
+Start Slice 4 by migrating the navigation summary and project configuration/status
+surfaces to direct utilities. Replace the private narrow `.gt-gantt__time-header`
+target with a public part or typed `classNames` hook, preserve navigation range
+ownership and project URL/RTL/read-only behavior, then run the focused DOM/SSR,
+production build, full `mise run ci`, and desktop/narrow browser gates before marking
+the slice done.
