@@ -7,6 +7,7 @@ import type {
 } from '@gantempo/gantt';
 
 import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
+import { MATRIX_RECIPE_SOURCES } from '../matrix-recipes';
 
 export type ScenarioTheme = 'dark' | 'high-contrast' | 'light';
 export type ScenarioDensity = 'comfortable' | 'compact';
@@ -26,6 +27,10 @@ export interface PlaygroundScenario {
   readonly tickInterval: number;
   readonly timeZone: string;
   readonly taskVariants: Readonly<Record<EntityId, ScenarioTaskTone>>;
+}
+
+export interface MatrixScenario extends PlaygroundScenario {
+  readonly source: string;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -286,13 +291,14 @@ export const mainScenario: PlaygroundScenario = {
   taskVariants: {},
 };
 
-export const matrixScenarios: readonly PlaygroundScenario[] = [
+export const matrixScenarios: readonly MatrixScenario[] = [
   {
     ...mainScenario,
     id: 'compact-project',
     title: 'Flat project view',
     description: 'One task-backed lane per canonical task in compact density.',
     density: 'compact',
+    source: MATRIX_RECIPE_SOURCES.compactProject,
     view: { kind: 'project' },
   },
   {
@@ -301,6 +307,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     title: 'Custom phase grouping',
     description: 'Application-defined data-only lanes on dark theme tokens.',
     theme: 'dark',
+    source: MATRIX_RECIPE_SOURCES.customPhase,
     view: customPhaseView,
   },
   {
@@ -312,6 +319,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     theme: 'light',
     density: 'comfortable',
     document: resourceDocument,
+    source: MATRIX_RECIPE_SOURCES.resourceOverlap,
     view: { kind: 'resource' },
     taskVariants: {
       'alex-a': 'accent',
@@ -329,6 +337,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
     theme: 'high-contrast',
     density: 'comfortable',
     document: segmentDocument,
+    source: MATRIX_RECIPE_SOURCES.explicitSegments,
     view: segmentView,
     taskVariants: {
       campaign: 'accent',
@@ -350,6 +359,7 @@ export const matrixScenarios: readonly PlaygroundScenario[] = [
       placements: [],
       tasks: [],
     },
+    source: MATRIX_RECIPE_SOURCES.emptyState,
     taskVariants: {},
   },
 ];
