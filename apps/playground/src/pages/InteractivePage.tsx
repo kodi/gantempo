@@ -23,6 +23,15 @@ import {
   chartFrameToolbarClasses,
 } from '../chart-frame';
 import {
+  interactiveChartCountClasses,
+  interactiveColumnCellClasses,
+  interactiveControlButtonsClasses,
+  interactiveControlSeparatorClasses,
+  interactiveControlsClasses,
+  interactiveControlStatusClasses,
+  interactiveSurfaceClasses,
+} from '../interactive-presentation';
+import {
   appendExampleApiWrite,
   createExampleApiWrite,
   type ExampleApiWrite,
@@ -109,19 +118,21 @@ function loadApiDocument(): GanttDocument {
 
 function InteractiveTaskContent({ pending, task }: GanttTaskContentProps): ReactElement {
   return (
-    <span className="interactive-task-content">
-      <i aria-hidden="true" />
-      <span>{task.title}</span>
-      {pending ? <small>saving</small> : null}
+    <span className="flex min-w-0 items-center gap-1.5">
+      <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current opacity-55" />
+      <span className="truncate">{task.title}</span>
+      {pending ? (
+        <small className="ml-auto text-[7px] font-[850] tracking-[0.04em] uppercase">saving</small>
+      ) : null}
     </span>
   );
 }
 
 function InteractiveLaneHeader({ lane }: GanttLaneHeaderProps): ReactElement {
   return (
-    <span className="interactive-lane-header">
-      <i aria-hidden="true" />
-      <span>{lane.title}</span>
+    <span className="flex w-full min-w-0 items-center gap-1.5">
+      <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current opacity-55" />
+      <span className="truncate">{lane.title}</span>
     </span>
   );
 }
@@ -309,7 +320,7 @@ export function InteractivePage(): ReactElement {
   };
 
   return (
-    <div className="page--interactive mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
+    <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
       <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
@@ -334,8 +345,8 @@ export function InteractivePage(): ReactElement {
         </div>
       </header>
 
-      <section aria-label="Interactive chart controls" className="interactive-controls">
-        <div className="interactive-controls__buttons">
+      <section aria-label="Interactive chart controls" className={interactiveControlsClasses}>
+        <div className={interactiveControlButtonsClasses}>
           <button
             onClick={() =>
               dispatchToolbar({
@@ -386,7 +397,7 @@ export function InteractivePage(): ReactElement {
           >
             Clear
           </button>
-          <span aria-hidden="true" className="interactive-controls__separator" />
+          <span aria-hidden="true" className={interactiveControlSeparatorClasses} />
           <button
             disabled={!state.canUndo}
             onClick={() => void ganttRef.current?.undo()}
@@ -419,7 +430,7 @@ export function InteractivePage(): ReactElement {
             Focus last task
           </button>
         </div>
-        <output aria-live="polite" className="interactive-controls__status">
+        <output aria-live="polite" className={interactiveControlStatusClasses}>
           {state.status}
         </output>
       </section>
@@ -433,7 +444,7 @@ export function InteractivePage(): ReactElement {
             <strong>Interactive delivery plan</strong>
             <span>Parsed API input · Europe/Belgrade</span>
           </div>
-          <div className="interactive-chart-count">
+          <div className={interactiveChartCountClasses}>
             <strong>{state.document.tasks.length}</strong>
             <span>scheduled</span>
           </div>
@@ -442,11 +453,10 @@ export function InteractivePage(): ReactElement {
         <Gantt
           appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
           classNames={{
-            contextMenu: 'interactive-surface-menu',
-            editor: 'interactive-surface-editor',
-            laneHeader: 'interactive-column-cell',
-            taskContent: 'interactive-task-slot',
-            tooltip: 'interactive-surface-tooltip',
+            contextMenu: interactiveSurfaceClasses,
+            editor: interactiveSurfaceClasses,
+            laneHeader: interactiveColumnCellClasses,
+            tooltip: interactiveSurfaceClasses,
           }}
           columns={[
             { header: 'Phase', id: 'phase', width: 132 },
@@ -496,17 +506,23 @@ export function InteractivePage(): ReactElement {
         />
       </div>
 
-      <section aria-labelledby="api-log-title" className="api-log">
-        <div className="api-log__header">
+      <section
+        aria-labelledby="api-log-title"
+        className="mt-[18px] grid gap-[9px] rounded-[15px] border border-ink/10 bg-white/58 p-[18px]"
+      >
+        <div className="flex items-start justify-between gap-6 max-[900px]:items-stretch max-[900px]:flex-col max-[900px]:gap-3">
           <div>
-            <h2 id="api-log-title">Persistence boundary</h2>
-            <p>
+            <h2 className="m-0 text-sm text-[#263142]" id="api-log-title">
+              Persistence boundary
+            </h2>
+            <p className="mt-[5px] mb-0 max-w-[780px] text-[11px] leading-[1.5] text-[#737b87]">
               The newest ten accepted writes appear as concise row events. Expand any event for
               request metadata and raw JSON; internal proposals, pointer details, lifecycle phases,
               and patches stay out of this primary log.
             </p>
           </div>
           <button
+            className="min-h-8 flex-none rounded-lg border border-ink/14 bg-white px-[11px] text-[11px] font-[720] text-[#2d3a4b] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand/24 disabled:cursor-not-allowed disabled:opacity-48 max-[900px]:self-start"
             disabled={state.apiLog.length === 0}
             onClick={() => dispatch({ type: 'clear-log' })}
             type="button"

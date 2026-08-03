@@ -383,7 +383,7 @@ Dependencies: Slice 3.
 
 ### Slice 5: Migrate controlled/runtime-owned interaction chrome and API log
 
-Status: `[ ]` Not started
+Status: `[x]` Done
 
 Goal: Convert the shared interaction controls, chart toolbar content, slot content,
 and API event log used by the controlled and runtime-owned examples.
@@ -811,10 +811,38 @@ built-ins with Tailwind arbitrary-property maps.
   complete, both routes had zero page overflow, no console warnings/errors/issues,
   and no XHR or fetch requests.
 
+### 2026-08-03 — Slice 5 completion evidence
+
+- Added a static shared interaction-presentation utility boundary and migrated the
+  controlled, runtime-owned, and custom-route shared controls, button states,
+  separators, status outputs, chart counts, lane/task slot content, column cells,
+  overlay borders, and pending-task state. `/interactive` and `/uncontrolled` now
+  contain no legacy presentation hooks; the custom details form remains isolated for
+  Slice 6.
+- Rebuilt `ExampleApiLog` with direct utilities and complete static create/update/
+  delete tone maps. Empty state, retained-list scrolling, responsive summary rows,
+  hover/open styling, 90-degree chevron rotation, metadata cards, and raw JSON panel
+  no longer depend on stylesheet selectors. Tests identify operation IDs through
+  `data-api-log-part="operation"` rather than a presentation class.
+- Removed 500 interactive, runtime-owned, and API-log lines from `styles.css`.
+  Searches find no remaining corresponding selector or JSX hook. The focused
+  appendix/log command passed the complete 102-file / 523-test suite; `vp check`,
+  `git diff --check`, the 2,027-module production playground build, and full
+  `mise run ci` pass with 258 formatted files, 245 lint/type files, all 102 test files
+  / 523 tests, and the 214-file package build.
+- Chrome DevTools inspected `/interactive` and `/uncontrolled` at 1440x1000 and
+  exactly 560x900. Controlled mode exercised add, undo/remove, redo, keyboard
+  progress from 80% to 81%, properties edit to a new title and 82%, newest-first log
+  retention, disclosure metadata/raw JSON, open-state color, and chevron rotation.
+- Runtime-owned mode exercised create, toolbar edit, asynchronous rejection without
+  document mutation, undo, and redo. Both routes preserve accessible controls/status
+  regions, two-button narrow rows, hidden separators, 515px narrow charts, zero page
+  overflow, clean warning/error/issue consoles, and no XHR or fetch requests.
+
 ## Next Slice
 
-Start Slice 5 by migrating the shared interactive controls, controlled/runtime-owned
-chart content hooks, and `ExampleApiLog` presentation to direct utilities. Preserve
-command ownership, pending/selected state styling, API-log retention/disclosure, and
-all accessible names before running the focused interaction/log suites, production
-build, full `mise run ci`, and desktop/narrow browser gates.
+Start Slice 6 by migrating the application-owned custom details display and edit form
+to direct utilities. Preserve menu and keyboard entry, focus ownership, validation,
+Save/Cancel/Delete, Undo/Redo, and the intentional absence of an API/debug surface;
+then remove the remaining custom-details selectors and run the focused, production,
+full-CI, and desktop/narrow browser gates.

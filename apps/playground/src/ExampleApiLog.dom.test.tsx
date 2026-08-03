@@ -51,7 +51,7 @@ describe('ExampleApiLog', () => {
     ).not.toBeNull();
 
     const operations = Array.from(
-      mounted.container.querySelectorAll('.api-log-entry__operation'),
+      mounted.container.querySelectorAll('[data-api-log-part="operation"]'),
       (element) => element.textContent,
     );
     expect(operations).toEqual(['example-operation-002', 'example-operation-001']);

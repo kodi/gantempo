@@ -256,8 +256,11 @@ Slice 2 shared chrome is complete and verified through DOM, production build, em
  project surfaces use direct utilities, and the narrow time-header treatment now uses
  the public `data-gt-part` contract. Focused/full gates, SSR/hydration, controlled
  navigation, and live LTR/Arabic RTL/read-only desktop/narrow inspection pass. Slice 5
- is next for controlled/runtime-owned interaction chrome and the API log; the
- remaining routes follow in bounded visual slices.
+ is complete: shared interaction chrome, typed package slot presentation, controlled
+ and runtime-owned routes, and the reusable API log use static/direct utilities; 500
+superseded stylesheet lines are gone. Focused/full gates and live stateful desktop/
+ narrow interaction proof pass. Slice 6 is next for the application-owned custom
+ details form; the remaining cleanup follows in bounded slices.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 
@@ -955,6 +958,16 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Completed Slice 5 of the playground Tailwind migration. Shared
+  interaction controls and package slot hooks, controlled/runtime-owned routes, and
+  the full API log now use static/direct utilities; operation-order tests use a
+  semantic data part. Five hundred superseded stylesheet lines are gone. Focused
+  tests, production build, `git diff --check`, and full CI pass with 102 test files /
+  523 tests and a 214-file package build. Live desktop/narrow checks exercised
+  controlled add/undo/redo/progress/edit/log disclosure and runtime-owned create/edit/
+  reject/undo/redo, with responsive two-button rows, zero overflow, clean consoles,
+  and no network requests.
 
 - 2026-08-03: Completed Slice 4 of the playground Tailwind migration. Navigation
   summary and project configuration/status surfaces now use direct utilities; 165

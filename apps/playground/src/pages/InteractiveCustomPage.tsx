@@ -33,6 +33,15 @@ import {
   chartFrameThemeClasses,
   chartFrameToolbarClasses,
 } from '../chart-frame';
+import {
+  interactiveChartCountClasses,
+  interactiveColumnCellClasses,
+  interactiveControlButtonsClasses,
+  interactiveControlSeparatorClasses,
+  interactiveControlsClasses,
+  interactiveControlStatusClasses,
+  interactiveSurfaceClasses,
+} from '../interactive-presentation';
 
 const DAY = 24 * 60 * 60 * 1000;
 const RANGE_START = Date.UTC(2026, 6, 29);
@@ -173,19 +182,21 @@ function loadCustomDocument(): GanttDocument {
 
 function InteractiveCustomTaskContent({ pending, task }: GanttTaskContentProps): ReactElement {
   return (
-    <span className="interactive-task-content">
-      <i aria-hidden="true" />
-      <span>{task.title}</span>
-      {pending ? <small>saving</small> : null}
+    <span className="flex min-w-0 items-center gap-1.5">
+      <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current opacity-55" />
+      <span className="truncate">{task.title}</span>
+      {pending ? (
+        <small className="ml-auto text-[7px] font-[850] tracking-[0.04em] uppercase">saving</small>
+      ) : null}
     </span>
   );
 }
 
 function InteractiveCustomLaneHeader({ lane }: GanttLaneHeaderProps): ReactElement {
   return (
-    <span className="interactive-lane-header">
-      <i aria-hidden="true" />
-      <span>{lane.title}</span>
+    <span className="flex w-full min-w-0 items-center gap-1.5">
+      <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current opacity-55" />
+      <span className="truncate">{lane.title}</span>
     </span>
   );
 }
@@ -710,8 +721,11 @@ export function InteractiveCustomPage(): ReactElement {
         </div>
       </header>
 
-      <section aria-label="Interactive Custom chart controls" className="interactive-controls">
-        <div className="interactive-controls__buttons">
+      <section
+        aria-label="Interactive Custom chart controls"
+        className={interactiveControlsClasses}
+      >
+        <div className={interactiveControlButtonsClasses}>
           <button
             onClick={() =>
               dispatchToolbar({
@@ -762,7 +776,7 @@ export function InteractiveCustomPage(): ReactElement {
           >
             Clear
           </button>
-          <span aria-hidden="true" className="interactive-controls__separator" />
+          <span aria-hidden="true" className={interactiveControlSeparatorClasses} />
           <button
             disabled={!state.canUndo}
             onClick={() => void ganttRef.current?.undo()}
@@ -795,7 +809,7 @@ export function InteractiveCustomPage(): ReactElement {
             Focus last task
           </button>
         </div>
-        <output aria-live="polite" className="interactive-controls__status">
+        <output aria-live="polite" className={interactiveControlStatusClasses}>
           {state.status}
         </output>
       </section>
@@ -809,7 +823,7 @@ export function InteractiveCustomPage(): ReactElement {
             <strong>Custom integration plan</strong>
             <span>Controlled document · Europe/Belgrade</span>
           </div>
-          <div className="interactive-chart-count">
+          <div className={interactiveChartCountClasses}>
             <strong>{state.document.tasks.length}</strong>
             <span>scheduled</span>
           </div>
@@ -818,10 +832,9 @@ export function InteractiveCustomPage(): ReactElement {
         <Gantt
           appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
           classNames={{
-            contextMenu: 'interactive-surface-menu',
-            laneHeader: 'interactive-column-cell',
-            taskContent: 'interactive-task-slot',
-            tooltip: 'interactive-surface-tooltip',
+            contextMenu: interactiveSurfaceClasses,
+            laneHeader: interactiveColumnCellClasses,
+            tooltip: interactiveSurfaceClasses,
           }}
           columns={[
             { header: 'Phase', id: 'phase', width: 132 },

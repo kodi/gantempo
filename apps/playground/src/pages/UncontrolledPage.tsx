@@ -20,6 +20,14 @@ import {
   chartFrameThemeClasses,
   chartFrameToolbarClasses,
 } from '../chart-frame';
+import {
+  interactiveChartCountClasses,
+  interactiveColumnCellClasses,
+  interactiveControlButtonsClasses,
+  interactiveControlSeparatorClasses,
+  interactiveControlsClasses,
+  interactiveControlStatusClasses,
+} from '../interactive-presentation';
 
 const DAY = 24 * 60 * 60 * 1000;
 const START = Date.UTC(2026, 6, 29);
@@ -107,19 +115,23 @@ const DEFAULT_SESSION = {
 
 function UncontrolledTaskContent({ focused, pending, task }: GanttTaskContentProps): ReactElement {
   return (
-    <span className="interactive-task-content">
-      <i aria-hidden="true" />
-      <span>{task.title}</span>
-      {pending ? <small>checking</small> : focused ? <small>focused</small> : null}
+    <span className="flex min-w-0 items-center gap-1.5">
+      <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current opacity-55" />
+      <span className="truncate">{task.title}</span>
+      {pending || focused ? (
+        <small className="ml-auto text-[7px] font-[850] tracking-[0.04em] uppercase">
+          {pending ? 'checking' : 'focused'}
+        </small>
+      ) : null}
     </span>
   );
 }
 
 function UncontrolledLaneHeader({ lane }: GanttLaneHeaderProps): ReactElement {
   return (
-    <span className="interactive-lane-header">
-      <i aria-hidden="true" />
-      <span>{lane.title}</span>
+    <span className="flex w-full min-w-0 items-center gap-1.5">
+      <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current opacity-55" />
+      <span className="truncate">{lane.title}</span>
     </span>
   );
 }
@@ -299,7 +311,7 @@ export function UncontrolledPage(): ReactElement {
   const canRedo = ganttRef.current?.canRedo() ?? false;
 
   return (
-    <div className="page--interactive mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
+    <div className="mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[561px]:px-3.5">
       <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
           <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
@@ -324,8 +336,8 @@ export function UncontrolledPage(): ReactElement {
         </div>
       </header>
 
-      <section aria-label="Runtime-owned chart controls" className="interactive-controls">
-        <div className="interactive-controls__buttons">
+      <section aria-label="Runtime-owned chart controls" className={interactiveControlsClasses}>
+        <div className={interactiveControlButtonsClasses}>
           <button
             onClick={() => {
               const taskId = `uncontrolled-created-${nextSerial}`;
@@ -462,7 +474,7 @@ export function UncontrolledPage(): ReactElement {
           >
             Delete
           </button>
-          <span aria-hidden="true" className="interactive-controls__separator" />
+          <span aria-hidden="true" className={interactiveControlSeparatorClasses} />
           <button disabled={!canUndo} onClick={() => void ganttRef.current?.undo()} type="button">
             Undo
           </button>
@@ -489,7 +501,7 @@ export function UncontrolledPage(): ReactElement {
             Scroll to time
           </button>
         </div>
-        <output aria-live="polite" className="interactive-controls__status">
+        <output aria-live="polite" className={interactiveControlStatusClasses}>
           {status}
         </output>
       </section>
@@ -503,7 +515,7 @@ export function UncontrolledPage(): ReactElement {
             <strong>Runtime-owned resource plan</strong>
             <span>Async policy · app-mapped resource reassignment</span>
           </div>
-          <div className="interactive-chart-count">
+          <div className={interactiveChartCountClasses}>
             <strong>{documentSnapshot.tasks.length}</strong>
             <span>observed</span>
           </div>
@@ -512,8 +524,8 @@ export function UncontrolledPage(): ReactElement {
         <Gantt
           appearanceVariants={PLAYGROUND_APPEARANCE_VARIANTS}
           classNames={{
-            laneHeader: 'interactive-column-cell',
-            task: ({ pending }) => (pending ? 'uncontrolled-task--pending' : undefined),
+            laneHeader: interactiveColumnCellClasses,
+            task: ({ pending }) => (pending ? 'opacity-72' : undefined),
           }}
           columns={[
             { header: 'Resource', id: 'resource', width: 150 },
