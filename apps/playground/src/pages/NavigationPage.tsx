@@ -25,20 +25,30 @@ export function NavigationPage(): ReactElement {
   const [visibleRange, setVisibleRange] = useState(NAVIGATION_INITIAL_RANGE);
 
   return (
-    <div className="page page--navigation">
-      <header className="page-intro">
+    <div className="page--navigation mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[560px]:px-3.5">
+      <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
-          <p className="eyebrow">Two-axis stress consumer</p>
-          <h1>Navigation</h1>
-          <p>
+          <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
+            Two-axis stress consumer
+          </p>
+          <h1 className="mt-[5px] mb-0 text-[clamp(28px,3.3vw,46px)] font-bold tracking-[-0.04em] text-ink-strong">
+            Navigation
+          </h1>
+          <p className="mt-2.5 mb-0 max-w-[650px] text-[15px] leading-[1.6] text-muted">
             A deterministic, network-free portfolio proves controlled semantic time panning and
             virtualized lane navigation against a realistic long-range surface.
           </p>
         </div>
-        <div className="page-intro__meta">
-          <span>{NAVIGATION_EVENT_COUNT} events</span>
-          <span>{NAVIGATION_LANE_COUNT} lanes</span>
-          <span>12-week viewport</span>
+        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[560px]:flex-wrap">
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            {NAVIGATION_EVENT_COUNT} events
+          </span>
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            {NAVIGATION_LANE_COUNT} lanes
+          </span>
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            12-week viewport
+          </span>
         </div>
       </header>
 
@@ -67,7 +77,7 @@ export function NavigationPage(): ReactElement {
         size="navigation"
       />
 
-      <p className="page-note">
+      <p className="mt-4 mr-0 mb-0 ml-0.5 text-xs text-[#626a76]">
         The required range stays controlled by this consumer. Each accepted navigation proposal is
         acknowledged into local React state; document commands and history remain separate.
       </p>

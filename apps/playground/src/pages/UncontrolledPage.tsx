@@ -293,20 +293,28 @@ export function UncontrolledPage(): ReactElement {
   const canRedo = ganttRef.current?.canRedo() ?? false;
 
   return (
-    <div className="page page--interactive">
-      <header className="page-intro">
+    <div className="page--interactive mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[560px]:px-3.5">
+      <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
-          <p className="eyebrow">Uncontrolled consumer proof</p>
-          <h1>Runtime-owned</h1>
-          <p>
+          <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
+            Uncontrolled consumer proof
+          </p>
+          <h1 className="mt-[5px] mb-0 text-[clamp(28px,3.3vw,46px)] font-bold tracking-[-0.04em] text-ink-strong">
+            Runtime-owned
+          </h1>
+          <p className="mt-2.5 mb-0 max-w-[650px] text-[15px] leading-[1.6] text-muted">
             A parsed default document and session stay inside one instance. The application still
             observes changes, intercepts commands, maps derived resource gestures, and uses the
             public handle while acknowledging the required controlled time range.
           </p>
         </div>
-        <div className="page-intro__meta">
-          <span>{documentSnapshot.tasks.length} items</span>
-          <span>resource view</span>
+        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[560px]:flex-wrap">
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            {documentSnapshot.tasks.length} items
+          </span>
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            resource view
+          </span>
         </div>
       </header>
 
@@ -569,7 +577,7 @@ export function UncontrolledPage(): ReactElement {
         />
       </div>
 
-      <p className="page-note">
+      <p className="mt-4 mr-0 mb-0 ml-0.5 text-xs text-[#626a76]">
         The resource view is derived. Cross-resource movement is therefore rejected for the
         policy-locked task with an application diagnostic; the mapped task becomes one explicit
         move-plus-assignment transaction. Activate either rendered task for runtime-owned

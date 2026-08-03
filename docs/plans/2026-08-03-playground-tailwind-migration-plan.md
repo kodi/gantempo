@@ -266,7 +266,7 @@ Dependencies: Slice 1.
 
 ### Slice 2: Migrate document defaults, shared shell, and main page
 
-Status: `[ ]` Not started
+Status: `[-]` In progress
 
 Goal: Make the application shell and `/` route fully Tailwind-owned.
 
@@ -705,11 +705,32 @@ built-ins with Tailwind arbitrary-property maps.
 - The implementation is committed as `b5f4537` (`feat(playground): add matrix recipe
   code samples`).
 
+### 2026-08-03 — Slice 2 automated implementation checkpoint
+
+- Moved document sizing, margin, palette, typography, box-sizing, and control defaults
+  to discoverable utilities in `index.html` and the root shell, with explicit
+  `@source` coverage while Preflight remains disabled.
+- Converted the sticky header, brand, responsive navigation, current-page state,
+  shared page container, intro, metadata badges, notes, and the main-page theme
+  selector to direct utilities. Removed 244 lines of superseded global/shared rules
+  from `styles.css`; shared legacy selector searches are clean.
+- `MainPage.dom.test.tsx` now finds the themed chart through semantic `data-theme`
+  state instead of `.chart-frame`.
+- `pnpm test -- apps/playground/src/pages/MainPage.dom.test.tsx --reporter=verbose`
+  passed 102 files and 523 tests. `mise run build-playground` passed with 2,025
+  modules transformed, and emitted CSS contains the document utilities and explicit
+  responsive/current-page variants. `git diff --check` and a full `mise run ci`
+  checkpoint passed formatting for 256 files, lint/type checks for 243 files, all 102
+  test files and 523 tests, and the 214-file package build.
+- Live verification remains pending. Chrome DevTools MCP could not attach because its
+  automation profile is owned by another active MCP process, and the repository's
+  in-app Browser fallback reported no connected browser. No live visual,
+  accessibility-tree, focus, overflow, or console claim is made for this checkpoint.
+
 ## Next Slice
 
-Start Slice 2 by inspecting `apps/playground/index.html`, `src/Playground.tsx`,
-`src/pages/MainPage.tsx`, and the global/shell/main sections of `src/styles.css`.
-Move the no-Preflight document defaults and shared chrome to static utilities, update
-`MainPage.dom.test.tsx` to use semantic chart hooks, run its focused test plus the
-production playground build and full `mise run ci`, and inspect `/` and
-`/examples/simple-project` at desktop and narrow widths before marking Slice 2 done.
+Finish Slice 2 by inspecting `/` and `/examples/simple-project` at 1440x1000 and
+560x900 (or the available narrow minimum) as soon as Chrome DevTools MCP or the
+in-app Browser is available. Verify navigation overflow, current-page state, focus,
+theme changes, accessibility structure, and console state; fix any live issues, rerun
+`mise run ci`, and only then mark Slice 2 done and start Slice 3.

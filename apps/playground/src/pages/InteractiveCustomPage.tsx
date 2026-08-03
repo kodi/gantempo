@@ -680,19 +680,27 @@ export function InteractiveCustomPage(): ReactElement {
   };
 
   return (
-    <div className="page page--interactive page--interactive-custom">
-      <header className="page-intro">
+    <div className="page--interactive page--interactive-custom mx-auto w-full max-w-[1480px] px-[clamp(20px,4vw,64px)] pt-[clamp(34px,5vw,70px)] pb-20 max-[560px]:px-3.5">
+      <header className="mb-[26px] flex items-end justify-between gap-8 max-[900px]:items-start max-[900px]:flex-col">
         <div>
-          <p className="eyebrow">Application-owned integration proof</p>
-          <h1>Interactive Custom</h1>
-          <p>
+          <p className="m-0 text-[11px] font-extrabold tracking-[0.13em] text-brand-light uppercase">
+            Application-owned integration proof
+          </p>
+          <h1 className="mt-[5px] mb-0 text-[clamp(28px,3.3vw,46px)] font-bold tracking-[-0.04em] text-ink-strong">
+            Interactive Custom
+          </h1>
+          <p className="mt-2.5 mb-0 max-w-[650px] text-[15px] leading-[1.6] text-muted">
             Gantt keeps timeline interaction, commands, history, and controlled acknowledgement.
             This page owns the task details and editing panel rendered below the chart.
           </p>
         </div>
-        <div className="page-intro__meta">
-          <span>{state.document.tasks.length} items</span>
-          <span>{LANE_IDS.length} lanes</span>
+        <div className="flex shrink-0 gap-2 text-xs text-[#69717e] max-[560px]:flex-wrap">
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            {state.document.tasks.length} items
+          </span>
+          <span className="rounded-lg border border-ink/10 bg-white/45 px-2.5 py-[7px]">
+            {LANE_IDS.length} lanes
+          </span>
         </div>
       </header>
 
@@ -1043,7 +1051,7 @@ export function InteractiveCustomPage(): ReactElement {
         </section>
       ) : null}
 
-      <p className="page-note">
+      <p className="mt-4 mr-0 mb-0 ml-0.5 text-xs text-[#626a76]">
         Activate a task for display mode. Open its task menu by pointer, Context Menu, or Shift+F10
         and choose Edit properties for the application-owned form. Saves, direct manipulation,
         keyboard editing, Undo, and Redo still use the same controlled command path; this page

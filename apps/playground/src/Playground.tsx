@@ -27,25 +27,35 @@ const links: readonly PlaygroundLink[] = [
 
 function PlaygroundHeader({ pathname }: { pathname: string }): ReactElement {
   return (
-    <header className="playground-header">
-      <a aria-label="Gantempo Playground" className="brand" href="/">
-        <span aria-hidden="true" className="brand__mark">
+    <header className="sticky top-0 z-10 flex h-[68px] items-center justify-between border-b border-ink/10 bg-canvas/[92%] px-[clamp(20px,4vw,64px)] backdrop-blur-[16px] max-[560px]:gap-2 max-[560px]:px-4">
+      <a
+        aria-label="Gantempo Playground"
+        className="inline-flex items-center gap-[11px] text-inherit no-underline"
+        href="/"
+      >
+        <span
+          aria-hidden="true"
+          className="grid size-[34px] place-items-center rounded-[10px] bg-brand font-extrabold text-[#f9faf8]"
+        >
           G
         </span>
-        <span>
-          <strong>Gantempo</strong>
-          <small>Playground</small>
+        <span className="grid gap-px max-[560px]:hidden">
+          <strong className="text-sm tracking-[0.01em]">Gantempo</strong>
+          <small className="text-[11px] text-muted">Playground</small>
         </span>
       </a>
 
-      <nav aria-label="Playground pages" className="playground-nav">
+      <nav
+        aria-label="Playground pages"
+        className="flex gap-[5px] rounded-xl border border-ink/10 bg-white/50 p-1 max-[560px]:min-w-0 max-[560px]:overflow-x-auto"
+      >
         {links.map((link) => {
           const isCurrent = pathname === link.href;
 
           return (
             <a
               aria-current={isCurrent ? 'page' : undefined}
-              className="playground-nav__link"
+              className="rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-[#687181] no-underline aria-[current=page]:bg-white aria-[current=page]:text-[#18352f] aria-[current=page]:shadow-[0_1px_3px_rgb(36_48_68/9%)] max-[560px]:shrink-0 max-[560px]:px-[9px] max-[560px]:whitespace-nowrap"
               href={link.href}
               key={link.href}
             >
@@ -80,7 +90,7 @@ export function Playground(): ReactElement {
     );
 
   return (
-    <div className="playground-shell">
+    <div className="min-h-screen [&_a]:font-[inherit] [&_button]:cursor-pointer [&_button]:font-[inherit]">
       <PlaygroundHeader pathname={pathname} />
       <main>{page}</main>
     </div>

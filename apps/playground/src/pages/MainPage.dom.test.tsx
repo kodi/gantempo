@@ -11,7 +11,7 @@ describe('main playground page', () => {
   it('switches the primary chart through every supported theme', () => {
     const { container } = render(<MainPage />);
     const selector = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Chart theme' });
-    const chart = container.querySelector('.chart-frame');
+    const chart = container.querySelector('[data-theme]');
     const gantt = container.querySelector('[data-gt-part="root"]');
 
     expect(selector.value).toBe('light');
