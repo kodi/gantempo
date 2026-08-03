@@ -3,18 +3,22 @@ import { describe, expect, it } from 'vite-plus/test';
 import { routeDependency } from './route-dependencies';
 
 const from = Object.freeze({
+  bottom: 30,
   endX: 0.3,
   hidden: false,
   startX: 0.1,
   taskId: 'from',
+  top: 10,
   viewKey: 'from-view',
   y: 20,
 });
 const to = Object.freeze({
+  bottom: 90,
   endX: 0.8,
   hidden: false,
   startX: 0.6,
   taskId: 'to',
+  top: 70,
   viewKey: 'to-view',
   y: 80,
 });
@@ -42,6 +46,28 @@ describe('routeDependency', () => {
     expect(route).toMatchObject({ clippedStart: true, clippedEnd: true });
     expect(route?.points[0]?.y).toBe(35);
     expect(route?.points.at(-1)?.y).toBe(65);
+  });
+
+  it('routes an earlier finish-to-start target through the inter-row gutter', () => {
+    const route = routeDependency(
+      {
+        dependencyId: 'earlier-target',
+        from,
+        rank: 0,
+        to: { ...to, endX: 0.4, startX: 0.2 },
+        type: 'finish-to-start',
+      },
+      { bottom: 100, top: 0 },
+    );
+
+    expect(route?.points).toEqual([
+      { x: 0.3, y: 20 },
+      { x: 0.312, y: 20 },
+      { x: 0.312, y: 50 },
+      { x: 0.188, y: 50 },
+      { x: 0.188, y: 80 },
+      { x: 0.2, y: 80 },
+    ]);
   });
 
   it('omits a route that does not intersect the viewport', () => {

@@ -1,7 +1,7 @@
 # Gantempo Roadmap
 
 Status: Active execution roadmap
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 ## Purpose
 
@@ -131,6 +131,7 @@ Detailed completion evidence is recorded in
 | Post-M5: API-loaded simple project example | Integration guidance before Slice 5 | A standalone, copyable example loads API-shaped JSON, validates it, edits through controlled React state, and explicitly saves the draft | `[x]` | [Completed plan](plans/2026-08-02-api-loaded-simple-project-example-plan.md) |
 | Post-M5: Simple integration defaults | Correction before Slice 5 | A public document hook and overridable built-in appearances reduce the first API example to one small adapter and React component | `[x]` | [Completed plan](plans/2026-08-02-simple-integration-defaults-plan.md) |
 | Post-M5: React Query document integration | Integration boundary correction before Slice 5 | Core owns editable draft state while an optional TanStack Query entry owns standard server-state wiring | `[x]` | [Completed plan](plans/2026-08-02-react-query-document-integration-plan.md) |
+| Post-M5: Obstacle-aware dependency connectors | Dependency-rendering correction before Slice 5 | Earlier-target and overlapping links remain continuous by routing through task-row gutters without moving dates | `[-]` | [Active plan](plans/2026-08-03-obstacle-aware-dependency-connectors-plan.md) |
 | Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities while the package remains design-system-neutral | `[-]` | [Active plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
@@ -192,6 +193,19 @@ correction is complete. The React Query integration boundary and its simple-guid
 correction are complete before M6 advanced scheduling and resources.
 
 ## Current Focus
+
+### Post-M5: Obstacle-aware dependency connectors
+
+**Status:** `[-]` In progress
+
+The
+[obstacle-aware dependency connectors plan](plans/2026-08-03-obstacle-aware-dependency-connectors-plan.md)
+corrects earlier-target and horizontally overlapping routes without changing task
+dates or adding scheduling behavior. The private React-free router will use an
+inter-row gutter detour when opposing endpoint stubs cross, while the renderer will
+emit one continuous visible path and one matching hit path. Focused geometry and DOM
+coverage, the full repository gate, the playground build, and desktop/narrow live
+inspection are required before completion.
 
 ### Post-M5: Playground Tailwind migration
 
@@ -900,6 +914,12 @@ chart-owned interaction, session, or imperative contracts.
   require standalone planning or roadmap updates.
 
 ## Change Log
+
+- 2026-08-03: Started the obstacle-aware dependency connector correction. Live
+  inspection of `/examples/simple-project` confirmed that earlier-target
+  finish-to-start links use a midpoint channel hidden by adjacent task bars. The
+  active plan preserves dates and public scheduling contracts while adding a private
+  inter-row detour and continuous SVG path rendering.
 
 - 2026-08-03: Started the playground Tailwind migration. Tailwind v4 is now the
   accepted application styling direction for playground chrome and examples, while

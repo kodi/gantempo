@@ -140,7 +140,13 @@ describe('Gantt project tree integration', () => {
         type: 'finish-to-start',
       }),
     });
-    expect(relationship?.querySelectorAll('[data-gt-part="dependency-hit-target"]').length).toBe(5);
+    expect(relationship?.querySelectorAll('[data-gt-part="dependency-hit-target"]')).toHaveLength(
+      1,
+    );
+    expect(relationship?.querySelector('.gt-gantt__dependency-path')?.tagName).toBe('path');
+    expect(relationship?.querySelector('.gt-gantt__dependency-path')?.getAttribute('d')).toMatch(
+      /^M .+ L .+/,
+    );
     expect(mounted.getByLabelText('Dependencies').textContent).toContain(
       'Implementation to Launch, finish to start',
     );

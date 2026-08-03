@@ -1,10 +1,12 @@
 import type { DependencyType, EntityId } from '../model/types';
 
 export interface DependencyRouteEndpoint {
+  readonly bottom: number;
   readonly endX: number;
   readonly hidden: boolean;
   readonly startX: number;
   readonly taskId: EntityId;
+  readonly top: number;
   readonly viewKey: string;
   readonly y: number;
 }
@@ -111,6 +113,10 @@ function targetUsesStart(type: DependencyType): boolean {
   return type === 'finish-to-start' || type === 'start-to-start';
 }
 
+function interRowGutterY(from: DependencyRouteEndpoint, to: DependencyRouteEndpoint): number {
+  return from.y < to.y ? (from.bottom + to.top) / 2 : (to.bottom + from.top) / 2;
+}
+
 /**
  * Builds stable orthogonal relationship geometry in normalized timeline-x and
  * content-space-y coordinates. Clipping happens after the full route is known so
@@ -130,6 +136,8 @@ export function routeDependency(
   const channel = 0.012 + (input.rank % 5) * 0.004;
   const fromStubX = fromX + fromDirection * channel;
   const toStubX = toX + toDirection * channel;
+  const opposingPorts = fromDirection !== toDirection;
+  const stubsCross = opposingPorts && fromDirection * (toStubX - fromStubX) < 0;
   const middleX =
     fromDirection === toDirection
       ? fromDirection > 0
@@ -137,14 +145,24 @@ export function routeDependency(
         : Math.min(fromStubX, toStubX)
       : (fromStubX + toStubX) / 2;
   const fullRoute = Object.freeze(
-    [
-      point(fromX, input.from.y),
-      point(fromStubX, input.from.y),
-      point(middleX, input.from.y),
-      point(middleX, input.to.y),
-      point(toStubX, input.to.y),
-      point(toX, input.to.y),
-    ].filter((current, index, points) => index === 0 || !samePoint(current, points[index - 1]!)),
+    (stubsCross
+      ? [
+          point(fromX, input.from.y),
+          point(fromStubX, input.from.y),
+          point(fromStubX, interRowGutterY(input.from, input.to)),
+          point(toStubX, interRowGutterY(input.from, input.to)),
+          point(toStubX, input.to.y),
+          point(toX, input.to.y),
+        ]
+      : [
+          point(fromX, input.from.y),
+          point(fromStubX, input.from.y),
+          point(middleX, input.from.y),
+          point(middleX, input.to.y),
+          point(toStubX, input.to.y),
+          point(toX, input.to.y),
+        ]
+    ).filter((current, index, points) => index === 0 || !samePoint(current, points[index - 1]!)),
   );
   const resolvedViewport: Required<DependencyRouteViewport> = {
     bottom: viewport.bottom,

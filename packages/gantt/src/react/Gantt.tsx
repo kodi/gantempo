@@ -149,6 +149,9 @@ function GanttSurface({
   const selection = useGanttSelector((snapshot) => snapshot.session.selection);
   const scaleLevel = useGanttSelector((snapshot) => snapshot.scaleLevel);
   const verticalStart = useGanttSelector((snapshot) => snapshot.session.viewport.verticalStart);
+  const timelineWidth = useGanttSelector((snapshot) =>
+    snapshot.viewport.status === 'measured' ? snapshot.viewport.clientWidth : 960,
+  );
   const accessibilityId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const helpId = `${accessibilityId}-keyboard-help`;
@@ -1464,6 +1467,7 @@ function GanttSurface({
                     onActivate={onDependencyActivate}
                     onOpenProperties={openDependencyProperties}
                     timelineHeight={scene.bounds.timelineHeight}
+                    timelineWidth={timelineWidth}
                   />
 
                   <DependencyPreview

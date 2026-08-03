@@ -743,10 +743,12 @@ function buildDependencyPrimitives(
     const direct = occurrenceByTaskId.get(taskId);
     if (direct !== undefined) {
       return Object.freeze({
+        bottom: direct.y + direct.height,
         endX: directionalX(scale.timeToX(direct.end), options.direction),
         hidden: false,
         startX: directionalX(scale.timeToX(direct.start), options.direction),
         taskId,
+        top: direct.y,
         viewKey: direct.viewKey,
         y: direct.y + direct.height / 2,
       });
@@ -760,10 +762,12 @@ function buildDependencyPrimitives(
         const project = laneByKey.get(ancestor.laneViewKey)?.project;
         if (project?.expanded === false || project?.filterMatch === 'ancestor') {
           return Object.freeze({
+            bottom: ancestor.y + ancestor.height,
             endX: directionalX(scale.timeToX(ancestor.end), options.direction),
             hidden: true,
             startX: directionalX(scale.timeToX(ancestor.start), options.direction),
             taskId,
+            top: ancestor.y,
             viewKey: ancestor.viewKey,
             y: ancestor.y + ancestor.height / 2,
           });

@@ -110,6 +110,33 @@ describe('dependency scene projection', () => {
     ]);
   });
 
+  it('keeps an earlier adjacent target route outside both task rectangles', () => {
+    const document: GanttDocument = {
+      assignments: [],
+      dependencies: [
+        { fromTaskId: 'a', id: 'earlier-target', toTaskId: 'b', type: 'finish-to-start' },
+      ],
+      lanes: [],
+      placements: [],
+      resources: [],
+      schemaVersion: 1,
+      tasks: [task('a', 100, 600), task('b', 400, 800)],
+    };
+    const result = scene(document);
+    const source = result.taskBars.find((item) => item.taskId === 'a')!;
+    const target = result.taskBars.find((item) => item.taskId === 'b')!;
+    const points = result.dependencyPaths[0]!.points;
+    const gutterY = (source.y + source.height + target.y) / 2;
+
+    expect(points).toHaveLength(6);
+    expect(points[1]).toMatchObject({ y: source.y + source.height / 2 });
+    expect(points[2]).toEqual({ x: points[1]!.x, y: gutterY });
+    expect(points[3]).toMatchObject({ y: gutterY });
+    expect(points[4]).toEqual({ x: points[3]!.x, y: target.y + target.height / 2 });
+    expect(points[1]!.x).toBeGreaterThan(source.x + source.width);
+    expect(points[3]!.x).toBeLessThan(target.x);
+  });
+
   it('uses a retained filter-context ancestor as a hidden endpoint proxy', () => {
     const document: GanttDocument = {
       assignments: [],

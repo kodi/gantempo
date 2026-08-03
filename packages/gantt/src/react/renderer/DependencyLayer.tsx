@@ -15,6 +15,7 @@ export const DependencyLayer = memo(function DependencyLayer({
   onActivate,
   onOpenProperties,
   timelineHeight,
+  timelineWidth,
 }: {
   readonly classNames?: GanttProps['classNames'];
   readonly dependencies: GanttReactRuntimeSnapshot['scene']['dependencyPaths'];
@@ -25,6 +26,7 @@ export const DependencyLayer = memo(function DependencyLayer({
   readonly onActivate: (dependencyId: string) => void;
   readonly onOpenProperties: (dependencyId: string) => void;
   readonly timelineHeight: number;
+  readonly timelineWidth: number;
 }): ReactElement {
   return (
     <g data-gt-part="dependencies">
@@ -40,6 +42,7 @@ export const DependencyLayer = memo(function DependencyLayer({
           onOpenProperties={onOpenProperties}
           summary={dependencySummaryById.get(dependency.dependencyId)}
           timelineHeight={timelineHeight}
+          timelineWidth={timelineWidth}
         />
       ))}
     </g>

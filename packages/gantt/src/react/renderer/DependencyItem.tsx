@@ -6,6 +6,15 @@ import { useGanttSelector } from '../context';
 import type { GanttDependencySummary, GanttProps } from '../types';
 import { idleClassState, joinClasses, percent, resolveClassName } from './presentation';
 
+function dependencyPathData(
+  points: DependencyPathPrimitive['points'],
+  timelineWidth: number,
+): string {
+  return points
+    .map((current, index) => `${index === 0 ? 'M' : 'L'} ${current.x * timelineWidth} ${current.y}`)
+    .join(' ');
+}
+
 function dependencyStateEqual(
   previous: readonly [boolean, boolean, boolean],
   next: readonly [boolean, boolean, boolean],
@@ -23,6 +32,7 @@ export const DependencyItem = memo(function DependencyItem({
   onOpenProperties,
   summary,
   timelineHeight,
+  timelineWidth,
 }: {
   readonly classNames?: GanttProps['classNames'];
   readonly dependency: DependencyPathPrimitive;
@@ -33,6 +43,7 @@ export const DependencyItem = memo(function DependencyItem({
   readonly onOpenProperties: (dependencyId: string) => void;
   readonly summary: GanttDependencySummary | undefined;
   readonly timelineHeight: number;
+  readonly timelineWidth: number;
 }): ReactElement {
   const [selected, focused, pending] = useGanttSelector((snapshot) => {
     const dependencyId = dependency.dependencyId;
@@ -58,6 +69,7 @@ export const DependencyItem = memo(function DependencyItem({
     pending,
     selected,
   });
+  const pathData = dependencyPathData(dependency.points, timelineWidth);
   return (
     <g
       aria-disabled={disabled || undefined}
@@ -92,38 +104,21 @@ export const DependencyItem = memo(function DependencyItem({
       role="button"
       tabIndex={focused ? 0 : -1}
     >
-      {dependency.points.slice(1).map((to, index) => {
-        const from = dependency.points[index]!;
-        const markerEnd =
-          index === dependency.points.length - 2 && !dependency.clippedEnd
-            ? `url(#${markerId})`
-            : undefined;
-        return (
-          <g key={`${dependency.dependencyId}:${index}`}>
-            <line
-              aria-hidden="true"
-              className={joinClasses(
-                'gt-gantt__dependency-path',
-                resolveClassName(classNames?.dependencyPath, state),
-              )}
-              markerEnd={markerEnd}
-              x1={percent(from.x)}
-              x2={percent(to.x)}
-              y1={percent(from.y / timelineHeight)}
-              y2={percent(to.y / timelineHeight)}
-            />
-            <line
-              aria-hidden="true"
-              className="gt-gantt__dependency-hit"
-              data-gt-part="dependency-hit-target"
-              x1={percent(from.x)}
-              x2={percent(to.x)}
-              y1={percent(from.y / timelineHeight)}
-              y2={percent(to.y / timelineHeight)}
-            />
-          </g>
-        );
-      })}
+      <path
+        aria-hidden="true"
+        className={joinClasses(
+          'gt-gantt__dependency-path',
+          resolveClassName(classNames?.dependencyPath, state),
+        )}
+        d={pathData}
+        markerEnd={dependency.clippedEnd ? undefined : `url(#${markerId})`}
+      />
+      <path
+        aria-hidden="true"
+        className="gt-gantt__dependency-hit"
+        d={pathData}
+        data-gt-part="dependency-hit-target"
+      />
       {dependency.clippedStart ? (
         <circle
           aria-hidden="true"
