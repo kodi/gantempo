@@ -1,6 +1,6 @@
 # Obstacle-Aware Dependency Connectors Plan
 
-Status: Active
+Status: Complete
 Date: 2026-08-03
 Owner: Post-M5 dependency-rendering correction
 
@@ -48,7 +48,7 @@ Out of scope:
 
 ## Slice 1: Obstacle-aware route and continuous renderer
 
-Status: `[-]` In progress
+Status: `[x]` Done
 
 Goal: Earlier-target and horizontally overlapping dependencies travel through the
 inter-row gutter without disappearing behind either task bar.
@@ -87,10 +87,32 @@ Verification:
   opposing-port midpoint falls inside the overlapping horizontal task extents, so
   adjacent rows expose detached-looking source, vertical, and arrow segments.
 - 2026-08-03: The example dates are intentional input and must remain unchanged.
+- 2026-08-03: The private endpoint now carries task top/bottom bounds. Opposing ports
+  with crossed stubs route through the midpoint of the real inter-row gutter; direct
+  and same-side routes retain their existing corridor behavior. Horizontal clearance
+  is resolved in pixels from the measured timeline width so narrow layouts retain a
+  usable source stub and final arrow segment.
+- 2026-08-03: The React renderer now emits one orthogonal `M/H/V` SVG path and one
+  matching transparent hit path per dependency. Semantic labels, marker placement,
+  stable data hooks, selection, editing, clipping, and continuation markers remain
+  unchanged.
+- 2026-08-03: Focused verification passed 58 tests across
+  `route-dependencies.test.ts`, `scene-dependencies.test.ts`,
+  `Gantt.project.dom.test.tsx`, and `runtime.test.ts`. `mise run ci` passed 101 test
+  files / 521 tests, formatting for 254 files, lint/types for 241 files, and the
+  214-file package build. `mise run build-playground` passed with 2,024 transformed
+  modules; the existing large-chunk advisory remains non-blocking. `git diff --check`
+  passed.
+- 2026-08-03: Live `/examples/simple-project` inspection at 1440x1000 and 560x900
+  verified both earlier-target connectors as continuous six-point routes with one
+  visible path, one hit path, correctly directed arrowheads, no page-level narrow
+  overflow, and no console warnings or errors. After the pixel-clearance and `H/V`
+  command refinement, the browser refused the final localhost reload under its URL
+  policy; that exact reload was not retried or worked around. Final numerical route,
+  responsive-width, DOM-path, accessibility, full-CI, and production-build checks
+  passed on the completed code.
 
 ## Next Slice
 
-Complete Slice 1 in `packages/gantt/src/layout/route-dependencies.ts`, project the
-task bounds from `packages/gantt/src/render/scene-pipeline.ts`, update
-`packages/gantt/src/react/renderer/DependencyItem.tsx`, then run the focused gate
-before the full repository and live-browser checks.
+No connector follow-up is required. Resume the independent playground Tailwind
+migration, or create the M6 detailed plan when that work is ready to begin.
