@@ -12,9 +12,12 @@ describe('main playground page', () => {
     const { container } = render(<MainPage />);
     const selector = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Chart theme' });
     const chart = container.querySelector('.chart-frame');
+    const gantt = container.querySelector('[data-gt-part="root"]');
 
     expect(selector.value).toBe('light');
     expect(chart?.getAttribute('data-theme')).toBe('light');
+    expect(gantt?.getAttribute('data-gt-theme')).toBe('light');
+    expect(gantt?.getAttribute('data-gt-theme-mode')).toBe('light');
     const repeated = Array.from(
       container.querySelectorAll<SVGGElement>('[data-task-id="requirements"]'),
     );
@@ -31,9 +34,13 @@ describe('main playground page', () => {
     fireEvent.change(selector, { target: { value: 'dark' } });
     expect(selector.value).toBe('dark');
     expect(chart?.getAttribute('data-theme')).toBe('dark');
+    expect(gantt?.getAttribute('data-gt-theme')).toBe('dark');
+    expect(gantt?.getAttribute('data-gt-theme-mode')).toBe('dark');
 
     fireEvent.change(selector, { target: { value: 'high-contrast' } });
     expect(selector.value).toBe('high-contrast');
     expect(chart?.getAttribute('data-theme')).toBe('high-contrast');
+    expect(gantt?.getAttribute('data-gt-theme')).toBe('high-contrast');
+    expect(gantt?.getAttribute('data-gt-theme-mode')).toBe('high-contrast');
   });
 });

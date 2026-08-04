@@ -899,7 +899,9 @@ The architectural rules are:
 Themes belong to view configuration, not the persistent `GanttDocument`. Multiple
 instances with different themes must coexist, and portalled UI must retain the theme of
 its owning instance. See [UI and theming](UI_THEMING.md) for tokens, packages, Tailwind
-integration, renderer parity, and acceptance criteria.
+integration, renderer parity, and acceptance criteria. The initial public selection,
+token, density, precedence, and portal synchronization contract is fixed by the
+[public theme and density decision](decisions/2026-08-04-public-theme-and-density-contract.md).
 
 Documents may persist only bounded semantic appearance IDs on tasks and lanes. The
 instance registry resolves those IDs to coordinated task fill, progress fill, text,

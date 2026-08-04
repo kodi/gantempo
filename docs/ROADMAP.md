@@ -1,7 +1,7 @@
 # Gantempo Roadmap
 
 Status: Active execution roadmap
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Purpose
 
@@ -133,6 +133,7 @@ Detailed completion evidence is recorded in
 | Post-M5: React Query document integration | Integration boundary correction before Slice 5 | Core owns editable draft state while an optional TanStack Query entry owns standard server-state wiring | `[x]` | [Completed plan](plans/2026-08-02-react-query-document-integration-plan.md) |
 | Post-M5: Obstacle-aware dependency connectors | Dependency-rendering correction before Slice 5 | Earlier-target and overlapping links remain continuous by routing through task-row gutters without moving dates | `[x]` | [Completed plan](plans/2026-08-03-obstacle-aware-dependency-connectors-plan.md) |
 | Post-M5: Playground Tailwind migration | Application and example DX before Slice 5 | Playground chrome and examples use local Tailwind utilities, and matrix scenarios reveal focused presentation recipes, while the package remains design-system-neutral | `[-]` | [Active plan](plans/2026-08-03-playground-tailwind-migration-plan.md) |
+| Post-M5: Public theme and density contract | UI/theming correction before playground chart-frame migration | Built-in and typed custom themes plus renderer-backed density are selected per Gantt instance and retained by portals | `[x]` | [Completed plan](plans/2026-08-04-public-theme-and-density-plan.md) |
 | M6: Advanced scheduling and resources | Slice 5 | Calendars, constraints, resource planning, explainable scheduling, workers, and Pro capabilities compose with the same model | `[ ]` | Not yet created |
 | M7: Hardening and release | Slice 6 | Export, benchmarks, compatibility, accessibility conformance, examples, and release artifacts are reproducible | `[ ]` | Not yet created |
 
@@ -175,6 +176,9 @@ Post-M5 React Query document integration [done]
 Post-M5 playground Tailwind migration [in progress]
   |
   v
+Post-M5 public theme/density correction [done]
+  |
+  v
 M6 advanced scheduling/resources
   |
   v
@@ -190,9 +194,33 @@ slices verified. The internal React composition and DX refactor is complete. The
 first API-loaded example proved the integration boundary but exposed too much
 consumer boilerplate for a simple entry point. The simple integration defaults
 correction is complete. The React Query integration boundary and its simple-guide
-correction are complete before M6 advanced scheduling and resources.
+correction are complete before M6 advanced scheduling and resources. The active
+playground Tailwind migration exposed and the completed public theme/density plan
+fixed one package-contract prerequisite: light, dark, high-contrast, and density are
+now first-class per-instance `Gantt` inputs. The application migration can resume
+without duplicating package built-ins in Tailwind.
 
 ## Current Focus
+
+### Post-M5: Public theme and density contract
+
+**Status:** `[x]` Complete and verified
+
+The
+[public theme and density plan](plans/2026-08-04-public-theme-and-density-plan.md)
+implements the architecture's existing per-instance theming target: packaged light,
+dark, and high-contrast modes; typed custom semantic tokens; compact, comfortable,
+and touch density metrics; runtime switching; and portal parity. It is a bounded
+package correction discovered by the active playground Tailwind migration and is
+complete before that plan removes the shared chart-frame theme boundary. Roots and
+external portals retain isolated theme/mode/density state; custom token switching and
+renderer-backed compact geometry have DOM/SSR coverage; matrix recipes now teach the
+public props and typed custom definition. Final evidence passes 104 test files / 532
+tests, 260-file formatting, 247-file lint/types, a 217-file package build, and a
+2,110-module playground build. Chrome tooling was not exposed in this session, so no
+live viewport/console/network claim is included. The durable public selection, token,
+precedence, density, and portal rules are recorded in the
+[public theme and density decision](decisions/2026-08-04-public-theme-and-density-contract.md).
 
 ### Post-M5: Obstacle-aware dependency connectors
 
@@ -218,7 +246,10 @@ The
 standardizes `apps/playground` on Tailwind CSS v4 for user-facing chrome and examples.
 The package stays framework-neutral. Slice 1 is complete: the Tailwind foundation and
 simple API example now use direct utilities with live desktop and narrow proof. Slice
-2 is next for shared chrome; the remaining routes follow in bounded visual slices.
+2 remains next for shared chrome. Its later shared chart-frame Slice 3 now consumes
+the completed public theme/density correction instead of rebuilding package themes
+in application utilities. The
+remaining routes follow in bounded visual slices.
 The boundary is recorded in the
 [playground Tailwind adoption decision](decisions/2026-08-03-playground-tailwind.md).
 

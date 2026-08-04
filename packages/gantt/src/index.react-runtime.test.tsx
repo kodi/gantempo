@@ -3,11 +3,15 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import packageMetadata from '../package.json' with { type: 'json' };
 import {
+  defineGanttTheme,
   Gantt,
+  GANTT_BUILT_IN_THEMES,
+  type GanttBuiltInTheme,
   type GanttClassNames,
   type GanttContextMenuItem,
   type GanttDocument,
   type GanttDirection,
+  type GanttDensity,
   type GanttFormatContext,
   type GanttFormatters,
   type GanttHandle,
@@ -24,6 +28,8 @@ import {
   type GanttSessionState,
   type GanttSlots,
   type GanttTaskEditRequest,
+  type GanttThemeDefinition,
+  type GanttThemeToken,
 } from './index';
 
 const document: GanttDocument = {
@@ -114,6 +120,21 @@ describe('public React runtime facade', () => {
       messages,
       timeZone: formatContext.timeZone,
     } satisfies GanttProps;
+    const builtInTheme: GanttBuiltInTheme = 'dark';
+    const density: GanttDensity = 'touch';
+    const token: GanttThemeToken = 'color.surface';
+    const theme = defineGanttTheme({
+      id: 'consumer-theme',
+      mode: builtInTheme,
+      tokens: { [token]: '#101714' },
+    }) satisfies GanttThemeDefinition;
+    const themed = {
+      ...common,
+      defaultDocument: document,
+      density,
+      theme,
+      themeRevision: 'host-dark',
+    } satisfies GanttProps;
     const selector = (snapshot: GanttSelectorSnapshot) => snapshot.occurrences;
     const interaction: GanttInteractionState = { status: 'idle' };
     const action: GanttInteractionAction = 'move';
@@ -181,6 +202,7 @@ describe('public React runtime facade', () => {
     const uncontrolledElement = <Gantt {...uncontrolled} />;
     const adaptiveElement = <Gantt {...adaptive} />;
     const localizedElement = <Gantt {...localized} />;
+    const themedElement = <Gantt {...themed} />;
 
     expect(selector).toBeTypeOf('function');
     expect(interaction.status).toBe('idle');
@@ -195,6 +217,8 @@ describe('public React runtime facade', () => {
     expect(uncontrolledElement.type).toBe(Gantt);
     expect(adaptiveElement.type).toBe(Gantt);
     expect(localizedElement.type).toBe(Gantt);
+    expect(themedElement.type).toBe(Gantt);
+    expect(GANTT_BUILT_IN_THEMES.dark.mode).toBe('dark');
   });
 
   it('rejects ambiguous or missing document ownership at compile time', () => {
@@ -220,6 +244,18 @@ describe('public React runtime facade', () => {
       // @ts-expect-error Direction is explicit and does not accept host-dependent auto mode.
       direction: 'auto',
     };
+    const invalidTheme: GanttProps = {
+      ...common,
+      defaultDocument: document,
+      // @ts-expect-error Built-in theme names are a closed union.
+      theme: 'sepia',
+    };
+    const invalidDensity: GanttProps = {
+      ...common,
+      defaultDocument: document,
+      // @ts-expect-error Density names are a closed union.
+      density: 'roomy',
+    };
     const invalidMessages = {
       // @ts-expect-error The built-in message catalog is a closed key union.
       'consumer.private-message': 'Private',
@@ -230,6 +266,8 @@ describe('public React runtime facade', () => {
     expect(ambiguousRange).toBeDefined();
     expect(ambiguousScale).toBeDefined();
     expect(invalidDirection).toBeDefined();
+    expect(invalidTheme).toBeDefined();
+    expect(invalidDensity).toBeDefined();
     expect(invalidMessages).toBeDefined();
   });
 });

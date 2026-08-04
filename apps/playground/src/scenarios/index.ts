@@ -1,15 +1,18 @@
 import type {
   EntityId,
   GanttAppearanceVariantOption,
+  GanttBuiltInTheme,
   GanttDocument,
+  GanttThemeDefinition,
   GanttViewDefinition,
   TimeRange,
 } from '@gantempo/gantt';
+import { defineGanttTheme } from '@gantempo/gantt';
 
 import { PLAYGROUND_APPEARANCE_VARIANTS } from '../appearance';
 import { MATRIX_RECIPE_SOURCES } from '../matrix-recipes';
 
-export type ScenarioTheme = 'dark' | 'high-contrast' | 'light';
+export type ScenarioTheme = GanttBuiltInTheme;
 export type ScenarioDensity = 'comfortable' | 'compact';
 export type ScenarioTaskTone = 'accent' | 'neutral' | 'success' | 'warning';
 
@@ -19,6 +22,7 @@ export interface PlaygroundScenario {
   readonly title: string;
   readonly description: string;
   readonly theme: ScenarioTheme;
+  readonly themeDefinition?: GanttThemeDefinition;
   readonly density: ScenarioDensity;
   readonly document: GanttDocument;
   readonly view?: GanttViewDefinition;
@@ -42,6 +46,18 @@ const TIME_AXIS = Object.freeze({
   tickAnchor: RANGE_START,
   tickInterval: 7 * DAY,
   timeZone: 'Europe/Belgrade',
+});
+
+const RESOURCE_THEME = defineGanttTheme({
+  id: 'resource-planning',
+  mode: 'light',
+  tokens: {
+    'color.accent': '#27806a',
+    'variant.mutedText': '#18352f',
+    'variant.neutral': '#dde3e4',
+    'variant.success': '#bfe6c4',
+    'variant.warning': '#f0d7a5',
+  },
 });
 const EMPTY_RELATIONSHIPS = Object.freeze({
   assignments: Object.freeze([]),
@@ -315,8 +331,9 @@ export const matrixScenarios: readonly MatrixScenario[] = [
     appearanceVariants: PLAYGROUND_APPEARANCE_VARIANTS,
     id: 'resource-overlap',
     title: 'Resource overlap',
-    description: 'Assignment-derived resource lanes with genuine stacked overlap.',
+    description: 'Assignment-derived lanes with stacked overlap and a typed custom theme.',
     theme: 'light',
+    themeDefinition: RESOURCE_THEME,
     density: 'comfortable',
     document: resourceDocument,
     source: MATRIX_RECIPE_SOURCES.resourceOverlap,

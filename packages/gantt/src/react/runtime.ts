@@ -62,6 +62,7 @@ import type {
   GanttSelectorSnapshot,
   GanttSemanticEvent,
 } from './types';
+import { GANTT_DENSITY_METRICS } from '../theme';
 import {
   controlledDocument,
   displayEqual,
@@ -615,6 +616,7 @@ export function createGanttReactRuntime(initialProps: GanttProps): GanttReactRun
         document: storeSnapshot.document,
         direction: display.direction,
         ...(display.formatters === undefined ? {} : { formatters: display.formatters }),
+        metrics: GANTT_DENSITY_METRICS[display.density],
         range: display.range,
         tickAnchor: display.tickAnchor,
         tickInterval: display.tickInterval,

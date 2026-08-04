@@ -18,6 +18,7 @@ describe('matrix playground presentation recipes', () => {
     expect(container.querySelectorAll('[data-gt-part="root"]')).toHaveLength(
       matrixScenarios.length,
     );
+    const ganttRoots = container.querySelectorAll<HTMLElement>('[data-gt-part="root"]');
 
     for (const [index, scenario] of matrixScenarios.entries()) {
       const panelId = toggles[index]!.getAttribute('aria-controls')!;
@@ -30,7 +31,19 @@ describe('matrix playground presentation recipes', () => {
       expect(panel.querySelector('[data-shiki-token]')).not.toBeNull();
       expect(scenario.source).toContain('<Gantt');
       expect(scenario.source).not.toMatch(/fetch|QueryClient|mutationFn|saveSimpleProject/i);
+      expect(ganttRoots[index]?.dataset.gtTheme).toBe(
+        scenario.themeDefinition?.id ?? scenario.theme,
+      );
+      expect(ganttRoots[index]?.dataset.gtThemeMode).toBe(
+        scenario.themeDefinition?.mode ?? scenario.theme,
+      );
+      expect(ganttRoots[index]?.dataset.gtDensity).toBe(scenario.density);
     }
+
+    expect(matrixScenarios[0]?.source).toContain('density="compact"');
+    expect(matrixScenarios[1]?.source).toContain('theme="dark"');
+    expect(matrixScenarios[2]?.source).toContain('defineGanttTheme');
+    expect(matrixScenarios[3]?.source).toContain('theme="high-contrast"');
   });
 
   it('reveals and hides each recipe independently with an associated control', async () => {

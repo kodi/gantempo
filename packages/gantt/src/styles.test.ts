@@ -59,6 +59,25 @@ describe('semantic appearance stylesheet', () => {
   });
 });
 
+describe('built-in theme and density stylesheet', () => {
+  it('ships isolated dark and high-contrast modes with native color schemes', () => {
+    expect(stylesheet).toContain(".gt-gantt[data-gt-theme-mode='dark']");
+    expect(stylesheet).toContain('--gt-color-surface: #18211f');
+    expect(stylesheet).toContain('--gt-color-focus: #8bbcff');
+    expect(stylesheet).toContain('color-scheme: dark');
+    expect(stylesheet).toContain(".gt-gantt[data-gt-theme-mode='high-contrast']");
+    expect(stylesheet).toContain('--gt-color-border: #111');
+    expect(stylesheet).toContain('outline: 2px solid var(--gt-color-border)');
+  });
+
+  it('publishes compact and touch presentation hooks without global selectors', () => {
+    expect(stylesheet).toContain(".gt-gantt[data-gt-density='compact']");
+    expect(stylesheet).toContain('--gt-row-height: 38px');
+    expect(stylesheet).toContain(".gt-gantt[data-gt-density='touch']");
+    expect(stylesheet).toContain('--gt-row-height: 74px');
+  });
+});
+
 describe('lane properties trigger stylesheet', () => {
   it('gives the icon control explicit inset spacing and motion fallback', () => {
     expect(stylesheet).toMatch(

@@ -11,6 +11,15 @@ export {
   type GanttAppearanceToken,
   type GanttAppearanceVariantOption,
 } from './render/appearance';
+export {
+  defineGanttTheme,
+  GANTT_BUILT_IN_THEMES,
+  type GanttBuiltInTheme,
+  type GanttDensity,
+  type GanttTheme,
+  type GanttThemeDefinition,
+  type GanttThemeToken,
+} from './theme';
 export type {
   GanttCommandMappingResult,
   GanttBuiltInMenuAction,

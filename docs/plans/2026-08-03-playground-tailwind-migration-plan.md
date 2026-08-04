@@ -616,7 +616,32 @@ their Tailwind migration is already complete.
   global defaults in production output. If they do not, fix content discovery or
   attach utilities to the owning HTML/React elements; do not restore selector CSS.
 
+The theme/density hook audit found a package-contract deviation: built-in
+light, dark, high-contrast, and density selection exists only in playground wrapper
+CSS even though the architecture requires a first-class per-instance package API.
+The bounded
+[public theme and density plan](2026-08-04-public-theme-and-density-plan.md) owns that
+correction and is now complete before this plan's Slice 3. This plan remains active;
+its chart-frame theme migration must consume the package props rather than recreate
+built-ins with Tailwind arbitrary-property maps.
+
 ## Working Notes
+
+### 2026-08-04 — Public theme/density contract deviation
+
+- User review of `/matrix` correctly identified that the revealed dark and high-
+  contrast recipes teach arbitrary `className` token bundles instead of a built-in
+  theme selector.
+- The live wrapper also owns density variables that do not enter the renderer's scene
+  metrics, so compact CSS can disagree with layout, SVG, navigation, and hit testing.
+- The dedicated public-theme plan precedes this plan's shared chart-frame Slice 3.
+  With it landed, `ScenarioGantt` and matrix recipes use `theme` and `density`;
+  Tailwind will style only playground-owned wrapper chrome and any explicit custom-
+  theme demonstration.
+- The correction is complete: `ScenarioGantt` already passes the package props,
+  matrix recipes teach all built-ins plus `defineGanttTheme`, and full package,
+  repository, and playground automated gates pass. Slice 2 remains this plan's next
+  action; Slice 3 can now delete the temporary wrapper theme/density ownership.
 
 ### 2026-08-03 — Adoption decision
 

@@ -9,6 +9,41 @@ styles once:
 import '@gantempo/gantt/styles.css';
 ```
 
+## Themes and density
+
+Select the packaged light, dark, or high-contrast theme per chart. Density is a
+separate renderer-backed choice, so compact and touch modes update layout, scrolling,
+and hit geometry together with presentation:
+
+```tsx
+<Gantt theme="dark" density="compact" {...props} />
+```
+
+Use a typed semantic definition for an application theme:
+
+```tsx
+import { defineGanttTheme, Gantt } from '@gantempo/gantt';
+
+const brandTheme = defineGanttTheme({
+  id: 'brand-night',
+  mode: 'dark',
+  tokens: {
+    'color.surface': '#101714',
+    'color.text': '#f4fff9',
+    'color.accent': '#65d6ae',
+    'color.focus': '#8bbcff',
+    'overlay.zIndex': 1200,
+  },
+});
+
+<Gantt theme={brandTheme} density="comfortable" {...props} />;
+```
+
+`className` remains available for stylesheet-based `--gt-*` token overrides and
+strict-CSP integrations. `classNames` continues to customize typed component parts
+and states; neither prop is required to select a built-in theme. Theme preferences
+belong to application view state, not `GanttDocument`.
+
 ## Toolchain
 
 - [Vite+](https://viteplus.dev/) for formatting, linting, type checking, and tests

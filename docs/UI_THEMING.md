@@ -179,18 +179,28 @@ Tokens are classified as:
 
 This classification is published in a machine-readable theme manifest.
 
-Themes may also be authored as plain typed data:
+Themes may also be authored as plain typed data. The accepted initial contract is:
 
 ```ts
+export type GanttBuiltInTheme = "dark" | "high-contrast" | "light";
+export type GanttDensity = "compact" | "comfortable" | "touch";
+
 export interface GanttThemeDefinition {
-  id: string;
-  mode?: "light" | "dark" | "high-contrast";
-  tokens: Partial<Record<GanttThemeToken, string | number>>;
+  readonly id: string;
+  readonly mode?: GanttBuiltInTheme;
+  readonly tokens: Readonly<Partial<Record<GanttThemeToken, string | number>>>;
 }
 ```
 
+The initial `GanttThemeToken` values cover font family; surface, border, grid, text,
+accent, focus, and empty colors; task fill/text/border/progress; neutral, success,
+warning, and muted variant colors; and overlay z-index. Token IDs are semantic and do
+not expose the browser custom-property spelling as the portable API.
+
 The typed form is useful for autocomplete, canvas, deterministic export, tests, and
-theme tooling. CSS remains the most direct browser integration surface.
+theme tooling. CSS remains the most direct browser integration surface. Object values
+must be non-empty strings or finite numbers. A custom theme's `mode` selects its
+built-in fallback and defaults to `light`.
 
 ## 7. Stable styling hooks
 
@@ -241,9 +251,16 @@ The React layer provides three levels of customization.
 />
 ```
 
-`themeRevision` tells non-CSS renderers to refresh resolved tokens when host-managed
-CSS variables change. DOM and SVG normally respond to CSS changes without a React
-render.
+`theme` also accepts the built-in strings `light`, `dark`, and `high-contrast`.
+`themeRevision` tells external portals and future non-CSS renderers to refresh
+resolved tokens when host-managed CSS variables change without another relevant prop
+change. DOM and SVG normally respond to CSS changes without a React render.
+
+Packaged built-ins have the lowest customization precedence. Consumer stylesheet
+tokens on `className` may override them. Explicit custom-theme object tokens are root
+inline values and take precedence over both; per-item portable appearance and system
+state rules retain their existing descendant/state precedence. A strict-CSP consumer
+can use `className` plus documented custom properties instead of an object theme.
 
 ### 8.2 Typed class hooks
 
@@ -418,6 +435,9 @@ or cause server hydration differences. Themes set an appropriate `color-scheme` 
 native controls.
 
 Theme and density can be selected per instance. There is no global `setTheme` API.
+Roots and external overlay hosts publish `data-gt-theme`, `data-gt-theme-mode`, and
+`data-gt-density`. Density enters the renderer's layout metrics; it is not merely a
+CSS row-height selector.
 
 ## 12. Canvas and export parity
 
@@ -546,7 +566,7 @@ The first stable theming contract is complete when:
 
 ## 19. Deferred decisions
 
-- Final token names and the initial manifest contents.
+- Additive token families beyond the accepted initial public token set.
 - Whether the Tailwind bridge is a core subpath or a small adapter package.
 - Whether a visual theme builder ships before or after the first stable release.
 - The support window for version-specific Tailwind setup fixtures.

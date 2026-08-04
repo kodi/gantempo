@@ -23,6 +23,7 @@ import type {
 import type { GanttViewDefinition } from '../view/types';
 import type { GanttDirection, GanttFormatters, GanttMessages } from '../localization/types';
 import type { GanttAppearanceVariantOption } from '../render/appearance';
+import type { GanttDensity, GanttTheme } from '../theme';
 import type {
   GanttFitToProjectOptions,
   GanttTimeScaleDefinition,
@@ -458,6 +459,7 @@ interface GanttBaseProps {
   readonly classNames?: GanttClassNames;
   readonly columns?: readonly GanttLaneColumn[];
   readonly contextMenuItems?: GanttContextMenuItems;
+  readonly density?: GanttDensity;
   readonly direction?: GanttDirection;
   readonly features?: GanttFeatures;
   readonly formatters?: GanttFormatters;
@@ -489,6 +491,8 @@ interface GanttBaseProps {
   readonly overlayContainer?: GanttOverlayContainer;
   readonly slots?: GanttSlots;
   readonly taskVariants?: Readonly<Record<EntityId, string>>;
+  readonly theme?: GanttTheme;
+  readonly themeRevision?: number | string;
   readonly timeZone: string;
   readonly view?: GanttViewDefinition;
 }

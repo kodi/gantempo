@@ -10,8 +10,13 @@
     --gt-color-task-text: #fff;
     --gt-color-focus: #005fcc;
     --gt-color-empty: #778078;
+    --gt-font-family: inherit;
     --gt-lane-accent: transparent;
     --gt-lane-surface: transparent;
+    --gt-task-muted-text: #18352f;
+    --gt-task-neutral: #dde3e4;
+    --gt-task-success: #bfe6c4;
+    --gt-task-warning: #f0d7a5;
     --gt-task-border: color-mix(in srgb, var(--gt-color-task) 82%, black);
     --gt-task-fill: var(--gt-color-task);
     --gt-task-progress-fill: color-mix(in srgb, var(--gt-color-task) 72%, black);
@@ -23,7 +28,75 @@
     min-width: 0;
     color: var(--gt-color-text);
     background: var(--gt-color-surface);
-    font-family: inherit;
+    font-family: var(--gt-font-family, inherit);
+    color-scheme: light;
+  }
+
+  :where(.gt-gantt[data-gt-theme-mode='dark']) {
+    --gt-color-surface: #18211f;
+    --gt-color-surface-muted: #18211f;
+    --gt-color-border: #34423e;
+    --gt-color-grid: #2a3733;
+    --gt-color-text: #edf3f0;
+    --gt-color-text-muted: #99a7a2;
+    --gt-color-task: #79cdb5;
+    --gt-color-task-text: #11251f;
+    --gt-color-focus: #8bbcff;
+    --gt-color-empty: #99a7a2;
+    --gt-task-neutral: #465451;
+    --gt-task-success: #346d50;
+    --gt-task-warning: #735e35;
+    --gt-task-muted-text: #edf3f0;
+    color-scheme: dark;
+  }
+
+  :where(.gt-gantt[data-gt-theme-mode='high-contrast']) {
+    --gt-color-surface: #fff;
+    --gt-color-surface-muted: #fff;
+    --gt-color-border: #111;
+    --gt-color-grid: #444;
+    --gt-color-text: #000;
+    --gt-color-text-muted: #111;
+    --gt-color-task: #005fcc;
+    --gt-color-task-text: #fff;
+    --gt-color-focus: #005fcc;
+    --gt-color-empty: #111;
+    --gt-task-neutral: #ddd;
+    --gt-task-success: #48a867;
+    --gt-task-warning: #ffe100;
+    --gt-task-muted-text: #000;
+    outline: 2px solid var(--gt-color-border);
+    outline-offset: -2px;
+    color-scheme: light;
+  }
+
+  :where(.gt-gantt[data-gt-density='compact']) {
+    --gt-header-height: 34px;
+    --gt-row-height: 38px;
+  }
+
+  :where(.gt-gantt[data-gt-density='compact'] .gt-gantt__lane-header) {
+    padding-inline: 10px;
+    font-size: 10px;
+  }
+
+  :where(.gt-gantt[data-gt-density='compact'] .gt-gantt__zoom-controls button) {
+    width: 28px;
+    min-height: 28px;
+  }
+
+  :where(.gt-gantt[data-gt-density='touch']) {
+    --gt-header-height: 48px;
+    --gt-row-height: 74px;
+  }
+
+  :where(.gt-gantt[data-gt-density='touch'] .gt-gantt__lane-header) {
+    padding-inline: 16px;
+  }
+
+  :where(.gt-gantt[data-gt-density='touch'] .gt-gantt__zoom-controls button) {
+    width: 40px;
+    min-height: 40px;
   }
 
   :where(.gt-gantt__zoom-controls) {

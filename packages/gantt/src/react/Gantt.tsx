@@ -21,6 +21,12 @@ import {
 import { createGanttLocalization, type GanttLocalization } from '../localization/format';
 import { createAppearanceRegistry } from '../render/appearance';
 import type { TaskBarPrimitive } from '../render/primitives';
+import {
+  resolveGanttDensity,
+  resolveGanttTheme,
+  type GanttDensity,
+  type ResolvedGanttTheme,
+} from '../theme';
 import { GanttRuntimeProvider, useGanttSelector } from './context';
 import { GanttLocalizationProvider } from './localization-context';
 import {
@@ -96,7 +102,9 @@ import '../styles.css';
 export type { GanttHandle, GanttProps } from './types';
 
 interface GanttRootStyle extends CSSProperties {
+  readonly '--gt-header-height': string;
   readonly '--gt-lane-column-width': string;
+  readonly '--gt-row-height': string;
   readonly '--gt-timeline-height': string;
   readonly '--gt-timeline-height-ratio': number;
 }
@@ -109,6 +117,7 @@ function GanttSurface({
   classNames,
   columns,
   contextMenuItems,
+  density,
   disabled,
   features,
   interactionMappers,
@@ -120,6 +129,8 @@ function GanttSurface({
   runtime,
   scene,
   slots,
+  theme,
+  themeRevision,
   timelineRef,
 }: {
   readonly appearanceVariants?: GanttProps['appearanceVariants'];
@@ -129,6 +140,7 @@ function GanttSurface({
   readonly classNames?: GanttProps['classNames'];
   readonly columns?: GanttProps['columns'];
   readonly contextMenuItems?: GanttProps['contextMenuItems'];
+  readonly density: GanttDensity;
   readonly disabled: boolean;
   readonly features?: GanttProps['features'];
   readonly interactionMappers?: GanttProps['interactionMappers'];
@@ -140,6 +152,8 @@ function GanttSurface({
   readonly runtime: GanttReactRuntime;
   readonly scene: GanttReactRuntimeSnapshot['scene'];
   readonly slots?: GanttProps['slots'];
+  readonly theme: ResolvedGanttTheme;
+  readonly themeRevision?: number | string;
   readonly timelineRef: React.RefObject<HTMLDivElement | null>;
 }): ReactElement {
   const interaction = useGanttSelector((snapshot) => snapshot.interaction);
@@ -179,10 +193,14 @@ function GanttSurface({
   } = useOverlayController({
     accessibilityId,
     className,
+    density,
     interaction,
     overlayContainer,
     rootRef,
     slots,
+    themeId: theme.id,
+    themeMode: theme.mode,
+    themeRevision: JSON.stringify([theme.signature, themeRevision ?? null]),
   });
   const dependencyMarkerId = `${accessibilityId.replaceAll(':', '')}-dependency-arrow`;
   const tooltipEnabled = features?.tooltip === true || slots?.Tooltip !== undefined;
@@ -668,7 +686,10 @@ function GanttSurface({
     resolveClassName(classNames?.root, rootClassState),
   );
   const style: GanttRootStyle = {
+    ...theme.style,
+    '--gt-header-height': `${scene.bounds.headerHeight}px`,
     '--gt-lane-column-width': `${laneColumnWidth}px`,
+    '--gt-row-height': `${scene.bounds.defaultLaneHeight}px`,
     '--gt-timeline-height': `${scene.bounds.timelineHeight}px`,
     '--gt-timeline-height-ratio': scene.bounds.timelineHeight / scene.bounds.defaultLaneHeight,
   };
@@ -1290,7 +1311,10 @@ function GanttSurface({
       data-diagnostic-count={scene.diagnostics.length}
       data-disabled={disabled || undefined}
       data-gantempo=""
+      data-gt-density={density}
       data-gt-part="root"
+      data-gt-theme={theme.id}
+      data-gt-theme-mode={theme.mode}
       data-interaction-active={
         [
           'pressing',
@@ -1592,6 +1616,8 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
     readonly variants: Set<string>;
   }>({ signature: appearanceRegistrySignature, variants: new Set() });
   const disabled = props.document !== undefined && props.onDocumentChange === undefined;
+  const density = resolveGanttDensity(props.density);
+  const theme = useMemo(() => resolveGanttTheme(props.theme), [props.theme]);
 
   useImperativeHandle(ref, () => runtime.getHandle(), [runtime]);
   useLayoutEffect(() => {
@@ -1663,6 +1689,7 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
           classNames={classNames}
           columns={columns}
           contextMenuItems={contextMenuItems}
+          density={density}
           disabled={disabled}
           features={features}
           interactionMappers={interactionMappers}
@@ -1674,6 +1701,8 @@ export const Gantt: ForwardRefExoticComponent<GanttProps & RefAttributes<GanttHa
           runtime={runtime}
           scene={scene}
           slots={slots}
+          theme={theme}
+          {...(props.themeRevision === undefined ? {} : { themeRevision: props.themeRevision })}
           timelineRef={timelineRef}
         />
       </GanttLocalizationProvider>

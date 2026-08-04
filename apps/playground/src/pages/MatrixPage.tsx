@@ -17,7 +17,7 @@ function MatrixScenarioCard({ scenario }: { readonly scenario: MatrixScenario })
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="rounded-md bg-[#e9e7e1] px-[7px] py-[5px] text-[10px] font-bold text-[#687181]">
-            {scenario.theme}
+            {scenario.themeDefinition?.id ?? scenario.theme}
           </span>
           <button
             aria-controls={codeId}

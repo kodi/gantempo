@@ -26,7 +26,7 @@ export function ScenarioGantt({
   onRangeChange,
   scenario,
   size,
-  theme = scenario.theme,
+  theme,
 }: ScenarioGanttProps): ReactElement {
   const [document, setDocument] = useState(scenario.document);
   const [range, setRange] = useState(scenario.range);
@@ -63,6 +63,7 @@ export function ScenarioGantt({
 
       <Gantt
         className="chart-frame__chart"
+        density={scenario.density}
         document={document}
         {...(size === 'main' ? { features: { properties: true } } : {})}
         label={`${scenario.title} chart`}
@@ -78,6 +79,7 @@ export function ScenarioGantt({
         }}
         range={range}
         taskVariants={scenario.taskVariants}
+        theme={theme ?? scenario.themeDefinition ?? scenario.theme}
         tickAnchor={scenario.tickAnchor}
         tickInterval={scenario.tickInterval}
         timeZone={scenario.timeZone}

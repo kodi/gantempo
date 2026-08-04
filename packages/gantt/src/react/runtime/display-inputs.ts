@@ -5,11 +5,13 @@ import type { GanttDocument, TimeRange } from '../../model/types';
 import { timeScaleLevelSpan, type GanttTimeScaleDefinition } from '../../time/adaptive-scale';
 import { sameViewDefinition } from '../../view/definition-equality';
 import type { GanttProps } from '../types';
+import { resolveGanttDensity, type GanttDensity } from '../../theme';
 
 const DAY = 24 * 60 * 60 * 1_000;
 
 export interface DisplayInputs {
   readonly appearanceVariants: GanttProps['appearanceVariants'];
+  readonly density: GanttDensity;
   readonly direction: GanttDirection;
   readonly formatters: GanttProps['formatters'];
   readonly locale: string;
@@ -54,6 +56,7 @@ export function displayInputs(props: GanttProps, rangeOverride?: TimeRange): Dis
   };
   return Object.freeze({
     appearanceVariants: props.appearanceVariants,
+    density: resolveGanttDensity(props.density),
     direction: localization.direction,
     formatters: props.formatters,
     locale: localization.locale,
@@ -72,6 +75,7 @@ export function displayInputs(props: GanttProps, rangeOverride?: TimeRange): Dis
 export function displayEqual(previous: DisplayInputs, next: DisplayInputs): boolean {
   return (
     JSON.stringify(previous.appearanceVariants) === JSON.stringify(next.appearanceVariants) &&
+    previous.density === next.density &&
     previous.direction === next.direction &&
     previous.formatters === next.formatters &&
     previous.locale === next.locale &&

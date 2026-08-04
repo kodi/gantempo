@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import type { GanttInteractionState, GanttOverlayContainer, GanttProps } from '../../types';
+import type { GanttBuiltInTheme, GanttDensity } from '../../../theme';
 
 export interface TaskOverlayPosition {
   readonly adjusted?: boolean;
@@ -75,6 +76,17 @@ function syncOverlayTheme(root: HTMLElement, host: HTMLElement): void {
   host.style.fontFamily = computed.fontFamily;
   host.style.fontSize = computed.fontSize;
   host.style.lineHeight = computed.lineHeight;
+}
+
+function syncOverlayThemeAttributes(
+  host: HTMLElement,
+  density: GanttDensity,
+  themeId: string,
+  themeMode: GanttBuiltInTheme,
+): void {
+  host.dataset.gtDensity = density;
+  host.dataset.gtTheme = themeId;
+  host.dataset.gtThemeMode = themeMode;
 }
 
 function adjustedOverlayPosition(
@@ -144,17 +156,25 @@ export interface OverlayController {
 export function useOverlayController({
   accessibilityId,
   className,
+  density,
   interaction,
   overlayContainer,
   rootRef,
   slots,
+  themeId,
+  themeMode,
+  themeRevision,
 }: {
   readonly accessibilityId: string;
   readonly className: string | undefined;
+  readonly density: GanttDensity;
   readonly interaction: GanttInteractionState;
   readonly overlayContainer: GanttOverlayContainer | undefined;
   readonly rootRef: RefObject<HTMLDivElement | null>;
   readonly slots: GanttProps['slots'] | undefined;
+  readonly themeId: string;
+  readonly themeMode: GanttBuiltInTheme;
+  readonly themeRevision: string;
 }): OverlayController {
   const boundary: OverlayBoundary = overlayContainer === 'root' ? 'root' : 'viewport';
   const boundaryRef = useRef(boundary);
@@ -264,8 +284,11 @@ export function useOverlayController({
   }, [accessibilityId, boundary, overlayContainer, rootRef]);
   useLayoutEffect(() => {
     const root = rootRef.current;
-    if (root !== null && externalHost !== null) syncOverlayTheme(root, externalHost);
-  }, [className, externalHost, rootRef]);
+    if (root !== null && externalHost !== null) {
+      syncOverlayThemeAttributes(externalHost, density, themeId, themeMode);
+      syncOverlayTheme(root, externalHost);
+    }
+  }, [className, density, externalHost, rootRef, themeId, themeMode, themeRevision]);
 
   useEffect(() => {
     if (menu === undefined) return;
