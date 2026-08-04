@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 
+import { HighlightedCode, type SourceLanguage } from '../HighlightedCode';
 import { SimpleProjectExample } from '../examples/SimpleProjectExample';
 import componentSource from '../examples/SimpleProjectExample.tsx?raw';
 import adapterSource from '../examples/simple-project-api.ts?raw';
@@ -13,10 +14,12 @@ pnpm add -D tailwindcss @tailwindcss/vite`;
 function SourcePanel({
   children,
   filename,
+  language,
   open = false,
 }: {
   readonly children: string;
   readonly filename: string;
+  readonly language: SourceLanguage;
   readonly open?: boolean;
 }): ReactElement {
   return (
@@ -29,7 +32,7 @@ function SourcePanel({
         <span className="text-[#96aaa2]">View complete file</span>
       </summary>
       <pre className="m-0 overflow-visible p-[18px] font-mono text-[11px] leading-[1.65] whitespace-pre-wrap text-[#e8efec] [overflow-wrap:anywhere] [tab-size:2] max-[560px]:p-3.5 max-[560px]:text-[10px]">
-        <code>{children.trim()}</code>
+        <HighlightedCode language={language} source={children} />
       </pre>
     </details>
   );
@@ -105,16 +108,16 @@ export function SimpleProjectExamplePage(): ReactElement {
             QueryClientProvider. These are complete standalone files—there is no playground-specific
             component.
           </p>
-          <SourcePanel filename="terminal" open>
+          <SourcePanel filename="terminal" language="bash" open>
             {INSTALL_SOURCE}
           </SourcePanel>
-          <SourcePanel filename="vite.config.ts" open>
+          <SourcePanel filename="vite.config.ts" language="typescript" open>
             {viteConfigSource}
           </SourcePanel>
-          <SourcePanel filename="styles.css" open>
+          <SourcePanel filename="styles.css" language="css" open>
             {stylesSource}
           </SourcePanel>
-          <SourcePanel filename="main.tsx" open>
+          <SourcePanel filename="main.tsx" language="tsx" open>
             {mainSource}
           </SourcePanel>
         </Step>
@@ -124,7 +127,7 @@ export function SimpleProjectExamplePage(): ReactElement {
             These are the only API functions the example needs: GET the project and PUT the edited
             project back. Replace this URL with your own endpoint.
           </p>
-          <SourcePanel filename="simple-project-api.ts" open>
+          <SourcePanel filename="simple-project-api.ts" language="typescript" open>
             {adapterSource}
           </SourcePanel>
         </Step>
@@ -134,7 +137,7 @@ export function SimpleProjectExamplePage(): ReactElement {
             The Gantempo adapter uses TanStack Query's familiar queryFn and mutationFn. Its native
             query and mutation state remain available while Gantempo owns the editable draft.
           </p>
-          <SourcePanel filename="SimpleProjectExample.tsx" open>
+          <SourcePanel filename="SimpleProjectExample.tsx" language="tsx" open>
             {componentSource}
           </SourcePanel>
         </Step>

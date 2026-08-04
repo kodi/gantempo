@@ -24,6 +24,10 @@ describe('matrix playground presentation recipes', () => {
       const panel = container.querySelector<HTMLElement>(`#${panelId}`)!;
       expect(panel.hidden).toBe(true);
       expect(panel.getAttribute('aria-label')).toBe(`${scenario.title} code`);
+      expect(panel.querySelector('code.shiki.language-tsx')?.textContent).toBe(
+        scenario.source.trim(),
+      );
+      expect(panel.querySelector('[data-shiki-token]')).not.toBeNull();
       expect(scenario.source).toContain('<Gantt');
       expect(scenario.source).not.toMatch(/fetch|QueryClient|mutationFn|saveSimpleProject/i);
     }

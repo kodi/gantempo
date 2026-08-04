@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from 'react';
 
+import { HighlightedCode } from '../HighlightedCode';
 import { ScenarioGantt } from '../ScenarioGantt';
 import { matrixScenarios, type MatrixScenario } from '../scenarios';
 
@@ -41,7 +42,7 @@ function MatrixScenarioCard({ scenario }: { readonly scenario: MatrixScenario })
           <span className="text-[#96aaa2]">document and range assumed</span>
         </div>
         <pre className="m-0 max-h-[520px] overflow-auto p-4 font-mono text-[10px] leading-[1.6] text-[#e8efec] [tab-size:2]">
-          <code>{scenario.source}</code>
+          <HighlightedCode language="tsx" source={scenario.source} />
         </pre>
       </section>
     </article>

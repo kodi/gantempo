@@ -98,15 +98,23 @@ describe('API-loaded simple project example', () => {
     expect(screen.getByText('SimpleProjectExample.tsx')).not.toBeNull();
     expect(screen.getByText('vite.config.ts')).not.toBeNull();
     expect(screen.getByText('styles.css')).not.toBeNull();
-    expect(screen.getByText(/plugins: \[react\(\), tailwindcss\(\)\]/)).not.toBeNull();
     expect(screen.getAllByText('View complete file')).toHaveLength(6);
-    expect(screen.getByText(/useGanttDocumentQuery/)).not.toBeNull();
-    expect(screen.getAllByText(/QueryClientProvider/)).not.toHaveLength(0);
-    expect(screen.getByText(/mutationFn: saveSimpleProject/)).not.toBeNull();
-    expect(screen.getByText(/method: 'PUT'/)).not.toBeNull();
-    expect(screen.queryByText(/import \{ Playground \}/)).toBeNull();
-    expect(screen.queryByText(/AbortSignal|AbortController|DOMException/)).toBeNull();
-    expect(screen.queryByText(/appearanceVariants=/)).toBeNull();
+    const sourceBlocks = Array.from(mounted.container.querySelectorAll('code.shiki'));
+    const sourceText = sourceBlocks.map((sourceBlock) => sourceBlock.textContent).join('\n');
+    expect(sourceBlocks).toHaveLength(6);
+    expect(
+      sourceBlocks
+        .filter((sourceBlock) => sourceBlock.textContent)
+        .every((sourceBlock) => sourceBlock.querySelector('[data-shiki-token]')),
+    ).toBe(true);
+    expect(sourceText).toMatch(/plugins: \[react\(\), tailwindcss\(\)\]/);
+    expect(sourceText).toMatch(/useGanttDocumentQuery/);
+    expect(sourceText).toMatch(/QueryClientProvider/);
+    expect(sourceText).toMatch(/mutationFn: saveSimpleProject/);
+    expect(sourceText).toMatch(/method: 'PUT'/);
+    expect(sourceText).not.toMatch(/import \{ Playground \}/);
+    expect(sourceText).not.toMatch(/AbortSignal|AbortController|DOMException/);
+    expect(sourceText).not.toMatch(/appearanceVariants=/);
     expect(mounted.container.querySelector('[class*="simple-project-example"]')).toBeNull();
     expect(await screen.findByRole('region', { name: 'API-loaded project' })).not.toBeNull();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
